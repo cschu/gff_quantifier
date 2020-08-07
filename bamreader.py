@@ -18,12 +18,11 @@ class BamFile:
        len_header = struct.unpack("I", self._file.read(4))[0]
        if len_header:
            header_str = struct.unpack("c" * len_header, self._file.read(len_header))
-           print(header_str)
+           # print(header_str)
        n_ref = struct.unpack("I", self._file.read(4))[0]
        for i in range(n_ref):
            len_rname = struct.unpack("I", self._file.read(4))[0]
            rname = "".join(map(bytes.decode, struct.unpack("c" * len_rname, self._file.read(len_rname))[:-1]))
-           rname = rname[:rname.rfind(".")]
            len_ref = struct.unpack("I", self._file.read(4))[0]
            self._references.append((rname, len_ref))
     def get_alignments(self):
