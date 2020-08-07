@@ -24,6 +24,8 @@ class FeatureQuantifier:
                 if not line.startswith("#"):
                     line = line.strip().split("\t")
                     gff_annotation.setdefault((line[0], int(line[3]), int(line[4]) + 1), list()).append(line[8])
+		if not gff_annotation:
+			print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id))
         return gff_annotation
 
     def process_bam(self, bamfile):
@@ -37,7 +39,7 @@ class FeatureQuantifier:
                 current_ref = aln[1]
                 gff_annotation = self._read_gff_data(current_ref)
                 intervals = sorted([key[1:] for key in gff_annotation])
-                print(intervals)
+                # print(intervals)
                 interval_tree = IntervalTree.from_tuples(intervals)
             overlaps = interval_tree[aln[2]:aln[2] + aln[3]]
             print(aln)
@@ -46,4 +48,3 @@ class FeatureQuantifier:
             for ovl in overlaps:
                 key = (current_ref, ovl.begin, ovl.end)
                 print(gff_annotation[key])
-                sys.exit()
