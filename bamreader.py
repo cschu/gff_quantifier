@@ -2,6 +2,46 @@ import sys
 import gzip
 import struct
 
+class BamAlignment:
+    CIGAR_OPS = "MIDNSHP=X"
+    @staticmethod
+    def parse_cigar(cigar_ops):
+        # op_len << 4 | op
+        return [(c >> 4, c & 0xf) for c in cigar_ops]
+    @staticmethod
+    def show_cigar(cigar):
+        return "".join(["{oplen}{op}".format(oplen=c[0], op=BamAlignment.CIGAR_OPS[c[1]]) for c in cigar])
+    @staticmethod
+    def calculate_coordinates(start, cigar):
+        # MIDNSHP=X
+        # 012345678; 02378 consume reference: 0000 0010 0011 0111 1000
+        REF_CONSUMERS = {0, 2, 3, 7, 8}
+        return start + sum(oplen for oplen, op in cigar if op in REF_CONSUMERS)
+    def is_primary(self):
+        return not self.flag & 0x100
+    def is_paired(self):
+        return self.flag & 0x1
+    def __init__(self, qname=None, flag=None, rid=None, pos=None,
+                 mapq=None, cigar=None, rnext=None, pnext=None,
+                 tlen=None, len_seq=None, tags=None):
+        self.qname = qname
+        self.flag = flag
+        self.rid = rid
+        self.cigar = BamAlignment.parse_cigar(cigar)
+        self.start = pos
+        self.end = BamAlignment.calculate_coordinates(self.start, self.cigar)
+        self.mapq = mapq
+        self.rnext = rnext
+        self.pnext = pnext
+        self.tlen = tlen
+        self.len_seq = len_seq
+        self.tags = tags
+    def __str__(self):
+        return "{rid}:{rstart}-{rend} ({cigar};{flag};{mapq};{tlen}) {rnext}:{pnext}".format(
+            rid=self.rid, rstart=self.start, rend=self.end, cigar=BamAlignment.show_cigar(self.cigar), flag=self.flag,
+            mapq=self.mapq, tlen=self.tlen, rnext=self.rnext, pnext=self.pnext
+         )
+
 class BamFile:
     def __init__(self, fn):
         self._references = list()
@@ -25,6 +65,8 @@ class BamFile:
            rname = "".join(map(bytes.decode, struct.unpack("c" * len_rname, self._file.read(len_rname))[:-1]))
            len_ref = struct.unpack("I", self._file.read(4))[0]
            self._references.append((rname, len_ref))
+    def get_reference(self, rid):
+        return self._references[rid][0]
     def get_alignments(self):
         while True:
             try:
@@ -37,8 +79,8 @@ class BamFile:
                 self._file.read(32)
             )
 
-            self._file.read(len_rname) # qname
-            self._file.read(4 * n_cigar_ops)
+            qname = self._file.read(len_rname) # qname
+            cigar = struct.unpack("I" * n_cigar_ops, self._file.read(4 * n_cigar_ops))
             self._file.read((len_seq + 1) // 2) # encoded read sequence
             self._file.read(len_seq) # quals
 
@@ -46,7 +88,9 @@ class BamFile:
             tags = self._file.read(aln_size - total_read) # get the tags
             # print(*map(bytes.decode, struct.unpack("c"*len(tags), tags)))
 
-            yield rid, self._references[rid][0], pos, len_seq
+            # yield rid, self._references[rid][0], pos, len_seq
+            yield BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
+            #yield rid, self._references[rid][0], pos, len_seq, qname, cigar, flag, next_rid, self._references[next_rid][0], next_pos, tlen, tags
 
 
 
