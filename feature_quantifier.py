@@ -1,3 +1,4 @@
+import time
 import sys
 import gzip
 
@@ -42,38 +43,83 @@ class FeatureQuantifier:
             print(*ovl_features, sep="\n")
         self.read_cache.clear()
 
+    def collect_secondary_alignments(self, bamfile):
+        t0 = time.time()
+        bam = BamFile(bamfile)
+        reads_with_secaln = set(
+            aln.qname for aln in bam.get_alignments(
+                required_flags=0x100, disallowed_flags=0x800
+            )
+        )
+        bam = BamFile(bamfile) # need to implement rewind?
+        sec_alignments = dict()
+        for aln in bam.get_alignments(disallowed_flags=0x900):
+            if aln.qname in reads_with_secaln:
+                sec_alignments.setdefault(aln.qname, set()).add(
+                    (aln.rid, aln.start, aln.end)
+                )
+        t1 = time.time()
+        print("Collected information for {n_alignments} secondary alignments in {n_seconds:.3f}s.".format(
+            n_alignments=len(sec_alignments), n_seconds=t1-t0)
+        )
+        missing = len(reads_with_secaln.difference(sec_alignments))
+        if missing:
+            print("{n_missing} secondary alignments don't have primary alignment in file.".format(n_missing=missing))
+
+        return sec_alignments
+
     def process_bam(self, bamfile):
+        sec_alignments = self.collect_secondary_alignments(bamfile)
+        t0 = time.time()
         bam = BamFile(bamfile)
         self.current_ref = None
         self.gff_annotation = dict()
         self.read_cache = dict()
+        sec_cache = dict()
         #only using enumerate here, so could break after n alignments for testing purposes
-        for i, aln in enumerate(bam.get_alignments()):
+        for i, aln in enumerate(bam.get_alignments(disallowed_flags=0x800)):
             if not aln.is_primary():
-                # TODO: deal with multimappers
-                continue
-            if aln.is_paired() and aln.rid == aln.rnext:
+                primaries = sec_alignments.get(aln.qname, set())
+                if not primaries:
+                    print("WARNING: could not find primary alignments for {aln_qname}".format(aln_qname=aln.qname))
+                    continue
+                aln_key = (aln.rid, aln.start, aln.end)
+                if aln_key in primaries:
+                    # there are sometimes secondary alignments that seem to be identical to the primary
+                    continue
+                if aln_key in sec_cache.get(aln.qname, set()):
+                    # if r1 and r2 are identical and generate two separate individual alignments, disregard those
+                    continue
+                sec_cache.setdefault(aln.qname, set()).add(aln_key)
+
+            elif aln.is_paired() and aln.rid == aln.rnext:
+                # due to filtered mates (ngless!), need to keep track of read pairs to avoid dual counts
+                # do not support paired information in secondary information currently
                 self.read_cache.setdefault(aln.qname, list()).append(aln)
-            # yield rid, self._references[rid][0], pos, len_seq
+
             ref = bam.get_reference(aln.rid)
-            # yield BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
             if ref != self.current_ref:
                 # clear cache
                 self.process_cache()
+                sec_cache.clear()
                 # load current reference
                 self.current_ref = ref
                 self.gff_annotation = self._read_gff_data(self.current_ref)
                 intervals = sorted([key[1:] for key in self.gff_annotation])
                 self.interval_tree = IntervalTree.from_tuples(intervals)
 
-            #overlaps = interval_tree[aln.start:aln.end]
             print(aln)
             ovl_features = self.get_overlaps(aln.start, aln.end)
-            #print(overlaps)
             print(*ovl_features, sep="\n")
 
         # clear cache
         self.process_cache()
+        t1 = time.time()
+
+        print("Processed {n_align} primary alignments in {n_seconds:.3f}s.".format(
+            n_align=i, n_seconds=t1-t0)
+        )
+
 
     def get_overlaps(self, start, end):
         overlaps = self.interval_tree[start:end]
