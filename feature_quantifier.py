@@ -24,7 +24,10 @@ class FeatureQuantifier:
             for line in self.gff_data.read(size).strip("\n").split("\n"):
                 if not line.startswith("#"):
                     line = line.strip().split("\t")
-                    gff_annotation.setdefault((line[0], int(line[3]), int(line[4]) + 1), list()).append(line[8])
+                    features = dict((item.split("=")[0], item.split("=")[1].split(",")) for item in line[8].strip().split(";"))
+                    key = (line[0], int(line[3]), int(line[4]) + 1)
+                    gff_annotation[key] = features
+                    #gff_annotation.setdefault((line[0], int(line[3]), int(line[4]) + 1), list()).append(line[8])
         if not gff_annotation:
             print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id))
         return gff_annotation
