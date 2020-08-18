@@ -19,6 +19,8 @@ class BamAlignment:
         return start + sum(oplen for oplen, op in cigar if op in REF_CONSUMERS)
     def is_primary(self):
         return not self.flag & 0x100
+    def is_supplementary(self):
+        return self.flag & 0x800
     def is_paired(self):
         return self.flag & 0x1
     def __init__(self, qname=None, flag=None, rid=None, pos=None,
@@ -67,7 +69,7 @@ class BamFile:
            self._references.append((rname, len_ref))
     def get_reference(self, rid):
         return self._references[rid][0]
-    def get_alignments(self):
+    def get_alignments(self, required_flags=None, disallowed_flags=None):
         while True:
             try:
                 aln_size = struct.unpack("I", self._file.read(4))[0]
@@ -89,7 +91,9 @@ class BamFile:
             # print(*map(bytes.decode, struct.unpack("c"*len(tags), tags)))
 
             # yield rid, self._references[rid][0], pos, len_seq
-            yield BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
+            flag_check = (required_flags is None or (flag & required_flags)) and (disallowed_flags is None or not (flag & disallowed_flags)) 
+            if flag_check:
+                yield BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
             #yield rid, self._references[rid][0], pos, len_seq, qname, cigar, flag, next_rid, self._references[next_rid][0], next_pos, tlen, tags
 
 
