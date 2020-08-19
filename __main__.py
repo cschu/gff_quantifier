@@ -7,6 +7,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("gff_file", type=str)
     ap.add_argument("bam_file", type=str)
+    ap.add_argument("out_prefix", type=str)
     ap.add_argument("--gff_compressed", action="store_true")
     args = ap.parse_args()
 
@@ -19,7 +20,7 @@ def main():
         raise ValueError("bam file does not exist", args.bam_file)
 
     fq = FeatureQuantifier(args.gff_file, gff_index, gff_gzipped=args.gff_compressed)
-    fq.process_bam(args.bam_file)
+    fq.process_bam(args.bam_file, args.out_prefix)
 
 
 if __name__ == "__main__":

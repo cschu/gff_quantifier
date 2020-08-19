@@ -1,6 +1,9 @@
+import os
 import time
 import sys
 import gzip
+from collections import Counter
+import json
 
 from intervaltree import IntervalTree
 
@@ -42,8 +45,15 @@ class FeatureQuantifier:
                 print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=len(cached)))
                 continue
             ovl_features = self.get_overlaps(start, end)
-            print(*cached, sep="\n")
-            print(*ovl_features, sep="\n")
+            #print(*cached, sep="\n")
+            #print(*ovl_features, sep="\n")
+
+
+            self.primary_counter.setdefault("seqname", Counter())[self.current_ref] += 1
+            for feature_set in ovl_features:
+                 for key, values in feature_set.items():
+                     self.primary_counter.setdefault(key, Counter()).update(values)
+
         self.read_cache.clear()
 
     def collect_secondary_alignments(self, bamfile):
@@ -71,7 +81,7 @@ class FeatureQuantifier:
 
         return sec_alignments
 
-    def process_bam(self, bamfile):
+    def process_bam(self, bamfile, out_prefix):
         sec_alignments = self.collect_secondary_alignments(bamfile)
         t0 = time.time()
         bam = BamFile(bamfile)
@@ -79,9 +89,13 @@ class FeatureQuantifier:
         self.gff_annotation = dict()
         self.read_cache = dict()
         sec_cache = dict()
+        self.primary_counter, self.secondary_counter = dict(), dict()
+
         #only using enumerate here, so could break after n alignments for testing purposes
         for i, aln in enumerate(bam.get_alignments(disallowed_flags=0x800)):
+            counter = self.primary_counter
             if not aln.is_primary():
+                counter = self.secondary_counter
                 primaries = sec_alignments.get(aln.qname, set())
                 if not primaries:
                     print("WARNING: could not find primary alignments for {aln_qname}".format(aln_qname=aln.qname))
@@ -99,21 +113,28 @@ class FeatureQuantifier:
                 # due to filtered mates (ngless!), need to keep track of read pairs to avoid dual counts
                 # do not support paired information in secondary information currently
                 self.read_cache.setdefault(aln.qname, list()).append(aln)
+                continue # right?
 
             ref = bam.get_reference(aln.rid)
             if ref != self.current_ref:
-                # clear cache
-                self.process_cache()
-                sec_cache.clear()
+                if self.current_ref is not None:
+                    # clear cache
+                    self.process_cache()
+                    sec_cache.clear()
                 # load current reference
                 self.current_ref = ref
                 self.gff_annotation = self._read_gff_data(self.current_ref)
                 intervals = sorted([key[1:] for key in self.gff_annotation])
                 self.interval_tree = IntervalTree.from_tuples(intervals)
 
-            print(aln)
+            #print(aln)
             ovl_features = self.get_overlaps(aln.start, aln.end)
-            print(*ovl_features, sep="\n")
+            # {'ID': ['1108045.SAMD00041828.GORHZ_154_00010'], 'eggNOG_OGs': ['2GKPH@201174', 'COG0532@1', '4GBW5@85026', 'COG0532@2'], 'KEGG_ko': ['ko:K02519'], 'BRITE': ['ko00000', 'ko03012', 'ko03029'], 'COG_Functional_cat.': ['J']}
+            counter.setdefault("seqname", Counter())[self.current_ref] += 1
+            for feature_set in ovl_features:
+                for key, values in feature_set.items():
+                    counter.setdefault(key, Counter()).update(values)
+            #print(*ovl_features, sep="\n")
 
         # clear cache
         self.process_cache()
@@ -122,6 +143,10 @@ class FeatureQuantifier:
         print("Processed {n_align} primary alignments in {n_seconds:.3f}s.".format(
             n_align=i, n_seconds=t1-t0)
         )
+        with open(out_prefix + ".primary.json", "w") as json_out:
+            json.dump(self.primary_counter, json_out)
+        with open(out_prefix + ".secondary.json", "w") as json_out:
+            json.dump(self.secondary_counter, json_out)
 
 
     def get_overlaps(self, start, end):
