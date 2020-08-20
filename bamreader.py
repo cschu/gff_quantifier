@@ -82,6 +82,7 @@ class BamFile:
             )
 
             qname = self._file.read(len_rname) # qname
+            # qname = struct.unpack("{size}s".format(size=len_rname), self._file.read(len_rname))[0].decode().rstrip("\x00") # qname
             cigar = struct.unpack("I" * n_cigar_ops, self._file.read(4 * n_cigar_ops))
             self._file.read((len_seq + 1) // 2) # encoded read sequence
             self._file.read(len_seq) # quals
