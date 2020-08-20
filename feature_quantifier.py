@@ -20,14 +20,16 @@ class FeatureQuantifier:
         gff_open = gzip.open if gff_gzipped else open
         self.gff_data = gff_open(gff_db, "rt")
         self._read_gff_index(gff_index)
-    def _read_gff_data(self, ref_id):
+    def _read_gff_data(self, ref_id, include_payload=True):
         gff_annotation = dict()
         for offset, size in self.gff_index.get(ref_id, list()):
             self.gff_data.seek(offset)
             for line in self.gff_data.read(size).strip("\n").split("\n"):
                 if not line.startswith("#"):
                     line = line.strip().split("\t")
-                    features = dict((item.split("=")[0], item.split("=")[1].split(",")) for item in line[8].strip().split(";"))
+                    features = None
+                    if include_payload:
+                        features = dict((item.split("=")[0], item.split("=")[1].split(",")) for item in line[8].strip().split(";"))
                     key = (line[0], int(line[3]), int(line[4]) + 1)
                     gff_annotation[key] = features
                     #gff_annotation.setdefault((line[0], int(line[3]), int(line[4]) + 1), list()).append(line[8])
@@ -49,7 +51,7 @@ class FeatureQuantifier:
             #print(*ovl_features, sep="\n")
 
 
-            self.primary_counter.setdefault("seqname", Counter())[self.current_ref] += 1
+            self.primary_counter.setdefault("seqname", Counter())[self.current_rid] += 1
             for feature_set in ovl_features:
                  for key, values in feature_set.items():
                      self.primary_counter.setdefault(key, Counter()).update(values)
@@ -86,6 +88,7 @@ class FeatureQuantifier:
         t0 = time.time()
         bam = BamFile(bamfile)
         self.current_ref = None
+        self.current_rid = None
         self.gff_annotation = dict()
         self.read_cache = dict()
         sec_cache = dict()
@@ -117,6 +120,7 @@ class FeatureQuantifier:
 
             ref = bam.get_reference(aln.rid)
             if ref != self.current_ref:
+                self.current_rid = aln.rid
                 if self.current_ref is not None:
                     # clear cache
                     self.process_cache()
@@ -130,7 +134,7 @@ class FeatureQuantifier:
             #print(aln)
             ovl_features = self.get_overlaps(aln.start, aln.end)
             # {'ID': ['1108045.SAMD00041828.GORHZ_154_00010'], 'eggNOG_OGs': ['2GKPH@201174', 'COG0532@1', '4GBW5@85026', 'COG0532@2'], 'KEGG_ko': ['ko:K02519'], 'BRITE': ['ko00000', 'ko03012', 'ko03029'], 'COG_Functional_cat.': ['J']}
-            counter.setdefault("seqname", Counter())[self.current_ref] += 1
+            counter.setdefault("seqname", Counter())[self.current_rid] += 1
             for feature_set in ovl_features:
                 for key, values in feature_set.items():
                     counter.setdefault(key, Counter()).update(values)
