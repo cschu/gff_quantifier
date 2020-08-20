@@ -32,7 +32,7 @@ class FeatureQuantifier:
                     gff_annotation[key] = features
                     #gff_annotation.setdefault((line[0], int(line[3]), int(line[4]) + 1), list()).append(line[8])
         if not gff_annotation:
-            print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id))
+            print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id), file=sys.stderr, flush=True)
         return gff_annotation
 
     def process_cache(self):
@@ -42,7 +42,7 @@ class FeatureQuantifier:
             elif len(cached) == 2:
                 start, end = min(cached[0].start, cached[1].start), max(cached[0].end, cached[1].end)
             else:
-                print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=len(cached)))
+                print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=len(cached)), file=sys.stderr, flush=True)
                 continue
             ovl_features = self.get_overlaps(start, end)
             #print(*cached, sep="\n")
@@ -66,18 +66,18 @@ class FeatureQuantifier:
         )
         bam = BamFile(bamfile) # need to implement rewind?
         sec_alignments = dict()
-        for aln in bam.get_alignments(disallowed_flags=0x900):
+        for i, aln in enumerate(bam.get_alignments(disallowed_flags=0x900), start=1):
             if aln.qname in reads_with_secaln:
                 sec_alignments.setdefault(aln.qname, set()).add(
                     (aln.rid, aln.start, aln.end)
                 )
         t1 = time.time()
-        print("Collected information for {n_alignments} secondary alignments in {n_seconds:.3f}s.".format(
-            n_alignments=len(sec_alignments), n_seconds=t1-t0)
+        print("Collected information for {n_sec_alignments} secondary alignments ({size} bytes) in {n_seconds:.3f}s. (total: {n_alignments})".format(
+            size=sys.getsizeof(sec_alignments), n_sec_alignments=len(sec_alignments), n_seconds=t1-t0, n_alignments=len(sec_alignments) + i), flush=True,
         )
         missing = len(reads_with_secaln.difference(sec_alignments))
         if missing:
-            print("{n_missing} secondary alignments don't have primary alignment in file.".format(n_missing=missing))
+            print("{n_missing} secondary alignments don't have primary alignment in file.".format(n_missing=missing), flush=True)
 
         return sec_alignments
 
@@ -98,7 +98,7 @@ class FeatureQuantifier:
                 counter = self.secondary_counter
                 primaries = sec_alignments.get(aln.qname, set())
                 if not primaries:
-                    print("WARNING: could not find primary alignments for {aln_qname}".format(aln_qname=aln.qname))
+                    print("WARNING: could not find primary alignments for {aln_qname}".format(aln_qname=aln.qname), flush=True, file=sys.stderr)
                     continue
                 aln_key = (aln.rid, aln.start, aln.end)
                 if aln_key in primaries:
@@ -141,7 +141,7 @@ class FeatureQuantifier:
         t1 = time.time()
 
         print("Processed {n_align} primary alignments in {n_seconds:.3f}s.".format(
-            n_align=i, n_seconds=t1-t0)
+            n_align=i, n_seconds=t1-t0), flush=True
         )
         with open(out_prefix + ".primary.json", "w") as json_out:
             json.dump(self.primary_counter, json_out)
