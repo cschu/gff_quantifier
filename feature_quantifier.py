@@ -20,7 +20,7 @@ class FeatureQuantifier:
         gff_open = gzip.open if gff_gzipped else open
         self.gff_data = gff_open(gff_db, "rt")
         self._read_gff_index(gff_index)
-    def _read_gff_data(self, ref_id, include_payload=True):
+    def _read_gff_data(self, ref_id, include_payload=False):
         gff_annotation = dict()
         for offset, size in self.gff_index.get(ref_id, list()):
             self.gff_data.seek(offset)
@@ -46,15 +46,19 @@ class FeatureQuantifier:
             else:
                 print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=len(cached)), file=sys.stderr, flush=True)
                 continue
+
+            self.update_overlap_counter(self.primary_counter, start, end)
+
+            """
             ovl_features = self.get_overlaps(start, end)
             #print(*cached, sep="\n")
             #print(*ovl_features, sep="\n")
-
 
             self.primary_counter.setdefault("seqname", Counter())[self.current_rid] += 1
             for feature_set in ovl_features:
                  for key, values in feature_set.items():
                      self.primary_counter.setdefault(key, Counter()).update(values)
+            """
 
         self.read_cache.clear()
 
@@ -111,6 +115,8 @@ class FeatureQuantifier:
                     # if r1 and r2 are identical and generate two separate individual alignments, disregard those
                     continue
                 sec_cache.setdefault(aln.qname, set()).add(aln_key)
+                # if i % 10000 == 0:
+                #    print("SECONDARY CACHE SIZE IS {size} bytes".format(size=sys.getsizeof(sec_cache)), flush=True)
 
             elif aln.is_paired() and aln.rid == aln.rnext:
                 # due to filtered mates (ngless!), need to keep track of read pairs to avoid dual counts
@@ -131,6 +137,9 @@ class FeatureQuantifier:
                 intervals = sorted([key[1:] for key in self.gff_annotation])
                 self.interval_tree = IntervalTree.from_tuples(intervals)
 
+            self.update_overlap_counter(counter, aln.start, aln.end)
+
+            """
             #print(aln)
             ovl_features = self.get_overlaps(aln.start, aln.end)
             # {'ID': ['1108045.SAMD00041828.GORHZ_154_00010'], 'eggNOG_OGs': ['2GKPH@201174', 'COG0532@1', '4GBW5@85026', 'COG0532@2'], 'KEGG_ko': ['ko:K02519'], 'BRITE': ['ko00000', 'ko03012', 'ko03029'], 'COG_Functional_cat.': ['J']}
@@ -139,6 +148,7 @@ class FeatureQuantifier:
                 for key, values in feature_set.items():
                     counter.setdefault(key, Counter()).update(values)
             #print(*ovl_features, sep="\n")
+            """
 
         # clear cache
         self.process_cache()
@@ -147,11 +157,41 @@ class FeatureQuantifier:
         print("Processed {n_align} primary alignments in {n_seconds:.3f}s.".format(
             n_align=i, n_seconds=t1-t0), flush=True
         )
-        with open(out_prefix + ".primary.json", "w") as json_out:
-            json.dump(self.primary_counter, json_out)
-        with open(out_prefix + ".secondary.json", "w") as json_out:
-            json.dump(self.secondary_counter, json_out)
 
+        self.dump_overlap_counters(bam, out_prefix)
+
+
+    def dump_overlap_counters(self, bam, out_prefix):
+        print("Dumping overlap counters...", flush=True)
+        with open(out_prefix + ".seqname.txt", "w") as out:
+            for ref_id in set(self.primary_counter.get("seqname", Counter())).union(self.secondary_counter.get("seqname", Counter())):
+                primary_count = self.primary_counter.get("seqname", Counter())[ref_id]
+                secondary_count = self.secondary_counter.get("seqname", Counter())[ref_id]
+                print(ref_id, bam.get_reference(ref_id), primary_count, secondary_count, flush=True, sep="\t", file=out)
+        del self.primary_counter["seqname"]
+        del self.secondary_counter["seqname"]
+        print("Size primary counter: {size} bytes".format(size=sys.getsizeof(self.primary_counter)))
+        print("Size secondary counter: {size} bytes".format(size=sys.getsizeof(self.secondary_counter)))
+        with open(out_prefix + ".feature_counts.txt", "w") as out:
+            dump_counter = [dict(), dict()]
+            for ref_id in sorted(set(self.primary_counter).union(self.secondary_counter)):
+                ref_name = bam.get_reference(ref_id)
+                gff_annotation = self._read_gff_data(ref_name, include_payload=True)
+                for (start, end) in set(self.primary_counter.get(ref_id, Counter())).union(self.secondary_counter.get(ref_id, Counter())):
+                    primary_count = self.primary_counter.get(ref_id, Counter())[(start, end)]
+                    secondary_count = self.secondary_counter.get(ref_id, Counter())[(start, end)]
+                    for feature_type, values in gff_annotation.get((ref_name, start, end), dict()).items():
+                        if feature_type != "ID":
+                            dump_counter[0].setdefault(feature_type, Counter()).update({v: primary_count for v in values})
+                            dump_counter[1].setdefault(feature_type, Counter()).update({v: secondary_count for v in values})
+            json.dump(dump_counter, out, indent="\t")
+
+
+    def update_overlap_counter(self, counter, start, end):
+        counter.setdefault("seqname", Counter())[self.current_rid] += 1
+        overlaps = self.interval_tree[start:end]
+        for ovl in overlaps:
+            counter.setdefault(self.current_rid, Counter())[(ovl.begin, ovl.end)] += 1
 
     def get_overlaps(self, start, end):
         overlaps = self.interval_tree[start:end]
