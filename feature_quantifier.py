@@ -40,25 +40,17 @@ class FeatureQuantifier:
     def process_cache(self):
         for qname, cached in self.read_cache.items():
             if len(cached) == 1:
-                start, end = cached[0].start, cached[0].end
+                _, start, end = cached[0] #[0].start, cached[0].end
             elif len(cached) == 2:
-                start, end = min(cached[0].start, cached[1].start), max(cached[0].end, cached[1].end)
+                _, start1, end1 = cached[0]
+                _, start2, end2 = cached[1]
+                coords = sorted((start1, start2, end1, end2))
+                start, end = coords[0], coords[-1]
             else:
                 print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=len(cached)), file=sys.stderr, flush=True)
                 continue
 
             self.update_overlap_counter(self.primary_counter, start, end)
-
-            """
-            ovl_features = self.get_overlaps(start, end)
-            #print(*cached, sep="\n")
-            #print(*ovl_features, sep="\n")
-
-            self.primary_counter.setdefault("seqname", Counter())[self.current_rid] += 1
-            for feature_set in ovl_features:
-                 for key, values in feature_set.items():
-                     self.primary_counter.setdefault(key, Counter()).update(values)
-            """
 
         self.read_cache.clear()
 
@@ -100,7 +92,13 @@ class FeatureQuantifier:
 
         #only using enumerate here, so could break after n alignments for testing purposes
         for i, aln in enumerate(bam.get_alignments(disallowed_flags=0x800)):
+            if i % 10000 == 0:
+                print("READ_CACHE SIZE IS {size} bytes (nreads={nreads})".format(size=sys.getsizeof(self.read_cache), nreads=len(self.read_cache)), flush=True)
+
             counter = self.primary_counter
+            ref = bam.get_reference(aln.rid)
+            start, end = aln.start, aln.end
+
             if not aln.is_primary():
                 counter = self.secondary_counter
                 primaries = sec_alignments.get(aln.qname, set())
@@ -115,16 +113,25 @@ class FeatureQuantifier:
                     # if r1 and r2 are identical and generate two separate individual alignments, disregard those
                     continue
                 sec_cache.setdefault(aln.qname, set()).add(aln_key)
-                # if i % 10000 == 0:
-                #    print("SECONDARY CACHE SIZE IS {size} bytes".format(size=sys.getsizeof(sec_cache)), flush=True)
 
             elif aln.is_paired() and aln.rid == aln.rnext:
                 # due to filtered mates (ngless!), need to keep track of read pairs to avoid dual counts
                 # do not support paired information in secondary information currently
-                self.read_cache.setdefault(aln.qname, list()).append(aln)
-                continue # right?
+                mates = self.read_cache.setdefault(aln.qname, list())
+                if mates:
+                    mrid, mstart, mend = mates[0]
+                    if aln.rnext != mrid:
+                        print("WARNING: alignment {qname} seems to be corrupted: {aln1} {aln2}".format(qname=aln.qname, aln1=str(aln), aln2=str(mates[0])), flush=True, file=sys.stderr)
+                        continue # i don't think this ever happens
+                    else:
+                        coords = sorted((aln.start, mstart, aln.end, mend))
+                        start, end = coords[0], coords[-1]
+                    self.read_cache.pop(aln.qname)
+                else:
+                    #self.read_cache.setdefault(aln.qname, list()).append((aln.rid, aln.start, aln.end))
+                    mates.append((aln.rid, aln.start, aln.end))
+                    continue # right?
 
-            ref = bam.get_reference(aln.rid)
             if ref != self.current_ref:
                 self.current_rid = aln.rid
                 if self.current_ref is not None:
@@ -137,18 +144,7 @@ class FeatureQuantifier:
                 intervals = sorted([key[1:] for key in self.gff_annotation])
                 self.interval_tree = IntervalTree.from_tuples(intervals)
 
-            self.update_overlap_counter(counter, aln.start, aln.end)
-
-            """
-            #print(aln)
-            ovl_features = self.get_overlaps(aln.start, aln.end)
-            # {'ID': ['1108045.SAMD00041828.GORHZ_154_00010'], 'eggNOG_OGs': ['2GKPH@201174', 'COG0532@1', '4GBW5@85026', 'COG0532@2'], 'KEGG_ko': ['ko:K02519'], 'BRITE': ['ko00000', 'ko03012', 'ko03029'], 'COG_Functional_cat.': ['J']}
-            counter.setdefault("seqname", Counter())[self.current_rid] += 1
-            for feature_set in ovl_features:
-                for key, values in feature_set.items():
-                    counter.setdefault(key, Counter()).update(values)
-            #print(*ovl_features, sep="\n")
-            """
+            self.update_overlap_counter(counter, start, end)
 
         # clear cache
         self.process_cache()
