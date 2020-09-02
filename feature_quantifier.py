@@ -54,15 +54,14 @@ class FeatureQuantifier:
 
         self.read_cache.clear()
 
-    def collect_secondary_alignments(self, bamfile):
+    def collect_secondary_alignments(self, bam):
         t0 = time.time()
-        bam = BamFile(bamfile)
         reads_with_secaln = set(
             aln.qname for aln in bam.get_alignments(
                 required_flags=0x100, disallowed_flags=0x800
             )
         )
-        bam = BamFile(bamfile) # need to implement rewind?
+        bam.rewind()
         sec_alignments = dict()
         for i, aln in enumerate(bam.get_alignments(disallowed_flags=0x900), start=1):
             if aln.qname in reads_with_secaln:
@@ -80,9 +79,10 @@ class FeatureQuantifier:
         return sec_alignments
 
     def process_bam(self, bamfile, out_prefix):
-        sec_alignments = self.collect_secondary_alignments(bamfile)
-        t0 = time.time()
         bam = BamFile(bamfile)
+        sec_alignments = self.collect_secondary_alignments(bam)
+        bam.rewind()
+        t0 = time.time()
         self.current_ref = None
         self.current_rid = None
         self.gff_annotation = dict()
