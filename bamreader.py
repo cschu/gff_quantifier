@@ -48,27 +48,43 @@ class BamFile:
     def __init__(self, fn):
         self._references = list()
         self._file = gzip.open(fn, "rb")
+        self._fpos = 0
+        self._data_block_start = 0
         self._read_header()
 
     def _read_header(self):
-       try:
-           magic = "".join(map(bytes.decode, struct.unpack("cccc", self._file.read(4))))
-       except:
-           raise ValueError("Could not infer file type.")
-       if not magic.startswith("BAM"):
-           raise ValueError("Not a valid bam file.")
-       len_header = struct.unpack("I", self._file.read(4))[0]
-       if len_header:
-           header_str = struct.unpack("c" * len_header, self._file.read(len_header))
-           # print(header_str)
-       n_ref = struct.unpack("I", self._file.read(4))[0]
-       for i in range(n_ref):
-           len_rname = struct.unpack("I", self._file.read(4))[0]
-           rname = "".join(map(bytes.decode, struct.unpack("c" * len_rname, self._file.read(len_rname))[:-1]))
-           len_ref = struct.unpack("I", self._file.read(4))[0]
-           self._references.append((rname, len_ref))
+        try:
+            magic = "".join(map(bytes.decode, struct.unpack("cccc", self._file.read(4))))
+        except:
+            raise ValueError("Could not infer file type.")
+        if not magic.startswith("BAM"):
+            raise ValueError("Not a valid bam file.")
+        len_header = struct.unpack("I", self._file.read(4))[0]
+        if len_header:
+            header_str = struct.unpack("c" * len_header, self._file.read(len_header))
+            # print(header_str)
+        n_ref = struct.unpack("I", self._file.read(4))[0]
+        self._fpos += 4 + 4 + len_header + 4
+        for i in range(n_ref):
+            len_rname = struct.unpack("I", self._file.read(4))[0]
+            rname = "".join(map(bytes.decode, struct.unpack("c" * len_rname, self._file.read(len_rname))[:-1]))
+            len_ref = struct.unpack("I", self._file.read(4))[0]
+            self._references.append((rname, len_ref))
+            self._fpos += 4 + len_rname + 4
+        self._data_block_start = self._fpos
+
     def get_reference(self, rid):
         return self._references[rid][0]
+    def get_position(self):
+        return self._fpos
+    def rewind(self):
+        self._fpos = self._data_block_start
+        self._file.seek(self._data_block_start)
+    def seek(self, pos):
+        if pos < self._data_block_start:
+            raise ValueError("Position {pos} seeks back into the header (data_start={data_start}).".format(pos=pos, data_start=self._data_block_start))
+        self._file.seek(pos)
+        self._fpos = pos
     def get_alignments(self, required_flags=None, disallowed_flags=None):
         while True:
             try:
@@ -89,6 +105,7 @@ class BamFile:
 
             total_read = 32 + len_rname + 4 * n_cigar_ops + (len_seq + 1) // 2 + len_seq
             tags = self._file.read(aln_size - total_read) # get the tags
+            self._fpos += 4 + aln_size
             # print(*map(bytes.decode, struct.unpack("c"*len(tags), tags)))
 
             # yield rid, self._references[rid][0], pos, len_seq
