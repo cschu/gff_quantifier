@@ -188,11 +188,3 @@ class FeatureQuantifier:
         overlaps = self.interval_tree[start:end]
         for ovl in overlaps:
             counter.setdefault(self.current_rid, Counter())[(ovl.begin, ovl.end)] += 1
-
-    def get_overlaps(self, start, end):
-        overlaps = self.interval_tree[start:end]
-        features = list()
-        for ovl in overlaps:
-            key = (self.current_ref, ovl.begin, ovl.end)
-            features.append(self.gff_annotation[key])
-        return features
