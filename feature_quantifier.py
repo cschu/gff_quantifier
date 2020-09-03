@@ -99,6 +99,18 @@ class FeatureQuantifier:
             ref = bam.get_reference(aln.rid)
             start, end = aln.start, aln.end
 
+            if ref != self.current_ref:
+                self.current_rid = aln.rid
+                if self.current_ref is not None:
+                    # clear cache
+                    self.process_cache()
+                    sec_cache.clear()
+                # load current reference
+                self.current_ref = ref
+                self.gff_annotation = self._read_gff_data(self.current_ref)
+                intervals = sorted([key[1:] for key in self.gff_annotation])
+                self.interval_tree = IntervalTree.from_tuples(intervals)
+
             if not aln.is_primary():
                 counter = self.secondary_counter
                 primaries = sec_alignments.get(aln.qname, set())
@@ -131,18 +143,6 @@ class FeatureQuantifier:
                     #self.read_cache.setdefault(aln.qname, list()).append((aln.rid, aln.start, aln.end))
                     mates.append((aln.rid, aln.start, aln.end))
                     continue # right?
-
-            if ref != self.current_ref:
-                self.current_rid = aln.rid
-                if self.current_ref is not None:
-                    # clear cache
-                    self.process_cache()
-                    sec_cache.clear()
-                # load current reference
-                self.current_ref = ref
-                self.gff_annotation = self._read_gff_data(self.current_ref)
-                intervals = sorted([key[1:] for key in self.gff_annotation])
-                self.interval_tree = IntervalTree.from_tuples(intervals)
 
             self.update_overlap_counter(counter, start, end)
 
