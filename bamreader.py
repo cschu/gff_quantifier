@@ -74,7 +74,7 @@ class BamFile:
         self._data_block_start = self._fpos
 
     def get_reference(self, rid):
-        return self._references[rid][0]
+        return self._references[rid]
     def get_position(self):
         return self._fpos
     def rewind(self):
