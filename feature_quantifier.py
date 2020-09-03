@@ -96,7 +96,7 @@ class FeatureQuantifier:
 				print("READ_CACHE SIZE IS {size} bytes (nreads={nreads})".format(size=sys.getsizeof(self.read_cache), nreads=len(self.read_cache)), flush=True)
 
 			counter = self.primary_counter
-			ref = bam.get_reference(aln.rid)
+			ref = bam.get_reference(aln.rid)[0]
 			start, end = aln.start, aln.end
 
 			if ref != self.current_ref:
@@ -171,7 +171,7 @@ class FeatureQuantifier:
 		with open(out_prefix + ".feature_counts.txt", "w") as out:
 			dump_counter = [dict(), dict()]
 			for ref_id in sorted(set(self.primary_counter).union(self.secondary_counter)):
-				ref_name = bam.get_reference(ref_id)
+				ref_name = bam.get_reference(ref_id)[0]
 				gff_annotation = self._read_gff_data(ref_name, include_payload=True)
 				for (start, end) in set(self.primary_counter.get(ref_id, Counter())).union(self.secondary_counter.get(ref_id, Counter())):
 					primary_count = self.primary_counter.get(ref_id, Counter())[(start, end)]
