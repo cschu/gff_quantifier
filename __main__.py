@@ -8,6 +8,7 @@ def main():
 	ap.add_argument("gff_file", type=str)
 	ap.add_argument("bam_file", type=str)
 	ap.add_argument("out_prefix", type=str)
+	ap.add_argument("--count_config", type=str)
 	ap.add_argument("--gff_compressed", action="store_true")
 	args = ap.parse_args()
 
@@ -19,7 +20,7 @@ def main():
 	if not os.path.exists(args.bam_file):
 		raise ValueError("bam file does not exist", args.bam_file)
 
-	fq = FeatureQuantifier(args.gff_file, gff_index, gff_gzipped=args.gff_compressed)
+	fq = FeatureQuantifier(args.gff_file, gff_index, gff_gzipped=args.gff_compressed, count_config=args.count_config)
 	fq.process_bam(args.bam_file, args.out_prefix)
 
 
