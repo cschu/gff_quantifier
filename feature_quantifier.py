@@ -10,6 +10,31 @@ from intervaltree import IntervalTree
 
 from bamreader import BamFile
 
+class OverlapCounter(dict):
+	@staticmethod
+	def normalise_counts(counts, feature_len):
+		'''Returns raw, length-normalised, and scaled feature counts.'''
+		normalised = counts / feature_len
+		return counts, normalised, counts / normalised
+	def __init__(self):
+		pass
+	def update_counts(self, rid, overlaps, n_aln=1):
+		hit_list = [(ovl.begin, ovl.end) for ovl in overlaps]
+		self.setdefault(rid, list()).append((hit_list, n_aln))
+	def dump_counts(self, bam, out_prefix):
+		print("Dumping overlap counters...", flush=True)
+		with open("{prefix}.seqname.txt".format(prefix=out_prefix), "w") as seq_out:
+			for rid, counts in self.items():
+				print(rid, *bam.get_reference(rid), *OverlapCounter.normalise_counts(len(counts)), flush=True, sep="\t", file=seq_out)
+
+	"""
+
+	"""
+
+
+
+
+
 class FeatureQuantifier:
 	def _read_count_config(self, config):
 		default = {"multiple": self.default_multiple_alignments, "normalization": self.default_normalization}
@@ -21,11 +46,12 @@ class FeatureQuantifier:
 			self.gff_index.setdefault(line[0], list()).append(list(map(int, line[1:3])))
 	def __init__(self, gff_db, gff_index, count_config=None, multiple_alignments="unique_only", normalization="scaled", gff_gzipped=True):
 		self.gff_db = gff_db
-		gff_open = gzip.open if gff_gzipped else open
-		self.gff_data = gff_open(gff_db, "rt")
-		self._read_gff_index(gff_index)
 		self.default_multiple_alignments = multiple_alignments
 		self.default_normalization = normalization
+		gff_open = gzip.open if gff_gzipped else open
+		self.gff_data = gff_open(gff_db, "rt")
+
+		self._read_gff_index(gff_index)
 		self._read_count_config(count_config)
 	def _read_gff_data(self, ref_id, include_payload=False):
 		gff_annotation = dict()
@@ -43,31 +69,31 @@ class FeatureQuantifier:
 			print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id), file=sys.stderr, flush=True)
 		return gff_annotation
 
-	def process_cache(self, cache, counter, interval_tree, rid):
-		for qname, cached in cache.items():
+	def process_unique_cache(self, interval_tree, rid):
+		for qname, cached in self.read_cache.items():
 			n_aln = len(cached)
 			if n_aln > 2:
-				print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=len(cached)), file=sys.stderr, flush=True)
+				print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=n_aln), file=sys.stderr, flush=True)
 				continue
 
 			start, end = cached[0][1:] if n_aln == 1 else BamFile.calculate_fragment_borders(*cached[0][1:], *cached[1][1:])
-			self.update_overlap_counter(counter, start, end, interval_tree, rid)
+			self.overlap_counter.update_counts(rid, interval_tree[start:end], n_aln=1)
 
-		cache.clear()
+		self.read_cache.clear()
 
-	def update_overlap_counter(self, counter, start, end, interval_tree, rid):
-		'''
-		Updates the overlap counter with overlaps of interval (start, end) with the currently loaded functional data.
-		'''
-		counter.setdefault("seqname", Counter())[rid] += 1
-		overlaps = interval_tree[start:end]
-		for ovl in overlaps:
-			counter.setdefault(rid, Counter())[(ovl.begin, ovl.end)] += 1
+	#def update_overlap_counter(self, counter, start, end, interval_tree, rid):
+	#	'''
+	#	Updates the overlap counter with overlaps of interval (start, end) with the currently loaded functional data.
+	#.	'''
+	#	counter.setdefault("seqname", Counter())[rid] += 1
+	#	overlaps = interval_tree[start:end]
+	#	for ovl in overlaps:
+	#		counter.setdefault(rid, Counter())[(ovl.begin, ovl.end)] += 1
 
 	def update_reference_data(self, ref, rid, current_ref, current_rid, cache, counter, interval_tree):
 		current_rid = rid
 		if current_ref is not None:
-			self.process_cache(cache, counter, interval_tree, rid)
+			self.process_unique_cache(interval_tree, rid)
 		current_ref = ref
 		gff_annotation = self._read_gff_data(current_ref)
 		intervals = sorted([key[1:] for key in gff_annotation])
@@ -80,8 +106,9 @@ class FeatureQuantifier:
 		multimappers = bam.get_multimappers()
 		t0 = time.time()
 		self.read_cache = dict()
-		multimap_cache = dict()
+		self.multimap_cache = dict()
 		self.unique_counter, self.multimap_counter = dict(), dict()
+		self.overlap_counter = OverlapCounter()
 
 		current_ref, current_rid = None, None
 		interval_tree = None
@@ -116,23 +143,23 @@ class FeatureQuantifier:
 				# this is stuff i've seen coming out of ngless/bwa
 				if not aln_key[-1]:
 					mm_count -= 1
-					seen_primaries = [k for k in multimap_cache.get(aln.qname, set()) if k[-1]]
+					seen_primaries = [k for k in self.multimap_cache.get(aln.qname, set()) if k[-1]]
 					if not mm_count and len(seen_primaries) == len(primaries):
 						# all primary and secondary alignments of read have been seen
 						# TODO process alignments
-						multimap_cache.pop(aln.qname)
+						self.multimap_cache.pop(aln.qname)
 						continue
 					multimappers[aln.qname][0] = mm_count
 
 					if aln_key[:-1] in primaries:
 						# there are sometimes secondary alignments that seem to be identical to the primary -> ignore
 						continue
-					if aln_key in multimap_cache.get(aln.qname, set()):
+					if aln_key in self.multimap_cache.get(aln.qname, set()):
 						# if r1 and r2 are identical and generate two separate individual alignments -> ignore
 						# i don't know why that would happen: very short fragment sequenced twice, i.e. from each direction or r1/r2 mislabeled/duplicated?
 						continue
 					
-				multimap_cache.setdefault(aln.qname, set()).add(aln_key)
+				self.multimap_cache.setdefault(aln.qname, set()).add(aln_key)
 				continue
 
 			elif aln.is_paired() and aln.rid == aln.rnext:
@@ -153,17 +180,18 @@ class FeatureQuantifier:
 					continue
 
 			# at this point only single-end reads and merged pairs should be processed here
-			self.update_overlap_counter(counter, start, end, interval_tree, aln.rid)
+			self.overlap_counter.update_counts(aln.rid, interval_tree[start:end], n_aln=1)
 
 		# clear cache
-		self.process_cache(self.read_cache, self.unique_counter, interval_tree, current_rid)
+		self.process_unique_cache(interval_tree, current_rid)
 		t1 = time.time()
 
 		print("Processed {n_align} primary alignments in {n_seconds:.3f}s.".format(
 			n_align=aln_count, n_seconds=t1-t0), flush=True
 		)
 
-		self.dump_overlap_counters(bam, out_prefix)
+		# self.dump_overlap_counters(bam, out_prefix)
+		self.overlap_counter.dump_counts(bam, out_prefix)
 
 
 	def dump_overlap_counters(self, bam, out_prefix):
