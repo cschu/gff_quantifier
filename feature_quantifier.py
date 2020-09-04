@@ -4,22 +4,29 @@ import sys
 import gzip
 from collections import Counter
 import json
+import yaml
 
 from intervaltree import IntervalTree
 
 from bamreader import BamFile
 
 class FeatureQuantifier:
+	def _read_count_config(self, config):
+		default = {"multiple": self.default_multiple_alignments, "normalization": self.default_normalization}
+		self._count_config = yaml.load(open(config), Loader=yaml.SafeLoader) if config is not None else default
 	def _read_gff_index(self, gff_index):
 		self.gff_index = dict()
 		for line in open(gff_index, "rt"):
 			line = line.strip().split("\t")
 			self.gff_index.setdefault(line[0], list()).append(list(map(int, line[1:3])))
-	def __init__(self, gff_db, gff_index, gff_gzipped=True):
+	def __init__(self, gff_db, gff_index, count_config=None, multiple_alignments="unique_only", normalization="scaled", gff_gzipped=True):
 		self.gff_db = gff_db
 		gff_open = gzip.open if gff_gzipped else open
 		self.gff_data = gff_open(gff_db, "rt")
 		self._read_gff_index(gff_index)
+		self.default_multiple_alignments = multiple_alignments
+		self.default_normalization = normalization
+		self._read_count_config(count_config)
 	def _read_gff_data(self, ref_id, include_payload=False):
 		gff_annotation = dict()
 		for offset, size in self.gff_index.get(ref_id, list()):
@@ -36,57 +43,48 @@ class FeatureQuantifier:
 			print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id), file=sys.stderr, flush=True)
 		return gff_annotation
 
-	def process_cache(self):
-		for qname, cached in self.read_cache.items():
-			if len(cached) == 1:
-				_, start, end = cached[0]
-			elif len(cached) == 2:
-				_, start1, end1 = cached[0]
-				_, start2, end2 = cached[1]
-				start, end = FeatureQuantifier.calculate_fragment_borders(start1, end1, start2, end2)
-			else:
+	def process_cache(self, cache, counter, interval_tree, rid):
+		for qname, cached in cache.items():
+			n_aln = len(cached)
+			if n_aln > 2:
 				print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=len(cached)), file=sys.stderr, flush=True)
 				continue
 
-			self.update_overlap_counter(self.unique_counter, start, end)
+			start, end = cached[0][1:] if n_aln == 1 else BamFile.calculate_fragment_borders(*cached[0][1:], *cached[1][1:])
+			self.update_overlap_counter(counter, start, end, interval_tree, rid)
 
-		self.read_cache.clear()
+		cache.clear()
 
-	def collect_multimappers(self, bam):
-		t0 = time.time()
-		reads_with_secaln = Counter(
-			aln.qname for aln in bam.get_alignments(
-				required_flags=0x100, disallowed_flags=0x800
-			)
-		)
-		bam.rewind()
-		multimappers = dict()
-		for aln_count, aln in enumerate(bam.get_alignments(disallowed_flags=0x900), start=1):
-			if aln.qname in reads_with_secaln:
-				multimappers.setdefault(aln.qname, [reads_with_secaln[aln.qname], set()])[1].add(
-					(aln.rid, aln.start, aln.end)
-				)
-		t1 = time.time()
-		print("Collected information for {n_multimappers} secondary alignments ({size} bytes) in {n_seconds:.3f}s. (total: {n_alignments})".format(
-			size=sys.getsizeof(multimappers), n_multimappers=len(multimappers), n_seconds=t1-t0, n_alignments=len(multimappers) + aln_count), flush=True,
-		)
-		missing = len(set(reads_with_secaln).difference(multimappers))
-		if missing:
-			print("{n_missing} secondary alignments don't have primary alignment in file.".format(n_missing=missing), flush=True)
+	def update_overlap_counter(self, counter, start, end, interval_tree, rid):
+		'''
+		Updates the overlap counter with overlaps of interval (start, end) with the currently loaded functional data.
+		'''
+		counter.setdefault("seqname", Counter())[rid] += 1
+		overlaps = interval_tree[start:end]
+		for ovl in overlaps:
+			counter.setdefault(rid, Counter())[(ovl.begin, ovl.end)] += 1
 
-		return multimappers
+	def update_reference_data(self, ref, rid, current_ref, current_rid, cache, counter, interval_tree):
+		current_rid = rid
+		if current_ref is not None:
+			self.process_cache(cache, counter, interval_tree, rid)
+		current_ref = ref
+		gff_annotation = self._read_gff_data(current_ref)
+		intervals = sorted([key[1:] for key in gff_annotation])
+		interval_tree = IntervalTree.from_tuples(intervals)
+
+		return current_rid, current_ref, interval_tree
 
 	def process_bam(self, bamfile, out_prefix):
 		bam = BamFile(bamfile)
-		multimappers = self.collect_multimappers(bam)
-		bam.rewind()
+		multimappers = bam.get_multimappers()
 		t0 = time.time()
-		self.current_ref = None
-		self.current_rid = None
-		self.gff_annotation = dict()
 		self.read_cache = dict()
 		multimap_cache = dict()
 		self.unique_counter, self.multimap_counter = dict(), dict()
+
+		current_ref, current_rid = None, None
+		interval_tree = None
 
 		for aln_count, aln in enumerate(bam.get_alignments(disallowed_flags=0x800)):
 
@@ -94,17 +92,16 @@ class FeatureQuantifier:
 			ref = bam.get_reference(aln.rid)[0]
 			start, end = aln.start, aln.end
 
-			if ref != self.current_ref:
-				self.current_rid = aln.rid
-				if self.current_ref is not None:
-					# clear cache
-					self.process_cache()
-					# multimap_cache.clear()
-				# load current reference
-				self.current_ref = ref
-				self.gff_annotation = self._read_gff_data(self.current_ref)
-				intervals = sorted([key[1:] for key in self.gff_annotation])
-				self.interval_tree = IntervalTree.from_tuples(intervals)
+			if ref != current_ref:
+				current_rid, current_ref, interval_tree = self.update_reference_data(
+					ref,
+					aln.rid,
+					current_ref,
+					current_rid,
+					self.read_cache,
+					self.unique_counter,
+					interval_tree
+				)
 
 			mm_count, primaries = multimappers.get(aln.qname, [0, set()])
 			if not aln.is_primary() or primaries:
@@ -119,7 +116,8 @@ class FeatureQuantifier:
 				# this is stuff i've seen coming out of ngless/bwa
 				if not aln_key[-1]:
 					mm_count -= 1
-					if not mm_count and len(multimap_cache.get(aln.qname, set())) == len(primaries):
+					seen_primaries = [k for k in multimap_cache.get(aln.qname, set()) if k[-1]]
+					if not mm_count and len(seen_primaries) == len(primaries):
 						# all primary and secondary alignments of read have been seen
 						# TODO process alignments
 						multimap_cache.pop(aln.qname)
@@ -147,7 +145,7 @@ class FeatureQuantifier:
 						print("WARNING: alignment {qname} seems to be corrupted: {aln1} {aln2}".format(qname=aln.qname, aln1=str(aln), aln2=str(mates[0])), flush=True, file=sys.stderr)
 						continue # i don't think this ever happens
 					else:
-						start, end = FeatureQuantifier.calculate_fragment_borders(aln.start, aln.end, *mates[0][1:])
+						start, end = BamFile.calculate_fragment_borders(aln.start, aln.end, *mates[0][1:])
 					self.read_cache.pop(aln.qname)
 				else:
 					# otherwise cache the first encountered mate and advance to the next read
@@ -155,10 +153,10 @@ class FeatureQuantifier:
 					continue
 
 			# at this point only single-end reads and merged pairs should be processed here
-			self.update_overlap_counter(counter, start, end)
+			self.update_overlap_counter(counter, start, end, interval_tree, aln.rid)
 
 		# clear cache
-		self.process_cache()
+		self.process_cache(self.read_cache, self.unique_counter, interval_tree, current_rid)
 		t1 = time.time()
 
 		print("Processed {n_align} primary alignments in {n_seconds:.3f}s.".format(
@@ -166,13 +164,6 @@ class FeatureQuantifier:
 		)
 
 		self.dump_overlap_counters(bam, out_prefix)
-	
-	@staticmethod
-	def calculate_fragment_borders(start1, end1, start2, end2):
-		coords = sorted((start1, end1, start2, end2))
-		return coords[0], coords[-1]
-	
-		
 
 
 	def dump_overlap_counters(self, bam, out_prefix):
@@ -202,10 +193,3 @@ class FeatureQuantifier:
 							dump_counter[0].setdefault(feature_type, Counter()).update({v: primary_count for v in values})
 							dump_counter[1].setdefault(feature_type, Counter()).update({v: secondary_count for v in values})
 			json.dump(dump_counter, out, indent="\t")
-
-
-	def update_overlap_counter(self, counter, start, end):
-		counter.setdefault("seqname", Counter())[self.current_rid] += 1
-		overlaps = self.interval_tree[start:end]
-		for ovl in overlaps:
-			counter.setdefault(self.current_rid, Counter())[(ovl.begin, ovl.end)] += 1
