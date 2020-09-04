@@ -1,6 +1,9 @@
 import sys
+import time
 import gzip
 import struct
+
+from collections import Counter
 
 class BamAlignment:
 	CIGAR_OPS = "MIDNSHP=X"
@@ -114,6 +117,46 @@ class BamFile:
 				yield BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
 			#yield rid, self._references[rid][0], pos, len_seq, qname, cigar, flag, next_rid, self._references[next_rid][0], next_pos, tlen, tags
 
+
+	def get_multimappers(self):
+		'''Returns information (readname, number of ambiguous alignments, genomic coordinates) on all multimapping reads in the bamfile.'''
+
+		multimappers = dict()
+
+		t0 = time.time()
+		# First pass: get the ids of all reads that have secondary alignments
+		if self._fpos != self._data_block_start:
+			self.rewind()
+		reads_with_secaln = Counter(
+			aln.qname for aln in self.get_alignments(
+				required_flags=0x100, disallowed_flags=0x800
+			)
+		)
+		# Second pass: collect information for each multimapping read
+		self.rewind()
+		for aln_count, aln in enumerate(self.get_alignments(disallowed_flags=0x900), start=1):
+			if aln.qname in reads_with_secaln:
+				multimappers.setdefault(aln.qname, [reads_with_secaln[aln.qname], set()])[1].add(
+					(aln.rid, aln.start, aln.end)
+				)
+		self.rewind()
+		t1 = time.time()
+		print("Collected information for {n_multimappers} secondary alignments ({size} bytes) in {n_seconds:.3f}s. (total: {n_alignments})".format(
+			size=sys.getsizeof(multimappers), n_multimappers=len(multimappers), n_seconds=t1-t0, n_alignments=len(multimappers) + aln_count), flush=True,
+		)
+		missing = len(set(reads_with_secaln).difference(multimappers))
+		if missing:
+			print("{n_missing} secondary alignments don't have primary alignment in file.".format(n_missing=missing), flush=True)
+
+		return multimappers
+
+	@staticmethod
+	def calculate_fragment_borders(start1, end1, start2, end2):
+		'''
+		Returns the minimum and maximum coordinates of a read pair.
+		'''
+		coords = sorted((start1, end1, start2, end2))
+		return coords[0], coords[-1]
 
 
 if __name__ == "__main__":
