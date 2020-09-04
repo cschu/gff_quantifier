@@ -28,12 +28,21 @@ class OverlapCounter(dict):
 				print(rid, *bam.get_reference(rid), *OverlapCounter.normalise_counts(len(counts)), flush=True, sep="\t", file=seq_out)
 
 	"""
-
+	def dump_overlap_counters(self, bam, out_prefix):
+		with open(out_prefix + ".feature_counts.txt", "w") as out:
+			dump_counter = [dict(), dict()]
+			for ref_id in sorted(set(self.unique_counter).union(self.multimap_counter)):
+				ref_name = bam.get_reference(ref_id)[0]
+				gff_annotation = self._read_gff_data(ref_name, include_payload=True)
+				for (start, end) in set(self.unique_counter.get(ref_id, Counter())).union(self.multimap_counter.get(ref_id, Counter())):
+					primary_count = self.unique_counter.get(ref_id, Counter())[(start, end)]
+					secondary_count = self.multimap_counter.get(ref_id, Counter())[(start, end)]
+					for feature_type, values in gff_annotation.get((ref_name, start, end), dict()).items():
+						if feature_type != "ID":
+							dump_counter[0].setdefault(feature_type, Counter()).update({v: primary_count for v in values})
+							dump_counter[1].setdefault(feature_type, Counter()).update({v: secondary_count for v in values})
+			json.dump(dump_counter, out, indent="\t")
 	"""
-
-
-
-
 
 class FeatureQuantifier:
 	def _read_count_config(self, config):
@@ -80,15 +89,6 @@ class FeatureQuantifier:
 			self.overlap_counter.update_counts(rid, interval_tree[start:end], n_aln=1)
 
 		self.read_cache.clear()
-
-	#def update_overlap_counter(self, counter, start, end, interval_tree, rid):
-	#	'''
-	#	Updates the overlap counter with overlaps of interval (start, end) with the currently loaded functional data.
-	#.	'''
-	#	counter.setdefault("seqname", Counter())[rid] += 1
-	#	overlaps = interval_tree[start:end]
-	#	for ovl in overlaps:
-	#		counter.setdefault(rid, Counter())[(ovl.begin, ovl.end)] += 1
 
 	def update_reference_data(self, ref, rid, current_ref, current_rid, cache, counter, interval_tree):
 		current_rid = rid
@@ -190,34 +190,4 @@ class FeatureQuantifier:
 			n_align=aln_count, n_seconds=t1-t0), flush=True
 		)
 
-		# self.dump_overlap_counters(bam, out_prefix)
 		self.overlap_counter.dump_counts(bam, out_prefix)
-
-
-	def dump_overlap_counters(self, bam, out_prefix):
-		print("Dumping overlap counters...", flush=True)
-		with open(out_prefix + ".seqname.txt", "w") as out:
-			for ref_id in set(self.unique_counter.get("seqname", Counter())).union(self.multimap_counter.get("seqname", Counter())):
-				primary_count = self.unique_counter.get("seqname", Counter())[ref_id]
-				secondary_count = self.multimap_counter.get("seqname", Counter())[ref_id]
-				print(ref_id, bam.get_reference(ref_id), primary_count, secondary_count, flush=True, sep="\t", file=out)
-		del self.unique_counter["seqname"]
-		try:
-			del self.multimap_counter["seqname"]
-		except:
-			pass
-		print("Size primary counter: {size} bytes".format(size=sys.getsizeof(self.unique_counter)))
-		print("Size secondary counter: {size} bytes".format(size=sys.getsizeof(self.multimap_counter)))
-		with open(out_prefix + ".feature_counts.txt", "w") as out:
-			dump_counter = [dict(), dict()]
-			for ref_id in sorted(set(self.unique_counter).union(self.multimap_counter)):
-				ref_name = bam.get_reference(ref_id)[0]
-				gff_annotation = self._read_gff_data(ref_name, include_payload=True)
-				for (start, end) in set(self.unique_counter.get(ref_id, Counter())).union(self.multimap_counter.get(ref_id, Counter())):
-					primary_count = self.unique_counter.get(ref_id, Counter())[(start, end)]
-					secondary_count = self.multimap_counter.get(ref_id, Counter())[(start, end)]
-					for feature_type, values in gff_annotation.get((ref_name, start, end), dict()).items():
-						if feature_type != "ID":
-							dump_counter[0].setdefault(feature_type, Counter()).update({v: primary_count for v in values})
-							dump_counter[1].setdefault(feature_type, Counter()).update({v: secondary_count for v in values})
-			json.dump(dump_counter, out, indent="\t")
