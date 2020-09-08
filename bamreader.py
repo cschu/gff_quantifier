@@ -41,6 +41,11 @@ class BamAlignment:
 		self.tlen = tlen
 		self.len_seq = len_seq
 		self.tags = tags
+	def get_hash(self):
+		import hashlib
+		md5 = hashlib.md5()
+		md5.update(self.qname)
+		return int(md5.hexdigest(), 16)
 	def __str__(self):
 		return "{rid}:{rstart}-{rend} ({cigar};{flag};{mapq};{tlen}) {rnext}:{pnext}".format(
 			rid=self.rid, rstart=self.start, rend=self.end, cigar=BamAlignment.show_cigar(self.cigar), flag=self.flag,
@@ -78,6 +83,8 @@ class BamFile:
 
 	def get_reference(self, rid):
 		return self._references[rid]
+	def n_references(self):
+		return len(self._references)
 	def get_position(self):
 		return self._fpos
 	def rewind(self):
@@ -89,6 +96,7 @@ class BamFile:
 		self._file.seek(pos)
 		self._fpos = pos
 	def get_alignments(self, required_flags=None, disallowed_flags=None):
+		aln_count = 1
 		while True:
 			try:
 				aln_size = struct.unpack("I", self._file.read(4))[0]
@@ -114,8 +122,9 @@ class BamFile:
 			# yield rid, self._references[rid][0], pos, len_seq
 			flag_check = (required_flags is None or (flag & required_flags)) and (disallowed_flags is None or not (flag & disallowed_flags)) 
 			if flag_check:
-				yield BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
+				yield aln_count, BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
 			#yield rid, self._references[rid][0], pos, len_seq, qname, cigar, flag, next_rid, self._references[next_rid][0], next_pos, tlen, tags
+			aln_count += 1
 
 
 	def get_multimappers(self):
@@ -135,7 +144,7 @@ class BamFile:
 		# Second pass: collect information for each multimapping read
 		self.rewind()
 		for aln_count, aln in enumerate(self.get_alignments(disallowed_flags=0x900), start=1):
-			if aln.qname in reads_with_secaln:
+			if reads_with_secaln[aln.qname]:
 				multimappers.setdefault(aln.qname, [reads_with_secaln[aln.qname], set()])[1].add(
 					(aln.rid, aln.start, aln.end)
 				)
