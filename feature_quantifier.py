@@ -5,6 +5,7 @@ import gzip
 from collections import Counter
 import json
 import yaml
+from datetime import datetime
 
 from intervaltree import IntervalTree
 
@@ -15,7 +16,9 @@ class OverlapCounter(dict):
 	def normalise_counts(counts, feature_len):
 		'''Returns raw, length-normalised, and scaled feature counts.'''
 		normalised = counts / feature_len
-		return counts, normalised, counts / normalised
+		scaled = normalised * counts / normalised #? -> that's what it seems to do in ngless ???
+		fpkm = ((normalised * 10e9) / counts) * normalised  # ?
+		return counts, normalised, scaled, fpkm
 	def __init__(self, out_prefix):
 		self.out_prefix = out_prefix
 		self.seqcounts = Counter()
@@ -28,6 +31,7 @@ class OverlapCounter(dict):
 		'''
 		hit_list = [(ovl.begin, ovl.end) for ovl in overlaps]
 		self.setdefault(rid, list()).append((hit_list, n_aln))
+
 	def process_counts(self, bam, gff_source):
 		print("Processing counts ...", flush=True)
 		t0 = time.time()
@@ -56,12 +60,12 @@ class OverlapCounter(dict):
 		with open("{prefix}.seqname.txt".format(prefix=self.out_prefix), "w") as seq_out:
 			for rid, count in self.seqcounts.items():
 				seq_id, seq_len = bam.get_reference(rid)
-				print(rid, seq_id, seq_len, "{:.5f}\t{:.5f}\t{:.5f}".format(*OverlapCounter.normalise_counts(count, seq_len)), flush=True, sep="\t", file=seq_out)
+				print(rid, seq_id, seq_len, "{:.5f}\t{:.5f}\t{:.5f}\t{:.5f}".format(*OverlapCounter.normalise_counts(count, seq_len)), flush=True, sep="\t", file=seq_out)
 		with open("{prefix}.feature_counts.txt".format(prefix=self.out_prefix), "w") as feat_out:
 			for ftype, counts in sorted(self.featcounts.items()):
 				print("#{}".format(ftype), file=feat_out, flush=True)
 				for subf, (subf_count, f_len) in sorted(counts.items()):
-					print(subf, "{:.5f}\t{:.5f}\t{:.5f}".format(*OverlapCounter.normalise_counts(subf_count, f_len)), flush=True, sep="\t", file=feat_out)
+					print(subf, "{:.5f}\t{:.5f}\t{:.5f}\t{:.5f}".format(*OverlapCounter.normalise_counts(subf_count, f_len)), flush=True, sep="\t", file=feat_out)
 
 
 class FeatureQuantifier:
@@ -94,7 +98,7 @@ class FeatureQuantifier:
 						features = dict((item.split("=")[0], item.split("=")[1].split(",")) for item in line[8].strip().split(";"))
 					key = (line[0], int(line[3]), int(line[4]) + 1)
 					gff_annotation[key] = features
-		if not gff_annotation:
+		if not gff_annotation and not include_payload:
 			print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id), file=sys.stderr, flush=True)
 		return gff_annotation
 
@@ -110,8 +114,9 @@ class FeatureQuantifier:
 
 		self.umap_cache.clear()
 
-	def update_reference_data(self, ref, rid, current_ref, current_rid, interval_tree):
-		current_rid = rid
+	def update_reference_data(self, ref, rid, current_ref, interval_tree):
+
+
 		if current_ref is not None:
 			self.process_unique_cache(interval_tree, rid)
 		current_ref = ref
@@ -119,11 +124,13 @@ class FeatureQuantifier:
 		intervals = sorted([key[1:] for key in gff_annotation])
 		interval_tree = IntervalTree.from_tuples(intervals)
 
-		return current_rid, current_ref, interval_tree
+		return rid, current_ref, interval_tree
 
 	def process_bam(self, bamfile, out_prefix):
 		bam = BamFile(bamfile)
-		multimappers = bam.get_multimappers()
+		# TODO multimappers
+		# multimappers = bam.get_multimappers()
+		multimappers = dict()
 		t0 = time.time()
 		self.umap_cache, self.mmap_cache = dict(), dict()
 		self.overlap_counter = OverlapCounter(out_prefix)
@@ -131,20 +138,31 @@ class FeatureQuantifier:
 		current_ref, current_rid = None, None
 		interval_tree = None
 
-		for aln_count, aln in enumerate(bam.get_alignments(disallowed_flags=0x800)):
+		for aln_count, aln in bam.get_alignments(disallowed_flags=0x800):
 
 			ref = bam.get_reference(aln.rid)[0]
 			start, end = aln.start, aln.end
+			qname = aln.get_hash()
 
 			if ref != current_ref:
 				current_rid, current_ref, interval_tree = self.update_reference_data(
-					ref, aln.rid, current_ref, current_rid, interval_tree)
+					ref, aln.rid, current_ref, interval_tree)
+				print("{time}\tNew reference: {ref} ({rid}/{n_ref}). {n_aln} alignments processed.".format(
+					time=datetime.now().strftime("%m/%d/%Y,%H:%M:%S"),
+					ref=current_ref,
+					rid=current_rid,
+					n_ref=bam.n_references(),
+					n_aln=aln_count),
+					file=sys.stderr, flush=True)
 
-			mm_count, primaries = multimappers.get(aln.qname, [0, set()])
-			if not aln.is_primary() or primaries:
+
+			# if not aln.is_primary() or aln.mapq == 0:
+			if aln.mapq == 0:
+				continue # TODO: re-enable multimappers
+				mm_count, primaries = multimappers.get(qname, [0, set()])
 				if not primaries:
 					# ignore secondary alignments without existing primary alignment for now
-					print("WARNING: could not find primary alignments for {aln_qname}".format(aln_qname=aln.qname), flush=True, file=sys.stderr)
+					#print("WARNING: could not find primary alignments for {aln_qname}".format(aln_qname=qname), flush=True, file=sys.stderr)
 					continue
 				# we need to have the primary alignment flag in the key so we can process the primary alignment properly
 				aln_key = (aln.rid, aln.start, aln.end, aln.is_primary())
@@ -152,37 +170,38 @@ class FeatureQuantifier:
 				# this is stuff i've seen coming out of ngless/bwa
 				if not aln_key[-1]:
 					mm_count -= 1
-					seen_primaries = [k for k in self.mmap_cache.get(aln.qname, set()) if k[-1]]
+					seen_primaries = [k for k in self.mmap_cache.get(qname, set()) if k[-1]]
 					if not mm_count and len(seen_primaries) == len(primaries):
 						# all primary and secondary alignments of read have been seen
 						# TODO process alignments
-						self.mmap_cache.pop(aln.qname)
+						self.mmap_cache.pop(qname)
 						continue
-					multimappers[aln.qname][0] = mm_count
+					multimappers[qname][0] = mm_count
 
 					if aln_key[:-1] in primaries:
 						# there are sometimes secondary alignments that seem to be identical to the primary -> ignore
 						continue
-					if aln_key in self.mmap_cache.get(aln.qname, set()):
+					if aln_key in self.mmap_cache.get(qname, set()):
 						# if r1 and r2 are identical and generate two separate individual alignments -> ignore
 						# i don't know why that would happen: very short fragment sequenced twice, i.e. from each direction or r1/r2 mislabeled/duplicated?
 						continue
 					
-				self.mmap_cache.setdefault(aln.qname, set()).add(aln_key)
+				self.mmap_cache.setdefault(qname, set()).add(aln_key)
 				continue
 
 			elif aln.is_paired() and aln.rid == aln.rnext:
 				# need to keep track of read pairs to avoid dual counts
 				# check if the mate has already been seen
-				mates = self.umap_cache.setdefault(aln.qname, list())
+				mates = self.umap_cache.setdefault(qname, list())
 				if mates:
 					# if it has, calculate the total fragment size and remove the pair from the cache
 					if aln.rnext != mates[0][0]:
-						print("WARNING: alignment {qname} seems to be corrupted: {aln1} {aln2}".format(qname=aln.qname, aln1=str(aln), aln2=str(mates[0])), flush=True, file=sys.stderr)
+						print("WARNING: alignment {qname} seems to be corrupted: {aln1} {aln2}".format(qname=qname, aln1=str(aln), aln2=str(mates[0])), flush=True, file=sys.stderr)
 						continue # i don't think this ever happens
 					else:
 						start, end = BamFile.calculate_fragment_borders(aln.start, aln.end, *mates[0][1:])
-					self.umap_cache.pop(aln.qname)
+					# self.umap_cache.pop(qname)
+					del self.umap_cache[qname]
 				else:
 					# otherwise cache the first encountered mate and advance to the next read
 					mates.append((aln.rid, aln.start, aln.end))
@@ -201,3 +220,4 @@ class FeatureQuantifier:
 
 		self.overlap_counter.process_counts(bam, self)
 		self.overlap_counter.dump_counts(bam)
+		print("Finished.", flush=True)
