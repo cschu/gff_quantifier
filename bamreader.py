@@ -24,6 +24,8 @@ class BamAlignment:
 		return not self.flag & 0x100
 	def is_supplementary(self):
 		return self.flag & 0x800
+	def is_unique(self):
+		return self.mapq != 0
 	def is_paired(self):
 		return self.flag & 0x1
 	def __init__(self, qname=None, flag=None, rid=None, pos=None,
@@ -70,7 +72,6 @@ class BamFile:
 		len_header = struct.unpack("I", self._file.read(4))[0]
 		if len_header:
 			header_str = struct.unpack("c" * len_header, self._file.read(len_header))
-			# print(header_str)
 		n_ref = struct.unpack("I", self._file.read(4))[0]
 		self._fpos += 4 + 4 + len_header + 4
 		for i in range(n_ref):
@@ -95,8 +96,11 @@ class BamFile:
 			raise ValueError("Position {pos} seeks back into the header (data_start={data_start}).".format(pos=pos, data_start=self._data_block_start))
 		self._file.seek(pos)
 		self._fpos = pos
-	def get_alignments(self, required_flags=None, disallowed_flags=None):
+	def get_alignments(self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True):
 		aln_count = 1
+		if not allow_multiple and not allow_unique:
+			raise ValueError("Either allow_multiple or allow_unique needs to be True.")
+
 		while True:
 			try:
 				aln_size = struct.unpack("I", self._file.read(4))[0]
@@ -119,11 +123,11 @@ class BamFile:
 			self._fpos += 4 + aln_size
 			# print(*map(bytes.decode, struct.unpack("c"*len(tags), tags)))
 
-			# yield rid, self._references[rid][0], pos, len_seq
 			flag_check = (required_flags is None or (flag & required_flags)) and (disallowed_flags is None or not (flag & disallowed_flags)) 
-			if flag_check:
+			atype_check = (aln.is_unique() and allow_unique) or (not aln.is_unique() and allow_multiple)
+
+			if flag_check and atype_check:
 				yield aln_count, BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
-			#yield rid, self._references[rid][0], pos, len_seq, qname, cigar, flag, next_rid, self._references[next_rid][0], next_pos, tlen, tags
 			aln_count += 1
 
 
@@ -172,4 +176,3 @@ if __name__ == "__main__":
 	bam = BamFile(sys.argv[1])
 	for aln in bam.get_alignments():
 		print(aln)
-	#print(next(bam.get_alignments()))
