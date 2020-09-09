@@ -24,37 +24,31 @@ class OverlapCounter(dict):
 		self.seqcounts = Counter()
 		self.featcounts = dict()
 		pass
-	def update_counts(self, rid, overlaps, n_aln=1):
+	def update_unique_counts(self, rid, overlaps, n_aln=1):
 		'''
 		Generates a hit list from the overlaps resulting from an intervaltree query,
 		adds the number of alternative alignments and stores the results for each reference sequence.
 		'''
-		hit_list = [(ovl.begin, ovl.end) for ovl in overlaps]
-		self.setdefault(rid, list()).append((hit_list, n_aln))
+		self.setdefault(rid, Counter()).update((ovl.begin, ovl.end) for ovl in overlaps)
+		self.seqcounts[rid] += 1
 
-	def process_counts(self, bam, gff_source):
-		print("Processing counts ...", flush=True)
+	def annotate_unique_counts(self, bam, gff_source):
+		'''
+		Look up and collate functional annotation for unique hits
+		'''
+		print("Processing unique counts ...", flush=True)
 		t0 = time.time()
-		# first pass: process unique mappers
-		for rid, counts in self.items():
-			ref, reflen = bam.get_reference(rid)
+		for rid, intervals in self.items():
+			ref, _ = bam.get_reference(rid)
 			gff_annotation = gff_source.read_gff_data(ref, include_payload=True)
-			mcounts = list()
-			for hits, n_aln in counts:
-				if n_aln == 1:
-					# we don't care about hits to overlapping features when counting ref-hits
-					self.seqcounts[rid] += 1
-				if n_aln == 1 and len(hits) == 1:
-					# add single count to each subfeature
-					for ftype, values in gff_annotation.get((ref, *hits[0]), dict()).items():
-						if ftype != "ID":
-							for v in values:
-								self.featcounts.setdefault(ftype, dict()).setdefault(v, [0, hits[0][1]-hits[0][0]+1])[0] += 1
-				else:
-					mcounts.append((hits, n_aln))
-			self[rid] = mcounts
+			for region, count in intervals.items():
+				region_annotation = gff_annotation.get((ref,) + region, dict())
+				for ftype, values in region_annotation.items():
+					if ftype != "ID":
+						for v in values:
+							self.featcounts.setdefault(ftype, dict()).setdefault(v, [0, region[1] - region[0] + 1])[0] += count
 		t1 = time.time()
-		print("Processed unique hits in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
+		print("Processed unique counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 	def dump_counts(self, bam):
 		print("Dumping overlap counters...", flush=True)
 		with open("{prefix}.seqname.txt".format(prefix=self.out_prefix), "w") as seq_out:
@@ -115,8 +109,6 @@ class FeatureQuantifier:
 		self.umap_cache.clear()
 
 	def update_reference_data(self, ref, rid, current_ref, interval_tree):
-
-
 		if current_ref is not None:
 			self.process_unique_cache(interval_tree, rid)
 		current_ref = ref
