@@ -9,7 +9,6 @@ def main():
 	ap.add_argument("bam_file", type=str)
 	ap.add_argument("out_prefix", type=str)
 	ap.add_argument("--count_config", type=str)
-	ap.add_argument("--gff_compressed", action="store_true")
 	args = ap.parse_args()
 
 	gff_index = args.gff_file + ".index"
@@ -23,7 +22,6 @@ def main():
 	fq = FeatureQuantifier(
 		args.gff_file,
 		gff_index,
-		gff_gzipped=args.gff_compressed,
 		count_config=args.count_config
 	)
 	fq.process_bam(args.bam_file, args.out_prefix)
