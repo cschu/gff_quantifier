@@ -124,7 +124,8 @@ class BamFile:
 			# print(*map(bytes.decode, struct.unpack("c"*len(tags), tags)))
 
 			flag_check = (required_flags is None or (flag & required_flags)) and (disallowed_flags is None or not (flag & disallowed_flags)) 
-			atype_check = (aln.is_unique() and allow_unique) or (not aln.is_unique() and allow_multiple)
+			is_unique = mapq != 0
+			atype_check = (is_unique and allow_unique) or (not is_unique and allow_multiple)
 
 			if flag_check and atype_check:
 				yield aln_count, BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
