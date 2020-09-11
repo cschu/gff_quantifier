@@ -8,7 +8,7 @@ from datetime import datetime
 
 from intervaltree import IntervalTree
 
-from bamreader import BamFile
+from gffquant.bamreader import BamFile
 
 class OverlapCounter(dict):
 	@staticmethod

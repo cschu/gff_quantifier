@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from feature_quantifier import FeatureQuantifier
+from gffquant.feature_quantifier import FeatureQuantifier
 
 def main():
 	ap = argparse.ArgumentParser()

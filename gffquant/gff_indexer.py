@@ -1,5 +1,6 @@
 import gzip
 import sys
+import argparse
 
 
 class GffIndexer:
@@ -72,6 +73,12 @@ def index_gff(gff, gzipped=True, chunksize=1024):
 		print(r, *p)
 
 
-if __name__ == "__main__":
-	GffIndexer(sys.argv[1])#.get_index()
+def main():
+	ap = argparse.ArgumentParser()
+	ap.add_argument("gff_file", type=str)
+	args = ap.parse_args()
 
+	GffIndexer(args.gff_file)#.get_index()
+
+if __name__ == "__main__":
+	main()
