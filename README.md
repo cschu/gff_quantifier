@@ -1,4 +1,4 @@
-### Prerequisites
+### Prerequisites
 - Python3.7+ (might work with Python3.6, but not tested)
 
 ### Dependencies
