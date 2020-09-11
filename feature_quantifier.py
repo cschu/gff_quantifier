@@ -22,13 +22,17 @@ class OverlapCounter(dict):
 		self.out_prefix = out_prefix
 		self.seqcounts = Counter()
 		self.featcounts = dict()
+		self.unannotated_reads = 0
 		pass
 	def update_unique_counts(self, rid, overlaps):
 		'''
 		Generates a hit list from the overlaps resulting from an intervaltree query,
 		adds the number of alternative alignments and stores the results for each reference sequence.
 		'''
-		self.setdefault(rid, Counter()).update((ovl.begin, ovl.end) for ovl in overlaps)
+		if overlaps:
+			self.setdefault(rid, Counter()).update((ovl.begin, ovl.end) for ovl in overlaps)
+		else:
+			self.unannotated_reads += 1
 		self.seqcounts[rid] += 1
 
 	def annotate_unique_counts(self, bam, gff_dbm):
@@ -45,21 +49,23 @@ class OverlapCounter(dict):
 					if ftype != "ID":
 						for v in values:
 							self.featcounts.setdefault(ftype, dict()).setdefault(v, [0, region[1] - region[0] + 1])[0] += count
-			del self[rid]
 		self.clear()
 		t1 = time.time()
 		print("Processed unique counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 	def dump_counts(self, bam):
+		counts_template = "{:d}\t{:.5f}\t{:.5f}\t{:.5f}"
+
 		print("Dumping overlap counters...", flush=True)
 		with open("{prefix}.seqname.txt".format(prefix=self.out_prefix), "w") as seq_out:
 			for rid, count in self.seqcounts.items():
 				seq_id, seq_len = bam.get_reference(rid)
-				print(rid, seq_id, seq_len, "{:.5f}\t{:.5f}\t{:.5f}\t{:.5f}".format(*OverlapCounter.normalise_counts(count, seq_len)), flush=True, sep="\t", file=seq_out)
+				print(rid, seq_id, seq_len, counts_template.format(*OverlapCounter.normalise_counts(count, seq_len)), flush=True, sep="\t", file=seq_out)
 		with open("{prefix}.feature_counts.txt".format(prefix=self.out_prefix), "w") as feat_out:
+			print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
 			for ftype, counts in sorted(self.featcounts.items()):
 				print("#{}".format(ftype), file=feat_out, flush=True)
 				for subf, (subf_count, f_len) in sorted(counts.items()):
-					print(subf, "{:.5f}\t{:.5f}\t{:.5f}\t{:.5f}".format(*OverlapCounter.normalise_counts(subf_count, f_len)), flush=True, sep="\t", file=feat_out)
+					print(subf, counts_template.format(*OverlapCounter.normalise_counts(subf_count, f_len)), flush=True, sep="\t", file=feat_out)
 
 class GffDatabaseManager:
 	def _read_index(self, f):
@@ -135,12 +141,12 @@ class FeatureQuantifier:
 		for aln_count, aln in bam.get_alignments(allow_multiple=False, disallowed_flags=0x800):
 			ref = bam.get_reference(aln.rid)[0]
 			start, end = aln.start, aln.end
-			qname = aln.get_hash()
+			qname = aln.qname #get_hash()
 
 			if ref != current_ref:
 				print("{time}\tNew reference: {ref} ({rid}/{n_ref}). {n_aln} alignments processed.".format(
 					time=datetime.now().strftime("%m/%d/%Y,%H:%M:%S"),
-					ref=ref, rid=aln.rid, n_ref=bam.n_references, n_aln=aln_count),
+					ref=ref, rid=aln.rid, n_ref=bam.n_references(), n_aln=aln_count),
 					file=sys.stderr, flush=True)
 
 				self.process_unique_cache(current_rid, current_ref)
