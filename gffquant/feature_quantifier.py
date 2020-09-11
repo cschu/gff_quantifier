@@ -5,6 +5,7 @@ from collections import Counter
 import json
 import yaml
 from datetime import datetime
+from functools import lru_cache
 
 from intervaltree import IntervalTree
 
@@ -80,6 +81,7 @@ class GffDatabaseManager:
 		self.loaded_data = None
 		self.loaded_ref = None
 		self.interval_tree = None
+	@lru_cache(maxsize=1000)
 	def _read_data(self, ref_id, include_payload=False):
 		gff_annotation = dict()
 		for offset, size in self.db_index.get(ref_id, list()):
@@ -95,11 +97,14 @@ class GffDatabaseManager:
 		if not gff_annotation and not include_payload:
 			print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id), file=sys.stderr, flush=True)
 		return gff_annotation
+	@lru_cache(maxsize=1000)
+	def _get_tree(self, ref):
+		return IntervalTree.from_tuples(sorted([key[1:] for key in self.loaded_data]))
 	def _load_data(self, ref, include_payload=False):
 		if self.loaded_ref != ref:
 			self.loaded_ref = ref
 			self.loaded_data = self._read_data(ref, include_payload=include_payload)
-			self.interval_tree = IntervalTree.from_tuples(sorted([key[1:] for key in self.loaded_data]))
+			self.interval_tree = self._get_tree(ref)  #IntervalTree.from_tuples(sorted([key[1:] for key in self.loaded_data]))
 
 	def get_data(self, ref, start, end):
 		self._load_data(ref, include_payload=True)
@@ -190,6 +195,10 @@ class FeatureQuantifier:
 
 		self.overlap_counter.annotate_unique_counts(bam, self.gff_dbm)
 		self.overlap_counter.dump_counts(bam)
+
+		print(self.gff_dbm._load_data.cache_info(), flush=True)
+		print(self.gff_dbm._get_tree.cache_info(), flush=True)
+
 		print("Finished.", flush=True)
 
 	def process_multiple_alignments(self, bam):
