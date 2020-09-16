@@ -10,6 +10,7 @@ def main():
 	ap.add_argument("bam_file", type=str)
 	ap.add_argument("--out_prefix", "-o", type=str, default="gffquant")
 	ap.add_argument("--count_config", type=str)
+	ap.add_argument("--name_sorted_bam", "-n", default=None)
 	args = ap.parse_args()
 
 	gff_index = args.gff_file + ".index"
@@ -30,7 +31,7 @@ def main():
 		gff_index,
 		count_config=args.count_config
 	)
-	fq.process_bam(args.bam_file, args.out_prefix)
+	fq.process_data(args.bam_file, out_prefix=args.out_prefix, bamfile_ns=args.name_sorted_bam)
 
 
 if __name__ == "__main__":
