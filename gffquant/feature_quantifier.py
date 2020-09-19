@@ -39,6 +39,7 @@ class OverlapCounter(dict):
 	def __init__(self, out_prefix):
 		self.out_prefix = out_prefix
 		self.seqcounts = Counter()
+		self.ambig_seqcounts = Counter()
 		self.featcounts = dict()
 		self.unannotated_reads = 0
 		self.ambig_counts = dict()
@@ -54,55 +55,89 @@ class OverlapCounter(dict):
 			self.unannotated_reads += 1
 		self.seqcounts[rid] += 1
 
-	def annotate_unique_counts(self, bam, gff_dbm):
-		'''
-		Look up and collate functional annotation for unique hits
-		'''
-		print("Processing unique counts ...", flush=True)
+	def annotate_counts(self, bam, gff_dbm):
+		print("Processing counts ...", flush=True)
 		t0 = time.time()
-		for rid, intervals in self.items():
-			ref, _ = bam.get_reference(rid)
-			for region, count in intervals.items():
+		for rid in set(self.keys()).union(self.ambig_counts):
+			ref = bam.get_reference(rid)[0]
+			for region in set(self.get(rid, set())).union(self.ambig_counts.get(rid, set())):
+				region_length = region[1] - region[0] + 1
 				region_annotation = gff_dbm.get_data(ref, *region)
-				for ftype, values in region_annotation: #.items():
-					if ftype != "ID":
-						for v in values:
-							self.featcounts.setdefault(ftype, dict()).setdefault(v, [0, region[1] - region[0] + 1])[0] += count
+				for ftype, values in region_annotation:
+					for v in values:
+						fcounts = self.featcounts.setdefault(ftype, dict()).setdefault(v, [0, 0, 0, 0])
+						count = self.get(rid, dict()).get(region, 0)
+						ambi_count = count + self.ambig_counts.get(rid, dict()).get(region, 0)
+						fcounts[0] += count
+						fcounts[1] += count / region_length
+						fcounts[2] += ambi_count
+						fcounts[3] += ambi_count / region_length
 		self.clear()
+		self.ambig_counts.clear()
 		t1 = time.time()
-		print("Processed unique counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
+		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
-	def update_ambiguous_counts(self, hits, gff_dbm):
-		for k, v in hits.items():
-			self.ambig_counts.setdefault(k, list()).extend(hits)
+	def update_ambiguous_counts(self, hits, n_aln, unannotated, gff_dbm, bam, feat_distmode="all1"):
+		if feat_distmode in ("all1", "1overN"):
+			n_total = sum(self.seqcounts[rid] for rid in hits)
+			for rid, regions in hits.items():
+				for start, end in regions:
+					self.ambig_counts.setdefault(rid, Counter())[(start, end)] += (1 / n_aln) if feat_distmode == "1overN" else 1
+			# 	print("RID", rid, file=sys.stderr)
+
+				try:
+					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
+				except ZeroDivisionError:
+					self.ambig_seqcounts[rid] += 1 / len(hits)
 
 	@staticmethod
-	def calculate_scaling_factor(counts, bam):
+	def calculate_seqcount_scaling_factor(counts, bam):
 		raw_total = sum(counts.values())
 		normed_total = sum(count / bam.get_reference(rid)[1] for rid, count in counts.items())
 		return raw_total / normed_total
 	@staticmethod
-	def calculate_feature_scaling_factor(counts):
-		raw_total = sum(count for count, flen in counts.values())
-		normed_total = sum(count / flen for count, flen in counts.values())
+	def calculate_feature_scaling_factor(counts, include_ambig=False):
+		raw_total, normed_total = 0, 0
+		for raw, norm, raw_ambi, norm_ambi in counts.values():
+			if include_ambig:
+				raw_total += raw_ambi
+				normed_total += norm_ambi
+			else:
+				raw_total += raw
+				normed_total += norm
 		return raw_total / normed_total
 
 	def dump_counts(self, bam):
-		counts_template = "{:d}\t{:.5f}\t{:.5f}"
-		seqcount_scaling_factor = OverlapCounter.calculate_scaling_factor(self.seqcounts, bam)
+		counts_template = "{:.5f}\t{:.5f}\t{:.5f}"
 
 		print("Dumping overlap counters...", flush=True)
-		with open("{prefix}.seqname.txt".format(prefix=self.out_prefix), "w") as seq_out:
+		with open("{prefix}.seqname.uniq.txt".format(prefix=self.out_prefix), "w") as seq_out:
+			seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
 			for rid, count in self.seqcounts.items():
 				seq_id, seq_len = bam.get_reference(rid)
 				print(rid, seq_id, seq_len, counts_template.format(*OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)), flush=True, sep="\t", file=seq_out)
+		if self.ambig_seqcounts:
+			with open("{prefix}.seqname.dist1.txt".format(prefix=self.out_prefix), "w") as seq_out:
+				self.seqcounts.update(self.ambig_seqcounts)
+				seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
+				for rid, count in self.seqcounts.items():
+					seq_id, seq_len = bam.get_reference(rid)
+					print(rid, seq_id, seq_len, counts_template.format(*OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)), flush=True, sep="\t", file=seq_out)
+
 		with open("{prefix}.feature_counts.txt".format(prefix=self.out_prefix), "w") as feat_out:
 			print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
 			for ftype, counts in sorted(self.featcounts.items()):
 				print("#{}".format(ftype), file=feat_out, flush=True)
 				feature_scaling_factor = OverlapCounter.calculate_feature_scaling_factor(counts)
-				for subf, (subf_count, f_len) in sorted(counts.items()):
-					print(subf, counts_template.format(*OverlapCounter.normalise_counts(subf_count, f_len, feature_scaling_factor)), flush=True, sep="\t", file=feat_out)
+				feature_scaling_factor_ambig = OverlapCounter.calculate_feature_scaling_factor(counts, include_ambig=True)
+
+				for subf, (raw, norm, raw_ambi, norm_ambi) in sorted(counts.items()):
+					print(
+						subf,
+						counts_template.format(raw, norm, norm * feature_scaling_factor),
+						counts_template.format(raw_ambi, norm_ambi, norm_ambi * feature_scaling_factor_ambig),
+						flush=True, sep="\t", file=feat_out
+					)
 
 class GffDatabaseManager:
 	def _read_index(self, f):
@@ -135,22 +170,10 @@ class GffDatabaseManager:
 		return gff_annotation
 	@lru_cache(maxsize=4096)
 	def _get_tree(self, ref, cache_data=False):
-		#return IntervalTree.from_tuples(sorted([key[1:] for key in self.loaded_data]))
 		return IntervalTree.from_tuples(sorted([key[1:] for key in self._read_data(ref, include_payload=cache_data)]))
-	#def _load_data(self, ref, include_payload=False):
-	#	if self.loaded_ref != ref:
-	#		self.loaded_ref = ref
-	#		self.loaded_data = self._read_data(ref, include_payload=include_payload)
-	#		self.interval_tree = self._get_tree(ref)  #IntervalTree.from_tuples(sorted([key[1:] for key in self.loaded_data]))
-
 	def get_data(self, ref, start, end):
-		#self._load_data(ref, include_payload=True)
-		#return self.loaded_data.get((ref, start, end), dict())
 		return self._read_data(ref, include_payload=True).get((ref, start, end), dict())
-
 	def get_overlaps(self, ref, start, end, cache_data=False):
-		#self._load_data(ref)
-		#return self.interval_tree[start:end]
 		return self._get_tree(ref, cache_data=cache_data)[start:end]
 
 
@@ -159,7 +182,7 @@ class FeatureQuantifier:
 		default = {"multiple": self.default_multiple_alignments, "normalization": self.default_normalization}
 		self._count_config = yaml.load(open(config), Loader=yaml.SafeLoader) if config is not None else default
 
-	def __init__(self, gff_db, gff_index, count_config=None, multiple_alignments="unique_only", normalization="scaled"): #, gff_gzipped=True):
+	def __init__(self, gff_db, gff_index, count_config=None, multiple_alignments="unique_only", normalization="scaled"):
 		self.gff_dbm = GffDatabaseManager(gff_db, gff_index)
 		self.default_multiple_alignments = multiple_alignments
 		self.default_normalization = normalization
@@ -210,7 +233,7 @@ class FeatureQuantifier:
 		for aln_count, aln in bam.get_alignments(allow_multiple=False, disallowed_flags=0x800):
 			ref = bam.get_reference(aln.rid)[0]
 			start, end = aln.start, aln.end
-			qname = aln.qname #get_hash()
+			qname = aln.qname
 
 			if ref != current_ref:
 				print("{time}\tNew reference: {ref} ({rid}/{n_ref}). {n_aln} alignments processed.".format(
@@ -261,13 +284,12 @@ class FeatureQuantifier:
 			bam = BamFile(bamfile_ns)
 			self.process_ambiguous_alignments(bam)
 
-
 		print(self.gff_dbm._read_data.cache_info(), flush=True)
 		self.gff_dbm._read_data.cache_clear()
 		print(self.gff_dbm._get_tree.cache_info(), flush=True)
 		self.gff_dbm._get_tree.cache_clear()
 
-		self.overlap_counter.annotate_unique_counts(bam, self.gff_dbm)
+		self.overlap_counter.annotate_counts(bam, self.gff_dbm)
 		self.overlap_counter.dump_counts(bam)
 
 		print("Finished.", flush=True)
@@ -292,34 +314,32 @@ class AlignmentGroup:
 	def n_align(self):
 		return len(self.secondaries) + int(self.primary1 is not None) + int(self.primary2 is not None)
 
-	def resolve(self, counter, gff_dbm, bam):
-		hits = Counter()
+	def resolve(self, counter, gff_dbm, bam, distmode="all1"):
+		hits = dict()
+		n_aln = 0
 		if self.is_ambiguous:
-			# TODO: scan for duplicates
+			unannotated = 0
+			alignments = set()
 			for aln in [self.primary1, self.primary2] + self.secondaries:
 				if aln is not None:
-					ref = bam.get_reference(aln.rid)[0]
-					if gff_dbm.db_index.get(ref) is not None:
-						overlaps = gff_dbm.get_overlaps(ref, aln.start, aln.end, cache_data=True)
-						for ovl in overlaps:
-							ann = gff_dbm.get_data(ref, ovl.begin, ovl.end)
-							# print(ann, file=sys.stderr, flush=True)
-							if ann:
-								#try:
-								#	del ann["ID"]
-								#except:
-								#	pass
-								#ann_key = tuple(ann.items())
-								hits[ann] += 1
-								print(ann, hits[ann], file=sys.stderr, flush=True)
-								#hits.setdefault(ann_key, set()).add((aln.rid, ovl.begin, ovl.end))
-			# counter.update_ambiguous_counts(hits, gff_dbm)
+					alignments.add((aln.rid, aln.start, aln.end))
+			for rid, start, end in alignments:
+				ref = bam.get_reference(rid)[0]
+				if gff_dbm.db_index.get(ref) is not None:
+					overlaps = gff_dbm.get_overlaps(ref, start, end)
+					if overlaps:
+						hits.setdefault(rid, set()).update((ovl.begin, ovl.end) for ovl in overlaps)
+						n_aln += 1
+					else:
+						unannotated += 1
+				
+			counter.update_ambiguous_counts(hits, unannotated, n_aln, gff_dbm, bam, feat_distmode=distmode)
 		else:
+			# this whole block is for processing unique alignment blocks in a name-sorted bam
+			# currently this is not used (-> process_unique_alignments)
 			if self.primary1 is not None and self.primary2 is not None and self.primary1.rid == self.primary2.rid:
 				start, end = BamFile.calculate_fragment_borders(self.primary1.start, self.primary1.end, self.primary2.start, self.primary2.end)
-				alignments = ((start, end))
-				#overlaps = gff_dbm.get_overlaps(bam.get_reference(self.primary1.rid)[0], start, end, cache_data=True)
-				#counter.update_unique_counts(self.primary1.rid, overlaps)
+				alignments = ((start, end),)
 			else:
 				alignments = (
 					(self.primary1.rid, self.primary1.start, self.primary1.end) if self.primary1 else None,
@@ -327,6 +347,7 @@ class AlignmentGroup:
 				)
 			for aln in alignments:
 				if aln is not None:
-					ref = bam.get_reference(aln.rid)[0]
-					overlaps = gff_dbm.get_overlaps(ref, aln.start, aln.end, cache_data=True)
-					counter.update_unique_counts(aln.rid, overlaps)
+					rid, start, end = aln
+					ref = bam.get_reference(rid)[0]
+					overlaps = gff_dbm.get_overlaps(ref, start, end, cache_data=True)
+					counter.update_unique_counts(rid, overlaps)
