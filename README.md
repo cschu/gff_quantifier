@@ -29,7 +29,7 @@ After this, the relevant commands `gff_indexer` and `gffquant` should be in your
 	  
 ### Resource requirements
 Memory and computing time requirements correspond to bamfile size. For current bamfile sizes of up to 24GB:
-  - `uniq_only` and `all1`: ~10GB memory and ~4h
+  - `uniq_only` and `all1`: ~10GB memory and ~4h (up to 7h for `all1`)
   - `1overN`: >10GB memory, ~10min - >8h
   
 ### TODO
