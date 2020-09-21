@@ -20,6 +20,10 @@ class BamAlignment:
 		# 012345678; 02378 consume reference: 0000 0010 0011 0111 1000
 		REF_CONSUMERS = {0, 2, 3, 7, 8}
 		return start + sum(oplen for oplen, op in cigar if op in REF_CONSUMERS)
+	def shorten(self):
+		return (aln.qname, aln.rid, aln.start, aln.end)
+	def is_ambiguous(self):
+		return self.mapq == 0
 	def is_primary(self):
 		return not self.flag & 0x100
 	def is_supplementary(self):
