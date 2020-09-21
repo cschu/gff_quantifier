@@ -21,13 +21,17 @@ After this, the relevant commands `gff_indexer` and `gffquant` should be in your
   - The gff must not be gzipped (random access of gzipped files via seek() is not feasible, hence gzipped gffs are not supported).
 2. (optional) Produce a reduced bamfile, containing only the ambiguous alignments.
   - `samtools view -h -F 0x800 <input_bam> | awk '/^[^@]/ { if ($5 != 0) next; } { print $0; } | samtools sort -@ <threads> -n -o <name_sorted_bam>`
-3. Run `gffquant <input_gff> <input_bam> -o <out_prefix> [-n <name_sorted_bam>]` to compute the read counts against the provided gff.
-  - `<input_gff>.index` needs to be in the same path as `<input_gff>`.
-  - The `<input_bam>` file needs to be position sorted, the `<name_sorted_bam>` file by name.
-  - Memory and computing time requirements correspond to bamfile size. For current bamfile sizes of up to 24GB:
-    - unique alignments only: ~10GB memory and ~4h
-	- including ambiguous reads: ~10GB memory and >10h (not set in stone yet)
-  - This will generate the files `<out_prefix>.seqname.txt` (contig counts) and `<out_prefix>.feature_counts.txt` (feature/subfeature counts).
+3. Run `gffquant <input_gff> <input_bam> -o <out_prefix> [--ambig_mode {[unique_only], all1, 1overN}]
+  - The `<input_bam>` file needs to be position sorted.
+  - Output files are `<out_prefix>.seqname.txt` (contig counts) and `<out_prefix>.feature_counts.txt` (feature/subfeature counts).
+  - `--ambig_mode` controls how ambiguously mapping reads are processed. These are analogous to the ngless modes:
+      - `'unique_only` will simply ignore any reads that is labeled as ambiguous (`MAPQ=0`). Runtime increases with bamfile size, memory should remain more or less constant.
+	  - `all1` will treat all ambiguous alignments as single ended individual reads. Runtime increases with bamfile size, memory should remain more or less constant.
+	  - `1overN` will dump all ambiguous alignments to disk (in reduced form), finish the processing of the unique alignments, then read and process the ambiguous alignments. Runtime and memory increase significantly with bamfile size. In addition, temporary disk space proportional to the number of ambiguous alignments is needed. In this mode (and only in this mode), sequence counting will include an additional output with reads distributed to reference contigs according to the `dist1` mode of ngless.
+	  
+### Resource requirements
+Memory and computing time requirements correspond to bamfile size. For current bamfile sizes of up to 24GB:
+  - `uniq_only` and `all1`: ~10GB memory and ~4h
+  - `1overN`: >10GB memory, ~10min - >8h
   
-### Caveats
-- Processing of ambiguous alignments is excruciatingly slow in the current version. I am looking into distributing the bam processing onto multiple threads.
+### TODO
