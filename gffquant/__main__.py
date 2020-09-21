@@ -9,7 +9,7 @@ def main():
 	ap.add_argument("gff_file", type=str)
 	ap.add_argument("bam_file", type=str)
 	ap.add_argument("--out_prefix", "-o", type=str, default="gffquant")
-	ap.add_argument("--name_sorted_bam", "-n", default=None)
+	ap.add_argument("--ambig_mode", type=str, choices=("unique_only", "all1", "1overN"), default="unique_only")
 	args = ap.parse_args()
 
 	gff_index = args.gff_file + ".index"
@@ -28,9 +28,10 @@ def main():
 	fq = FeatureQuantifier(
 		args.gff_file,
 		gff_index,
-		out_prefix=args.out_prefix
+		out_prefix=args.out_prefix,
+		ambig_mode=args.ambig_mode
 	)
-	fq.process_data(args.bam_file, bamfile_ns=args.name_sorted_bam)
+	fq.process_data(args.bam_file)
 
 
 if __name__ == "__main__":

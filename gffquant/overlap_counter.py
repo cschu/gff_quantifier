@@ -77,9 +77,9 @@ class OverlapCounter(dict):
 					self.ambig_counts.setdefault(rid, Counter())[(start, end)] += (1 / n_aln) if feat_distmode == "1overN" else 1
 			# 	print("RID", rid, file=sys.stderr)
 
-				try:
+				if n_total and self.seqcounts[rid]:
 					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
-				except ZeroDivisionError:
+				else:
 					self.ambig_seqcounts[rid] += 1 / len(hits)
 
 	@staticmethod
