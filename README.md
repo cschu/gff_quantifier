@@ -2,8 +2,10 @@
 - Python3.7+ (we need to be able to rely on dictionary item order preservation!)
 
 ### Dependencies
-- wheel (for setup)
-(will be installed via pip)
+Build:
+- wheel 
+
+Install (will be automatically installed if pip install is used as described below):
 - pyyaml
 - intervaltree
 
