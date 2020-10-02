@@ -2,6 +2,7 @@
 - Python3.7+ (we need to be able to rely on dictionary item order preservation!)
 
 ### Dependencies
+- wheel (for setup)
 (will be installed via pip)
 - pyyaml
 - intervaltree
@@ -10,12 +11,12 @@
 1. Obtain the source code `git clone https://github.com/cschu/gff_quantifier.git`.
 2. `cd gff_quantifier`.
 3. `python setup.py bdist_wheel`.
-4. `pip install [--user] -U dist/gffquant-<version>-py3-none-any.whl`.
+4. `pip install [--user] -U dist/gffquant-<version>-py3-none-any.whl`. The `--user` option is only necessary if you're running this with a shared python version.
 
 After this, the relevant commands `gff_indexer` and `gffquant` should be in your path.
 
 ### Running gffquant
-1. Pre-index your gff-file with `gff_indexer <input_gff>`.
+1. Pre-index your gff-file with `gffindex` <input_gff>`.
   - This will write the index to `<input_gff>.index` and only needs to be done once per gff.
   - For best results, the gff should be strictly sorted by seqname (column 1).
   - The gff must not be gzipped (random access of gzipped files via seek() is not feasible, hence gzipped gffs are not supported).
