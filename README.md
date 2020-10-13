@@ -35,4 +35,33 @@ Memory and computing time requirements correspond to bamfile size. For current b
   - `uniq_only` and `all1`: ~10GB memory and ~4h (up to 7h for `all1`)
   - `1overN`: >10GB memory, ~10min - >8h
   
-### TODO
+### Output: count tables
+
+**feature_counts**
+
+unannotated: number of reads with unique alignment that do not overlap any annotated feature
+
+columns:
+
+1. subfeature (e.g. BRITE:br01600)
+2. raw unique counts
+3. normalised unique counts (normalised by length of overlapped feature)
+4. scaled unique counts (the calculations for this are taken from ngLess, i.e.:)
+
+
+> "{scaled} is the result of the {normed} mode scaled up so that the total number of counts is
+> identical to the {raw} (within rounding error)"
+
+Columns 5.,6.,7. are raw, normalised, and scaled counts (analogous to 2.,3.,4.), but include ambiguous alignment counts. If the counting was run as "unique_only", then 2.,3.,4. should be identical to 5.,6.,7.. (if they are always identical, but ambiguous alignments exist and were included, then there's a bug...)
+Note that a feature with overlapping reads may have multiple functional annotations. Hence, all counts added together will not be equal to the number of alignments.
+
+**seqname.uniq**
+
+columns:
+
+1. reference-id (that's an internal id)
+2. contig-id (that's the official "freeze12" id)
+3. contig length
+
+Columns 4.,5.,6. are again raw, normalised, and scaled counts. Only unique alignments are counted.
+
