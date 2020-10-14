@@ -30,6 +30,8 @@ class BamAlignment:
 		return self.flag & 0x800
 	def is_unique(self):
 		return self.mapq != 0
+	def is_reverse(self):
+		return self.flag & 0x10
 	def is_paired(self):
 		return self.flag & 0x1
 	def __init__(self, qname=None, flag=None, rid=None, pos=None,
