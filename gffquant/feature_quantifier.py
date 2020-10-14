@@ -154,12 +154,12 @@ class AmbiguousAlignmentGroup:
 		self.uniq_aln.add(aln[0])
 
 	def n_align(self):
-		return len(self.uniq_aln)
+		return len(self.uniq_aln.difference({-1}))
 
 	def resolve(self, counter, gff_dbm, bam, distmode="all1"):
 		hits = dict()
 
-		alignments = {aln[1:] for aln in [self.primary1, self.primary2] + self.secondaries if aln is not None}
+		alignments = {aln[1:] for aln in [self.primary1, self.primary2] + self.secondaries if aln is not None and aln[1] != -1}
 		for rid, start, end in alignments:
 			hits.setdefault(rid, set()).add((start, end))
 
