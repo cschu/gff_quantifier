@@ -18,11 +18,11 @@ Install (will be automatically installed if pip install is used as described bel
 After this, the relevant commands `gff_indexer` and `gffquant` should be in your path.
 
 ### Running gffquant
-1. Pre-index your gff-file with `gffindex` <input_gff>`.
+1. Pre-index your gff-file with `gffindex <input_gff>`.
   - This will write the index to `<input_gff>.index` and only needs to be done once per gff.
   - For best results, the gff should be strictly sorted by seqname (column 1).
   - The gff must not be gzipped (random access of gzipped files via seek() is not feasible, hence gzipped gffs are not supported).
-2. Run `gffquant <input_gff> <input_bam> -o <out_prefix> [--ambig_mode {[unique_only], all1, 1overN}]
+2. Run `gffquant <input_gff> <input_bam> -o <out_prefix> [--ambig_mode {[unique_only], all1, 1overN}]`
   - The `<input_bam>` file needs to be position sorted.
   - Output files are `<out_prefix>.seqname.txt` (contig counts) and `<out_prefix>.feature_counts.txt` (feature/subfeature counts).
   - `--ambig_mode` controls how ambiguously mapping reads are processed. These are analogous to the ngless modes:
