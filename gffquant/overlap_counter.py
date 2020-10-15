@@ -20,7 +20,6 @@ normalizeCounts nmethod counts sizes
         liftIO $ forM_ [1.. VUM.length counts - 1] (VUM.unsafeModify counts (* factor))
 """
 
-
 class OverlapCounter(dict):
 	@staticmethod
 	def normalise_counts(counts, feature_len, scaling_factor):
@@ -36,18 +35,18 @@ class OverlapCounter(dict):
 		self.unannotated_reads = 0
 		self.ambig_counts = dict()
 		pass
-	def update_unique_counts(self, rid, overlaps):
+	def update_unique_counts(self, rid, overlaps, rev_strand=False):
 		'''
 		Generates a hit list from the overlaps resulting from an intervaltree query,
 		adds the number of alternative alignments and stores the results for each reference sequence.
 		'''
 		if overlaps:
-			self.setdefault(rid, Counter()).update((ovl.begin, ovl.end) for ovl in overlaps)
+			self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
 		else:
 			self.unannotated_reads += 1
 		self.seqcounts[rid] += 1
 
-	def annotate_counts(self, bam, gff_dbm):
+	def annotate_counts(self, bam, gff_dbm, strand_specific=False):
 		print("Processing counts ...", flush=True)
 		t0 = time.time()
 		for rid in set(self.keys()).union(self.ambig_counts):
@@ -69,7 +68,7 @@ class OverlapCounter(dict):
 		t1 = time.time()
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
-	def update_ambiguous_counts(self, hits, n_aln, unannotated, gff_dbm, bam, feat_distmode="all1"):
+	def update_ambiguous_counts(self, hits, n_aln, unannotated, gff_dbm, bam, feat_distmode="all1", strand_specific=False):
 		if feat_distmode in ("all1", "1overN"):
 			n_total = sum(self.seqcounts[rid] for rid in hits)
 			for rid, regions in hits.items():
@@ -98,7 +97,7 @@ class OverlapCounter(dict):
 				normed_total += norm
 		return raw_total / normed_total
 
-	def dump_counts(self, bam):
+	def dump_counts(self, bam, strand_specific=False):
 
 		FEATURE_COUNT_HEADER = ["subfeature", "uniq_raw", "uniq_lnorm", "uniq_scaled", "ambi_raw", "ambi_lnorm", "ambi_scaled"]
 		SEQ_COUNT_HEADER = ["seqid_int", "seqid", "length", "raw", "lnorm", "scaled"]

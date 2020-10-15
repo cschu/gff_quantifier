@@ -25,7 +25,7 @@ class GffDatabaseManager:
 					features = dict()
 					if include_payload:
 						features = tuple((item.split("=")[0], tuple(sorted(item.split("=")[1].split(",")))) for item in line[8].strip().split(";") if not item.startswith("ID"))
-					key = (line[0], int(line[3]), int(line[4]) + 1)
+					key = (line[0], int(line[3]), int(line[4]) + 1, line[6])
 					gff_annotation[key] = features
 		if not gff_annotation and not include_payload:
 			print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id), file=sys.stderr, flush=True)
@@ -35,5 +35,5 @@ class GffDatabaseManager:
 		return IntervalTree.from_tuples(sorted([key[1:] for key in self._read_data(ref, include_payload=cache_data)]))
 	def get_data(self, ref, start, end):
 		return self._read_data(ref, include_payload=True).get((ref, start, end), dict())
-	def get_overlaps(self, ref, start, end, flag, cache_data=False):
+	def get_overlaps(self, ref, start, end, cache_data=False):
 		return self._get_tree(ref, cache_data=cache_data)[start:end]
