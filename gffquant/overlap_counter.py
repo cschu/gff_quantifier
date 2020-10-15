@@ -70,7 +70,6 @@ class OverlapCounter(dict):
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
 	def update_ambiguous_counts(self, hits, n_aln, unannotated, gff_dbm, bam, feat_distmode="all1"):
-		print("UPDATE:", hits, n_aln, unannotated, feat_distmode)
 		if feat_distmode in ("all1", "1overN"):
 			n_total = sum(self.seqcounts[rid] for rid in hits)
 			for rid, regions in hits.items():
