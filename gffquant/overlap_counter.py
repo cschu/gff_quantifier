@@ -73,9 +73,8 @@ class OverlapCounter(dict):
 		if feat_distmode in ("all1", "1overN"):
 			n_total = sum(self.seqcounts[rid] for rid in hits)
 			for rid, regions in hits.items():
-				for start, end in regions:
+				for start, end, flag in regions:
 					self.ambig_counts.setdefault(rid, Counter())[(start, end)] += (1 / n_aln) if feat_distmode == "1overN" else 1
-			# 	print("RID", rid, file=sys.stderr)
 
 				if n_total and self.seqcounts[rid]:
 					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
@@ -100,33 +99,47 @@ class OverlapCounter(dict):
 		return raw_total / normed_total
 
 	def dump_counts(self, bam):
+
+		FEATURE_COUNT_HEADER = ["subfeature", "uniq_raw", "uniq_lnorm", "uniq_scaled", "ambi_raw", "ambi_lnorm", "ambi_scaled"]
+		SEQ_COUNT_HEADER = ["seqid_int", "seqid", "length", "raw", "lnorm", "scaled"]
 		counts_template = "{:.5f}\t{:.5f}\t{:.5f}"
 
 		print("Dumping overlap counters...", flush=True)
 		with open("{prefix}.seqname.uniq.txt".format(prefix=self.out_prefix), "w") as seq_out:
+			print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
 			seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
 			for rid, count in self.seqcounts.items():
 				seq_id, seq_len = bam.get_reference(rid)
 				print(rid, seq_id, seq_len, counts_template.format(*OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)), flush=True, sep="\t", file=seq_out)
+
+		with open("{prefix}.feature_counts.uniq.txt".format(prefix=self.out_prefix), "w") as feat_out:
+			print(*FEATURE_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
+			print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
+			for ftype, counts in sorted(self.featcounts.items()):
+				print("#{}".format(ftype), file=feat_out, flush=True)
+				feature_scaling_factor = OverlapCounter.calculate_feature_scaling_factor(counts)
+
+				for subf, (raw, norm, _, _) in sorted(counts.items()):
+					print(subf, counts_template.format(raw, norm, norm * feature_scaling_factor),
+						flush=True, sep="\t", file=feat_out)
+
 		if self.ambig_seqcounts:
 			with open("{prefix}.seqname.dist1.txt".format(prefix=self.out_prefix), "w") as seq_out:
+				print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
 				self.seqcounts.update(self.ambig_seqcounts)
 				seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
 				for rid, count in self.seqcounts.items():
 					seq_id, seq_len = bam.get_reference(rid)
 					print(rid, seq_id, seq_len, counts_template.format(*OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)), flush=True, sep="\t", file=seq_out)
 
-		with open("{prefix}.feature_counts.txt".format(prefix=self.out_prefix), "w") as feat_out:
-			print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
-			for ftype, counts in sorted(self.featcounts.items()):
-				print("#{}".format(ftype), file=feat_out, flush=True)
-				feature_scaling_factor = OverlapCounter.calculate_feature_scaling_factor(counts)
-				feature_scaling_factor_ambig = OverlapCounter.calculate_feature_scaling_factor(counts, include_ambig=True)
 
-				for subf, (raw, norm, raw_ambi, norm_ambi) in sorted(counts.items()):
-					print(
-						subf,
-						counts_template.format(raw, norm, norm * feature_scaling_factor),
-						counts_template.format(raw_ambi, norm_ambi, norm_ambi * feature_scaling_factor_ambig),
-						flush=True, sep="\t", file=feat_out
-					)
+			with open("{prefix}.feature_counts.txt".format(prefix=self.out_prefix), "w") as feat_out:
+				print(*FEATURE_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
+				print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
+				for ftype, counts in sorted(self.featcounts.items()):
+					print("#{}".format(ftype), file=feat_out, flush=True)
+					feature_scaling_factor_ambig = OverlapCounter.calculate_feature_scaling_factor(counts, include_ambig=True)
+
+					for subf, (_, _, raw_ambi, norm_ambi) in sorted(counts.items()):
+						print(subf, counts_template.format(raw_ambi, norm_ambi, norm_ambi * feature_scaling_factor_ambig),
+							flush=True, sep="\t", file=feat_out)

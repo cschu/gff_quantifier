@@ -35,5 +35,5 @@ class GffDatabaseManager:
 		return IntervalTree.from_tuples(sorted([key[1:] for key in self._read_data(ref, include_payload=cache_data)]))
 	def get_data(self, ref, start, end):
 		return self._read_data(ref, include_payload=True).get((ref, start, end), dict())
-	def get_overlaps(self, ref, start, end, cache_data=False):
+	def get_overlaps(self, ref, start, end, flag, cache_data=False):
 		return self._get_tree(ref, cache_data=cache_data)[start:end]
