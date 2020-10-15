@@ -113,7 +113,7 @@ class OverlapCounter(dict):
 				print(rid, seq_id, seq_len, counts_template.format(*OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)), flush=True, sep="\t", file=seq_out)
 
 		with open("{prefix}.feature_counts.uniq.txt".format(prefix=self.out_prefix), "w") as feat_out:
-			print(*FEATURE_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
+			print(*FEATURE_COUNT_HEADER, sep="\t", flush=True, file=feat_out)
 			print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
 			for ftype, counts in sorted(self.featcounts.items()):
 				print("#{}".format(ftype), file=feat_out, flush=True)
@@ -134,7 +134,7 @@ class OverlapCounter(dict):
 
 
 			with open("{prefix}.feature_counts.txt".format(prefix=self.out_prefix), "w") as feat_out:
-				print(*FEATURE_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
+				print(*FEATURE_COUNT_HEADER, sep="\t", flush=True, file=feat_out)
 				print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
 				for ftype, counts in sorted(self.featcounts.items()):
 					print("#{}".format(ftype), file=feat_out, flush=True)
