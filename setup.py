@@ -15,7 +15,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 	description = long_description = description.read()
 
 	name="gffquant"
-	version = "0.4.1"
+	version = "0.5"
 
 	if sys.version_info.major != 3:
 		raise EnvironmentError("""{toolname} is a python module that requires python3, and is not compatible with python2.""".format(toolname=name))

@@ -24,8 +24,9 @@ class GffDatabaseManager:
 					line = line.strip().split("\t")
 					features = dict()
 					if include_payload:
-						features = tuple((item.split("=")[0], tuple(sorted(item.split("=")[1].split(",")))) for item in line[8].strip().split(";") if not item.startswith("ID"))
-					key = (line[0], int(line[3]), int(line[4]) + 1, line[6])
+						features = (("strand", line[6]),)
+						features += tuple((item.split("=")[0], tuple(sorted(item.split("=")[1].split(",")))) for item in line[8].strip().split(";") if not item.startswith("ID"))
+					key = (line[0], int(line[3]), int(line[4]) + 1)
 					gff_annotation[key] = features
 		if not gff_annotation and not include_payload:
 			print("WARNING: contig {contig} does not have an annotation in the index.".format(contig=ref_id), file=sys.stderr, flush=True)
