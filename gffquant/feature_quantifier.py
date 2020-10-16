@@ -14,6 +14,7 @@ WEIRD_MASK_FLAG = 0x1c0 # this masks everything except first/second in pair and
 MATE_UNMAPPED_FLAG = 0x8
 FIRST_IN_PAIR_FLAG = 0x40
 SECOND_IN_PAIR_FLAG = 0x80
+REVCOMP_ALIGNMENT = 0x10
 
 
 DEBUG = True
@@ -33,13 +34,15 @@ class FeatureQuantifier:
 			n_aln = len(uniq_aln)
 			if n_aln == 1:
 				start, end, flag = uniq_aln[0][1:]
+				rev_strand = flag & REVCOMP_ALIGNMENT
 			elif n_aln == 2:
-				(start, end), flag = BamFile.calculate_fragment_borders(*uniq_aln[0][1:-1], *uniq_aln[1][1:-1]), None
+				start, end = BamFile.calculate_fragment_borders(*uniq_aln[0][1:-1], *uniq_aln[1][1:-1])
+				rev_strand = None
 			else:
 				print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=n_aln), file=sys.stderr, flush=True)
 				continue
 
-			self.overlap_counter.update_unique_counts(rid, self.gff_dbm.get_overlaps(ref, start, end, flag))
+			self.overlap_counter.update_unique_counts(rid, self.gff_dbm.get_overlaps(ref, start, end), rev_strand=rev_strand)
 
 		self.umap_cache.clear()
 
@@ -62,8 +65,9 @@ class FeatureQuantifier:
 						ref=current_ref, rid=aln.rid, n_ref=bam.n_references(), n_aln=aln_count),
 						file=sys.stderr, flush=True)
 
+				rev_strand = aln.flag & REVCOMP_ALIGNMENT
 				if aln.is_ambiguous() and self.ambig_mode == "1overN":
-					overlaps = self.gff_dbm.get_overlaps(current_ref, start, end, aln.flag)
+					overlaps = self.gff_dbm.get_overlaps(current_ref, start, end)
 					if not overlaps:
 						print(aln.qname, aln_count, -1, -1, -1, aln.flag, file=ambig_out_tmp, sep="\t")
 					for ovl in overlaps:
@@ -79,6 +83,7 @@ class FeatureQuantifier:
 							continue # i don't think this ever happens
 						else:
 							start, end = BamFile.calculate_fragment_borders(aln.start, aln.end, *mates[0][1:-1])
+							rev_strand = None
 							del self.umap_cache[qname]
 					else:
 						# otherwise cache the first encountered mate and advance to the next read
@@ -86,7 +91,7 @@ class FeatureQuantifier:
 						continue
 
 				# at this point only single-end reads and merged pairs should be processed here ( + ambiguous reads in "all1" mode )
-				self.overlap_counter.update_unique_counts(aln.rid, self.gff_dbm.get_overlaps(current_ref, start, end, aln.flag))
+				self.overlap_counter.update_unique_counts(aln.rid, self.gff_dbm.get_overlaps(current_ref, start, end), rev_strand=rev_strand)
 
 		self.process_unique_cache(current_rid, current_ref)
 		t1 = time.time()
@@ -120,7 +125,7 @@ class FeatureQuantifier:
 
 		return n_align
 
-	def process_data(self, bamfile):
+	def process_data(self, bamfile, strand_specific=False):
 		bam = BamFile(bamfile)
 		self.process_alignments(bam)
 
@@ -143,19 +148,28 @@ class FeatureQuantifier:
 			print("Processed {n_align} secondary alignments in {n_seconds:.3f}s.".format(
 				n_align=n_align, n_seconds=t1-t0), flush=True)
 
-		self.overlap_counter.annotate_counts(bam, self.gff_dbm)
-		self.overlap_counter.dump_counts(bam)
+		self.overlap_counter.annotate_counts(bam, self.gff_dbm, strand_specific=strand_specific)
+		self.overlap_counter.dump_counts(bam, strand_specific=strand_specific)
 
 		print("Finished.", flush=True)
 
 
 class AmbiguousAlignmentGroup:
 
+	"""
+	Represents a group of ambiguous alignments of a single read/read pair.
+	bwa -A assigns a primary read (pair) and flags all others as secondary alignments (0x100)
+	due to the ngless filtering, we also have the case that the primary was filtered out
+
+	Caveat: paired-end information is currently not considered for ambiguous alignment groups.
+	This means that overlapping mates will result in duplicate counts.
+	"""
+
 	def __init__(self, aln):
-		self.secondaries = list()
+		self.secondaries = list() # these are the secondary alignments
 		self.primary1, self.primary2 = None, None
 		self.qname = aln[0]
-		self.uniq_alignments = set()
+		self.uniq_alignments = set() # this is the set of alignments that can be annotated
 		self.unannotated = 0
 		self.add_alignment(aln)
 
@@ -184,5 +198,5 @@ class AmbiguousAlignmentGroup:
 
 		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
 		for rid, start, end, flag in alignments:
-			hits.setdefault(rid, set()).add((start, end, flag))
+			hits.setdefault(rid, set()).add((start, end, flag & REVCOMP_ALIGNMENT))
 		counter.update_ambiguous_counts(hits, self.n_align(), self.unannotated, gff_dbm, bam, feat_distmode=distmode)

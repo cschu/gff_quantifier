@@ -10,6 +10,7 @@ def main():
 	ap.add_argument("bam_file", type=str)
 	ap.add_argument("--out_prefix", "-o", type=str, default="gffquant")
 	ap.add_argument("--ambig_mode", type=str, choices=("unique_only", "all1", "1overN"), default="unique_only")
+	ap.add_argument("--strand_specific", action="store_true")
 	args = ap.parse_args()
 
 	gff_index = args.gff_file + ".index"
@@ -31,7 +32,7 @@ def main():
 		out_prefix=args.out_prefix,
 		ambig_mode=args.ambig_mode
 	)
-	fq.process_data(args.bam_file)
+	fq.process_data(args.bam_file, strand_specific=args.strand_specific)
 
 
 if __name__ == "__main__":
