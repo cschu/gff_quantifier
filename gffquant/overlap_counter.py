@@ -103,7 +103,6 @@ class OverlapCounter(dict):
 	def calculate_feature_scaling_factor(counts, include_ambig=False):
 		raw_total, normed_total = 0, 0
 		for raw, norm, raw_ambi, norm_ambi, *_ in counts.values():
-			# print(raw, norm, raw_ambi, norm_ambi, _, file=sys.stderr)
 			raw_total += raw
 			normed_total += norm
 			if include_ambig:
