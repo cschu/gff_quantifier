@@ -5,6 +5,9 @@ import sys
 from collections import Counter
 from datetime import datetime
 
+import numpy
+import pandas
+
 from gffquant.bamreader import BamFile
 from gffquant.gff_dbm import GffDatabaseManager
 from gffquant.overlap_counter import OverlapCounter
@@ -51,9 +54,12 @@ class FeatureQuantifier:
 		current_ref, current_rid = None, None
 
 		with open(self.out_prefix + ".ambig_tmp.txt", "wt") as ambig_out_tmp:
+			annotated, unannotated = set(), set()
+			qname_d = dict()
 			for aln_count, aln in bam.get_alignments(allow_multiple=self.ambig_mode != "unique_only", allow_unique=True, disallowed_flags=SUPPL_ALN_FLAG):
 				start, end = aln.start, aln.end
 				qname = aln.qname
+				qname_id = qname_d.setdefault(qname, len(qname_d))
 
 				if aln.rid != current_rid:
 					if current_rid is not None:
@@ -69,9 +75,12 @@ class FeatureQuantifier:
 				if aln.is_ambiguous() and self.ambig_mode == "1overN":
 					overlaps = self.gff_dbm.get_overlaps(current_ref, start, end)
 					if not overlaps:
-						print(aln.qname, aln_count, -1, -1, -1, aln.flag, file=ambig_out_tmp, sep="\t")
+						unannotated.add(qname_id)
+						#print(aln.qname, aln_count, -1, -1, -1, aln.flag, file=ambig_out_tmp, sep="\t")
+					else:
+						annotated.add(qname_id)
 					for ovl in overlaps:
-						print(aln.qname, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag, file=ambig_out_tmp, sep="\t")
+						print(qname_id, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag, file=ambig_out_tmp, sep="\t")
 				elif aln.is_unique() and aln.is_paired() and aln.rid == aln.rnext and not aln.flag & MATE_UNMAPPED_FLAG:
 					# need to keep track of read pairs to avoid dual counts
 					# check if the mate has already been seen
@@ -100,22 +109,39 @@ class FeatureQuantifier:
 		    n_align=aln_count, n_seconds=t1-t0), flush=True
 		)
 
+		return len(unannotated.difference(annotated))
+
 	def _read_ambiguous_alignments(self, ambig_in):
-		read_ids, ambig_aln = dict(), list()
-		for qname, *read_data in csv.reader(ambig_in, delimiter="\t"):
-			qname = read_ids.setdefault(qname, len(read_ids))
-			ambig_aln.append((qname, ) + tuple(map(int, read_data)))
+		ambig_aln = pandas.read_csv(ambig_in, sep="\t", header=None)
+		return ambig_aln.sort_values(axis=0, by=0)	
+		#dtype=[("qname", int), ("rcount", int), ("rid", int), ("start", int), ("end", int), ("flag", int)]
+		#read_ids, ambig_aln = dict(), numpy.array([], dtype=dtype)
+		#annotated, unannotated = set(), set()
+		#for qname, *read_data in csv.reader(ambig_in, delimiter="\t"):
+		#	# qname = read_ids.setdefault(qname, len(read_ids))
+		#	#ambig_aln.append((qname, ) + tuple(map(int, read_data)))
+		#	if False: #int(read_data)[1] == -1:
+		#		pass #unannotated.add(qname)
+		#	else:
+		#		# annotated.add(qname)
+		#		#print(read_data)
+		#		arr = numpy.array([qname] + list(map(int, read_data)), dtype=dtype)
+		#		ambig_aln = numpy.append(ambig_aln, arr)
 
-		return ambig_aln
+		#print("AA", len(ambig_aln), flush=True)
+		#ambig_aln.sort(order="qname")
+		#return ambig_aln #, len(unannotated.difference(annotated))
 
-	def _process_ambiguous_aln_groups(self, ambig_aln, bam):
+	def _process_ambiguous_aln_groups(self, ambig_aln, bam): #, unannotated):
 		n_align, current_group = 0, None
-		for aln in sorted(ambig_aln):
+		#for aln in sorted(ambig_aln):
+		#for aln in numpy.sort(ambig_aln, order="qname"):
+		for aln in ambig_aln.itertuples(index=False, name=None):
 			if current_group is None or current_group.qname != aln[0]:
 				if current_group:
 					n_align += current_group.n_align()
 					current_group.resolve(self.overlap_counter, self.gff_dbm, bam, distmode=self.ambig_mode)
-				current_group = AmbiguousAlignmentGroup(aln)
+				current_group = AmbiguousAlignmentGroup(aln) #, unannotated[aln[0]])
 			else:
 				current_group.add_alignment(aln)
 
@@ -127,19 +153,21 @@ class FeatureQuantifier:
 
 	def process_data(self, bamfile, strand_specific=False):
 		bam = BamFile(bamfile)
-		self.process_alignments(bam)
+		unannotated = self.process_alignments(bam)
 
 		print(self.gff_dbm._read_data.cache_info(), flush=True)
 		self.gff_dbm._read_data.cache_clear()
 		print(self.gff_dbm._get_tree.cache_info(), flush=True)
 		self.gff_dbm._get_tree.cache_clear()
 
-		if self.ambig_mode != "unique_only":
+		if self.ambig_mode == "1overN":
 			t0 = time.time()
-			with open(self.out_prefix + ".ambig_tmp.txt") as ambig_in:
-				ambig_aln = self._read_ambiguous_alignments(ambig_in)
+			#with open(self.out_prefix + ".ambig_tmp.txt") as ambig_in:
+			#	ambig_aln = self._read_ambiguous_alignments(ambig_in)
 
-			n_align = self._process_ambiguous_aln_groups(ambig_aln, bam)
+			ambig_aln_file = self.out_prefix + ".ambig_tmp.txt"
+			ambig_aln = self._read_ambiguous_alignments(ambig_aln_file)
+			n_align = self._process_ambiguous_aln_groups(ambig_aln, bam) #, unannotated)
 
 			if not DEBUG:
 				os.remove(self.out_prefix + ".ambig_tmp.txt")
@@ -149,6 +177,7 @@ class FeatureQuantifier:
 				n_align=n_align, n_seconds=t1-t0), flush=True)
 
 		self.overlap_counter.annotate_counts(bam, self.gff_dbm, strand_specific=strand_specific)
+		self.overlap_counter.unannotated_reads += unannotated
 		self.overlap_counter.dump_counts(bam, strand_specific=strand_specific)
 
 		print("Finished.", flush=True)
@@ -165,12 +194,12 @@ class AmbiguousAlignmentGroup:
 	This means that overlapping mates will result in duplicate counts.
 	"""
 
-	def __init__(self, aln):
+	def __init__(self, aln): #, unannotated):
 		self.secondaries = list() # these are the secondary alignments
 		self.primary1, self.primary2 = None, None
 		self.qname = aln[0]
 		self.uniq_alignments = set() # this is the set of alignments that can be annotated
-		self.unannotated = 0
+		self.unannotated = 0 #unannotated
 		self.add_alignment(aln)
 
 	def add_alignment(self, aln):

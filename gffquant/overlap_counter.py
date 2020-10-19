@@ -37,6 +37,7 @@ class OverlapCounter(dict):
 		self.featcounts = dict()
 		self.unannotated_reads = 0
 		self.ambig_counts = dict()
+		self.has_ambig_counts = False
 		pass
 	def update_unique_counts(self, rid, overlaps, rev_strand=False):
 		'''
@@ -52,6 +53,7 @@ class OverlapCounter(dict):
 	def annotate_counts(self, bam, gff_dbm, strand_specific=False):
 		print("Processing counts ...", flush=True)
 		t0 = time.time()
+
 		for rid in set(self.keys()).union(self.ambig_counts):
 			ref = bam.get_reference(rid)[0]
 			for start, end, rev_strand in set(self.get(rid, set())).union(self.ambig_counts.get(rid, set())):
@@ -81,16 +83,16 @@ class OverlapCounter(dict):
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
 	def update_ambiguous_counts(self, hits, n_aln, unannotated, gff_dbm, bam, feat_distmode="all1", strand_specific=False):
-		if feat_distmode in ("all1", "1overN"):
-			n_total = sum(self.seqcounts[rid] for rid in hits)
-			for rid, regions in hits.items():
-				for start, end, rev_str in regions:
-					self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += (1 / n_aln) if feat_distmode == "1overN" else 1
+		self.has_ambig_counts = True
+		n_total = sum(self.seqcounts[rid] for rid in hits)
+		for rid, regions in hits.items():
+			for start, end, rev_str in regions:
+				self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += (1 / n_aln) if feat_distmode == "1overN" else 1
 
-				if n_total and self.seqcounts[rid]:
-					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
-				else:
-					self.ambig_seqcounts[rid] += 1 / len(hits)
+			if n_total and self.seqcounts[rid]:
+				self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
+			else:
+				self.ambig_seqcounts[rid] += 1 / len(hits)
 
 	@staticmethod
 	def calculate_seqcount_scaling_factor(counts, bam):
@@ -101,7 +103,7 @@ class OverlapCounter(dict):
 	def calculate_feature_scaling_factor(counts, include_ambig=False):
 		raw_total, normed_total = 0, 0
 		for raw, norm, raw_ambi, norm_ambi, *_ in counts.values():
-			print(raw, norm, raw_ambi, norm_ambi, _, file=sys.stderr)
+			# print(raw, norm, raw_ambi, norm_ambi, _, file=sys.stderr)
 			raw_total += raw
 			normed_total += norm
 			if include_ambig:
@@ -116,6 +118,7 @@ class OverlapCounter(dict):
 		counts_template = "{:.5f}\t{:.5f}\t{:.5f}"
 
 		print("Dumping overlap counters...", flush=True)
+		print("Has ambiguous counts:", self.has_ambig_counts, flush=True)
 		with open("{prefix}.seqname.uniq.txt".format(prefix=self.out_prefix), "w") as seq_out:
 			print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
 			seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
@@ -127,12 +130,12 @@ class OverlapCounter(dict):
 
 			header = ["subfeature"]
 			header.extend("uniq_{}".format(element) for element in COUNT_HEADER_ELEMENTS)
-			if self.ambig_seqcounts:
+			if self.has_ambig_counts:
 				header.extend("ambig_{}".format(element) for element in COUNT_HEADER_ELEMENTS)
 			if strand_specific:
 				for strand in ("ss", "as"):
 					header.extend("uniq_{}_{}".format(element, strand) for element in COUNT_HEADER_ELEMENTS)
-					if self.ambig_seqcounts:
+					if self.has_ambig_counts:
 						header.extend("ambig_{}_{}".format(element, strand) for element in COUNT_HEADER_ELEMENTS)
 			print(*header, sep="\t", file=feat_out, flush=True)
 
@@ -147,7 +150,7 @@ class OverlapCounter(dict):
 					out_row = list(sf_counts[:2])
 					out_row.append(out_row[-1] * feature_scaling_factor)
 					# next batch: ambiguous (if exist)
-					if self.ambig_seqcounts:
+					if self.has_ambig_counts:
 						out_row.extend(sf_counts[2:4])
 						out_row.append(out_row[-1] * feature_scaling_factor_ambig)
 					# next batch: sense-strand unique
@@ -155,14 +158,14 @@ class OverlapCounter(dict):
 						out_row.extend(sf_counts[4:6])
 						out_row.append(out_row[-1] * feature_scaling_factor)
 						# next batch: sense-strand ambiguous
-						if self.ambig_seqcounts:
+						if self.has_ambig_counts:
 							out_row.extend(sf_counts[6:8])
 							out_row.append(out_row[-1] * feature_scaling_factor_ambig)
 						# next batch antisense-strand unique
 						out_row.extend(sf_counts[8:10])
 						out_row.append(out_row[-1] * feature_scaling_factor)
 						# next batch: antisense-strand ambiguous
-						if self.ambig_seqcounts:
+						if self.has_ambig_counts:
 							out_row.extend(sf_counts[10:12])
 							out_row.append(out_row[-1] * feature_scaling_factor_ambig)
 
