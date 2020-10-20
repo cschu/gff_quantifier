@@ -87,6 +87,19 @@ class OverlapCounter(dict):
 		n_total = sum(self.seqcounts[rid] for rid in hits)
 		for rid, regions in hits.items():
 			for start, end, rev_str in regions:
+#				reg_count = self.ambig_counts.setdefault(rid, Counter())
+#				
+#				if feat_distmode == "all1":
+#					increment = 1
+#				elif feat_distmode == "1overN":
+#					increment = 1 / n_aln
+#				else:
+#					uniq_counts = self.get((start, end, True), 0) + self.get((start, end, False), 0)
+#					if n_total and uniq_counts:
+#						increment = uniq_counts / 
+#				
+#				reg_count[(start, end, rev_str)] += increment
+				
 				self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += (1 / n_aln) if feat_distmode == "1overN" else 1
 
 			if n_total and self.seqcounts[rid]:
