@@ -17,22 +17,35 @@ SUPPL_ALN_FLAG = 0x800
 MATE_UNMAPPED_FLAG = 0x8
 FIRST_IN_PAIR_FLAG = 0x40
 SECOND_IN_PAIR_FLAG = 0x80
-REVCOMP_ALIGNMENT = 0x10
+REVCOMP_ALIGNMENT_FLAG = 0x10
 
 
 DEBUG = True
 
 
 class AmbiguousAlignmentRecordKeeper:
-	def __init__(self, fn):
+
+	def __init__(self, prefix):
 		self.annotated = set()
 		self.unannotated = set()
 		self.readids = dict()
-		self.ambig_dump = open(fn, "at")
+		self.ambig_dump = open(prefix + ".ambig_tmp.txt", "at")
 	def __enter__(self):
 		return self
-	def __exit__(self):
+	def __exit__(self, exc_type, exc_val, exc_tb):
 		self.ambig_dump.close()
+	def process_alignment(self, aln, aln_count, overlaps=None):
+		qname_id = self.readids.setdefault(aln.qname, len(self.readids))
+		if not overlaps:
+			self.unannotated.add(qname_id)
+		else:
+			self.annotated.add(qname_id)
+			for ovl in overlaps:
+				print(qname_id, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag, file=self.ambig_dump, sep="\t")
+	def n_unannotated(self):
+		return len(self.unannotated.difference(self.annotated))
+
+
 
 class FeatureQuantifier:
 
@@ -44,12 +57,19 @@ class FeatureQuantifier:
 		self.ambig_mode = ambig_mode
 		print("Ambig mode:", self.ambig_mode)
 
+	def allow_ambiguous_alignments(self):
+		return self.ambig_mode != "unique_only"
+	def treat_ambiguous_as_unique(self):
+		return self.ambig_mode not in ("dist1", "1overN")
+	def require_ambig_bookkeeping(self):
+		return self.allow_ambiguous_alignments() and not self.treat_ambiguous_as_unique()
+
 	def process_unique_cache(self, rid, ref):
 		for qname, uniq_aln in self.umap_cache.items():
 			n_aln = len(uniq_aln)
 			if n_aln == 1:
 				start, end, flag = uniq_aln[0][1:]
-				rev_strand = flag & REVCOMP_ALIGNMENT
+				rev_strand = flag & REVCOMP_ALIGNMENT_FLAG
 			elif n_aln == 2:
 				start, end = BamFile.calculate_fragment_borders(*uniq_aln[0][1:-1], *uniq_aln[1][1:-1])
 				rev_strand = None
@@ -65,15 +85,14 @@ class FeatureQuantifier:
 		t0 = time.time()
 		current_ref, current_rid = None, None
 
-		ambig_reads = AmbiguousAlignmentRecordKeeper() if self.ambig_mode == "1overN" else contextlib.nullcontext
-			
+		bam_stream = bam.get_alignments(
+			allow_multiple=self.allow_ambiguous_alignments(),
+			allow_unique=True, disallowed_flags=SUPPL_ALN_FLAG)
 
-		with open(self.out_prefix + ".ambig_tmp.txt", "wt") as ambig_out_tmp:
-			annotated, unannotated = set(), set()
-			qname_d = dict()
-			for aln_count, aln in bam.get_alignments(allow_multiple=self.ambig_mode != "unique_only", allow_unique=True, disallowed_flags=SUPPL_ALN_FLAG):
-				start, end = aln.start, aln.end
-				qname = aln.qname
+		ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(self.out_prefix) if self.require_ambig_bookkeeping() else contextlib.nullcontext()
+		with ambig_bookkeeper:
+			for aln_count, aln in bam_stream:
+				start, end, rev_strand = aln.start, aln.end, aln.flag & REVCOMP_ALIGNMENT_FLAG
 
 				if aln.rid != current_rid:
 					if current_rid is not None:
@@ -85,48 +104,87 @@ class FeatureQuantifier:
 						ref=current_ref, rid=aln.rid, n_ref=bam.n_references(), n_aln=aln_count),
 						file=sys.stderr, flush=True)
 
-				rev_strand = aln.flag & REVCOMP_ALIGNMENT
-				if aln.is_ambiguous() and self.ambig_mode in ("dist1", "1overN"):
+				if aln.is_ambiguous() and self.require_ambig_bookkeeping():
 					overlaps = self.gff_dbm.get_overlaps(current_ref, start, end)
-					if overlaps:
-						qname_id = qname_d.setdefault(qname, len(qname_d))
-						annotated.add(qname_id)
-						for ovl in overlaps:
-							print(qname_id, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag, file=ambig_out_tmp, sep="\t")
-					else:
-						unannotated.add(qname_id)
+					ambig_bookkeeper.process_alignment(aln, aln_count, overlaps=overlaps)
 				elif aln.is_unique() and aln.is_paired() and aln.rid == aln.rnext and not aln.flag & MATE_UNMAPPED_FLAG:
-					# need to keep track of read pairs to avoid dual counts
-					# check if the mate has already been seen
-					#mates = self.umap_cache.setdefault(qname, list())
-					#if mates:
-					#	# if it has, calculate the total fragment size and remove the pair from the cache
-					#	if aln.rnext != mates[0][0]:
-					#		print("WARNING: alignment {qname} seems to be corrupted: {aln1} {aln2}".format(qname=qname, aln1=str(aln), aln2=str(mates[0])), flush=True, file=sys.stderr)
-					#		continue # i don't think this ever happens
-					#	else:
-					#		start, end = BamFile.calculate_fragment_borders(aln.start, aln.end, *mates[0][1:-1])
-					#		rev_strand = None
-					#		del self.umap_cache[qname]
-					#else:
-					#	# otherwise cache the first encountered mate and advance to the next read
-					#	mates.append((aln.rid, aln.start, aln.end, aln.flag))
-					#	continue
-					start, end, rev_strand = self._process_unique_properly_paired_alignment(self, aln)
-					if start is None:
-						continue
+					start, end, rev_strand = self._process_unique_properly_paired_alignment(aln)
 
 				# at this point only single-end reads and merged pairs should be processed here ( + ambiguous reads in "all1" mode )
-				self.overlap_counter.update_unique_counts(aln.rid, self.gff_dbm.get_overlaps(current_ref, start, end), rev_strand=rev_strand)
+				if start is not None:
+					self.overlap_counter.update_unique_counts(aln.rid, self.gff_dbm.get_overlaps(current_ref, start, end), rev_strand=rev_strand)
 
-		self.process_unique_cache(current_rid, current_ref)
-		t1 = time.time()
+			self.process_unique_cache(current_rid, current_ref)
+			t1 = time.time()
 
-		print("Processed {n_align} alignments in {n_seconds:.3f}s.".format(
-		    n_align=aln_count, n_seconds=t1-t0), flush=True
-		)
+			print("Processed {n_align} alignments in {n_seconds:.3f}s.".format(
+				n_align=aln_count, n_seconds=t1-t0), flush=True
+			)
 
-		return len(unannotated.difference(annotated))
+		if self.require_ambig_bookkeeping():
+			return ambig_bookkeeper.n_unannotated() 
+
+		return 0
+
+#		with open(self.out_prefix + ".ambig_tmp.txt", "wt") as ambig_out_tmp:
+#			annotated, unannotated = set(), set()
+#			qname_d = dict()
+#			for aln_count, aln in bam.get_alignments(allow_multiple=self.ambig_mode != "unique_only", allow_unique=True, disallowed_flags=SUPPL_ALN_FLAG):
+#				start, end = aln.start, aln.end
+#				qname = aln.qname
+#
+#				if aln.rid != current_rid:
+#					if current_rid is not None:
+#						self.process_unique_cache(current_rid, current_ref)
+#					current_ref, current_rid = bam.get_reference(aln.rid)[0], aln.rid
+#
+#					print("{time}\tNew reference: {ref} ({rid}/{n_ref}). {n_aln} alignments processed.".format(
+#						time=datetime.now().strftime("%m/%d/%Y,%H:%M:%S"),
+#						ref=current_ref, rid=aln.rid, n_ref=bam.n_references(), n_aln=aln_count),
+#						file=sys.stderr, flush=True)
+#
+#				rev_strand = aln.flag & REVCOMP_ALIGNMENT_FLAG
+#				if aln.is_ambiguous() and self.ambig_mode in ("dist1", "1overN"):
+#					overlaps = self.gff_dbm.get_overlaps(current_ref, start, end)
+#					if overlaps:
+#						qname_id = qname_d.setdefault(qname, len(qname_d))
+#						annotated.add(qname_id)
+#						for ovl in overlaps:
+#							print(qname_id, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag, file=ambig_out_tmp, sep="\t")
+#					else:
+#						unannotated.add(qname_id)
+#				elif aln.is_unique() and aln.is_paired() and aln.rid == aln.rnext and not aln.flag & MATE_UNMAPPED_FLAG:
+#					# need to keep track of read pairs to avoid dual counts
+#					# check if the mate has already been seen
+#					#mates = self.umap_cache.setdefault(qname, list())
+#					#if mates:
+#					#	# if it has, calculate the total fragment size and remove the pair from the cache
+#					#	if aln.rnext != mates[0][0]:
+#					#		print("WARNING: alignment {qname} seems to be corrupted: {aln1} {aln2}".format(qname=qname, aln1=str(aln), aln2=str(mates[0])), flush=True, file=sys.stderr)
+#					#		continue # i don't think this ever happens
+#					#	else:
+#					#		start, end = BamFile.calculate_fragment_borders(aln.start, aln.end, *mates[0][1:-1])
+#					#		rev_strand = None
+#					#		del self.umap_cache[qname]
+#					#else:
+#					#	# otherwise cache the first encountered mate and advance to the next read
+#					#	mates.append((aln.rid, aln.start, aln.end, aln.flag))
+#					#	continue
+#					start, end, rev_strand = self._process_unique_properly_paired_alignment(self, aln)
+#					if start is None:
+#						continue
+#
+#				# at this point only single-end reads and merged pairs should be processed here ( + ambiguous reads in "all1" mode )
+#				self.overlap_counter.update_unique_counts(aln.rid, self.gff_dbm.get_overlaps(current_ref, start, end), rev_strand=rev_strand)
+#
+#		self.process_unique_cache(current_rid, current_ref)
+#		t1 = time.time()
+#
+#		print("Processed {n_align} alignments in {n_seconds:.3f}s.".format(
+#		    n_align=aln_count, n_seconds=t1-t0), flush=True
+#		)
+#
+#		return len(unannotated.difference(annotated))
 
 	def _process_unique_properly_paired_alignment(self, aln):
 		# need to keep track of read pairs to avoid dual counts
@@ -141,13 +199,13 @@ class FeatureQuantifier:
 			else:
 				start, end = BamFile.calculate_fragment_borders(aln.start, aln.end, *mates[0][1:-1])
 				rev_strand = None
-				del self.umap_cache[qname]
+				del self.umap_cache[aln.qname]
 		else:
 			# otherwise cache the first encountered mate and advance to the next read
 			mates.append((aln.rid, aln.start, aln.end, aln.flag))
 
 		return start, end, rev_strand
-		
+
 
 
 	def _read_ambiguous_alignments(self, ambig_in):
@@ -173,7 +231,7 @@ class FeatureQuantifier:
 
 	def process_data(self, bamfile, strand_specific=False):
 		bam = BamFile(bamfile)
-		unannotated = self.process_alignments(bam)
+		unannotated_ambig = self.process_alignments(bam)
 
 		print(self.gff_dbm._read_data.cache_info(), flush=True)
 		self.gff_dbm._read_data.cache_clear()
@@ -195,7 +253,7 @@ class FeatureQuantifier:
 				n_align=n_align, n_seconds=t1-t0), flush=True)
 
 		self.overlap_counter.annotate_counts(bam, self.gff_dbm, strand_specific=strand_specific)
-		self.overlap_counter.unannotated_reads += unannotated
+		self.overlap_counter.unannotated_reads += unannotated_ambig
 		self.overlap_counter.dump_counts(bam, strand_specific=strand_specific)
 
 		print("Finished.", flush=True)
@@ -245,5 +303,5 @@ class AmbiguousAlignmentGroup:
 
 		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
 		for rid, start, end, flag in alignments:
-			hits.setdefault(rid, set()).add((start, end, flag & REVCOMP_ALIGNMENT))
+			hits.setdefault(rid, set()).add((start, end, flag & REVCOMP_ALIGNMENT_FLAG))
 		counter.update_ambiguous_counts(hits, self.n_align(), self.unannotated, gff_dbm, bam, feat_distmode=distmode)
