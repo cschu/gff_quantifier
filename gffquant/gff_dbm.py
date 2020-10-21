@@ -38,3 +38,8 @@ class GffDatabaseManager:
 		return self._read_data(ref, include_payload=True).get((ref, start, end), dict())
 	def get_overlaps(self, ref, start, end, cache_data=False):
 		return self._get_tree(ref, cache_data=cache_data)[start:end]
+	def clear_caches(self):
+		print(self._read_data.cache_info(), flush=True)
+		self._read_data.cache_clear()
+		print(self._get_tree.cache_info(), flush=True)
+		self._get_tree.cache_clear()
