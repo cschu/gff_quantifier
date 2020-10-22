@@ -15,7 +15,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 	description = long_description = description.read()
 
 	name="gffquant"
-	version = "0.5"
+	version = "0.6"
 
 	if sys.version_info.major != 3:
 		raise EnvironmentError("""{toolname} is a python module that requires python3, and is not compatible with python2.""".format(toolname=name))
@@ -42,7 +42,9 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 		#scripts=["util/gff_indexer.py"],
 		install_requires=[
 			"intervaltree",
-			"pyyaml>=5.3"
+			"pyyaml>=5.3",
+			"numpy",
+			"pandas"
 		],
 		entry_points={
 			"console_scripts": [

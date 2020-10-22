@@ -8,6 +8,8 @@ Build:
 Install (will be automatically installed if pip install is used as described below):
 - pyyaml
 - intervaltree
+- numpy
+- pandas
 
 ### Installation
 1. Obtain the source code `git clone https://github.com/cschu/gff_quantifier.git`.
