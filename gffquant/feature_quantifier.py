@@ -133,6 +133,7 @@ class FeatureQuantifier:
 					# then the alignment processing is deferred to the bookkeeper
 					overlaps = self.gff_dbm.get_overlaps(current_ref, start, end)
 					ambig_bookkeeper.process_alignment(aln, aln_count, overlaps=overlaps)
+					start, end, rev_strand = None, None, None
 				elif aln.is_unique() and aln.is_paired() and aln.rid == aln.rnext and not aln.flag & MATE_UNMAPPED_FLAG:
 					# if a read belongs to a properly-paired (both mates align to the same reference sequence), unique alignment
 					# it can only be processed if the mate has already been encountered, otherwise it is stored
