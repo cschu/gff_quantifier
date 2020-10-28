@@ -61,14 +61,14 @@ class BamAlignment:
 		 )
 
 class BamFile:
-	def __init__(self, fn):
+	def __init__(self, fn, large_header=False):
 		self._references = list()
 		self._file = gzip.open(fn, "rb")
 		self._fpos = 0
 		self._data_block_start = 0
-		self._read_header()
+		self._read_header(large_header=large_header)
 
-	def _read_header(self):
+	def _read_header(self, large_header=False):
 		try:
 			magic = "".join(map(bytes.decode, struct.unpack("cccc", self._file.read(4))))
 		except:
@@ -77,19 +77,33 @@ class BamFile:
 			raise ValueError("Not a valid bam file.")
 		len_header = struct.unpack("I", self._file.read(4))[0]
 		if len_header:
-			header_str = struct.unpack("c" * len_header, self._file.read(len_header))
+			# since we're quite close to the start, we don't lose much by seeking in bgzip'd file
+			# obviously, if the header is to be retained, need to handle differently
+			self._file.seek(len_header, 1)
+			#bufsize = 102400 # 100Mb buffer
+			#if large_header and len_header >= bufsize:
+			#	for offset in range(0, len_header, bufsize):
+			#		_ = self._file.read(min(bufsize, len_header - offset))
+			#
+			##>>> for i in range(0,5193,1024):
+			##...     print(i, min(1024, 5193-i))
+			#else:
+			#	# header_str = struct.unpack("c" * len_header, self._file.read(len_header))
+			#	_ = self._file.read(len_header)
 		n_ref = struct.unpack("I", self._file.read(4))[0]
 		self._fpos += 4 + 4 + len_header + 4
 		for i in range(n_ref):
 			len_rname = struct.unpack("I", self._file.read(4))[0]
-			rname = "".join(map(bytes.decode, struct.unpack("c" * len_rname, self._file.read(len_rname))[:-1]))
+			# rname = "".join(map(bytes.decode, struct.unpack("c" * len_rname, self._file.read(len_rname))[:-1]))
+			rname = self._file.read(len_rname)[:-1] # not decoding here anymore, this saves a couple bytes
 			len_ref = struct.unpack("I", self._file.read(4))[0]
 			self._references.append((rname, len_ref))
 			self._fpos += 4 + len_rname + 4
 		self._data_block_start = self._fpos
 
 	def get_reference(self, rid):
-		return self._references[rid]
+		rname, rlen = self._references[rid]
+		return rname.decode(), rlen
 	def n_references(self):
 		return len(self._references)
 	def get_position(self):
