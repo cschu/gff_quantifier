@@ -37,25 +37,50 @@ Memory and computing time requirements correspond to bamfile size. For current b
   - `uniq_only` and `all1`: ~10GB memory and ~4h (up to 7h for `all1`)
   - `1overN`: >10GB memory, ~10min - >8h
   
+### Count model 
+
+* Reads aligning uniquely always contribute 1 to the region they align to
+* The count contribution of reads with multiple (ambiguous) alignments depends on the mode:
+  1. In `unique_only`, ambiguous reads are ignored.
+  2. In `all1`, ambiguous reads contribute 1 to each region they align to. Each alignment is treated (and reported) as unique read.
+  3. In `1overN`, each alignment against an annotated region contributes `1/N` to the region. `N` is the number of alignments against an annotated region. Alignments against unannotated regions are ignored.
+<img src="./doc/count_distribution.svg" width="640">
+
+
+* Counts against a region are propagated to the subfeatures with which the region is annotated.
+* Given feature category `F (e.g. eggNOG_GOs)` with subfeatures `f_1, f_2, f_3, ... (e.g. GO:0000001, ...)`:
+  A region with `c` read counts and annotated with `n` subfeatures `(f_1, ..., f_n)` will propagate:
+  1. `+c` to each subfeature count `raw(f_i)`
+  2. `+c / length(region)` to each normalised subfeature count `norm(f_i)`
+* Feature category - specific scaling factors are calculated as `sigma_F = sum(raw(f_i)) / sum(norm(f_i))` for each feature category `F`. These scaling factors are used to restore the proportion of counts with respect to the original sum of counts `scaled(f_i) = norm(f_i) * sigma_F`.
+The ngLess documentation states:
+
+> "{scaled} is the result of the {normed} mode scaled up so that the total number of counts is
+> identical to the {raw} (within rounding error)"
+  
+* `gffquant` reports raw counts, normalised, and scaled values together in its count tables
+
+
+
+<img src="./doc/normalisation_scaling.svg" width="640">
+  
+  
 ### Output: count tables
 
 **feature_counts**
 
-unannotated: number of reads with unique alignment that do not overlap any annotated feature
+Unannotated reads are given in the first non-header row.
 
-columns:
+Count tables consist of the following columns:
+1. `subfeature` (e.g. BRITE:br01600)
+2. `uniq_raw`: the raw counts of unique alignments (or, in `all1` mode, the sum of unique and ambiguous alignments)
+3. `uniq_lnorm`: the sum of the length-normalised unique raw counts (s. section Count Model)
+4. `uniq_scaled`: the scaled, normalised unique counts
 
-1. subfeature (e.g. BRITE:br01600)
-2. raw unique counts
-3. normalised unique counts (normalised by length of overlapped feature)
-4. scaled unique counts (the calculations for this are taken from ngLess, i.e.:)
+If ambiguous reads are not treated as unique (`mode=1overN`), the next 4 columns (5-8; (`ambig_`)) additionally contain the contributions from ambiguous alignments.
 
+If a strand-specific mode (currently only available for single-end RNAseq reads) was chosen, the table will further continue column blocks for sense-strand counts (`_ss`) and antisense-strand counts (`_as`). 
 
-> "{scaled} is the result of the {normed} mode scaled up so that the total number of counts is
-> identical to the {raw} (within rounding error)"
-
-Columns 5.,6.,7. are raw, normalised, and scaled counts (analogous to 2.,3.,4.), but include ambiguous alignment counts. If the counting was run as "unique_only", then 2.,3.,4. should be identical to 5.,6.,7.. (if they are always identical, but ambiguous alignments exist and were included, then there's a bug...)
-Note that a feature with overlapping reads may have multiple functional annotations. Hence, all counts added together will not be equal to the number of alignments.
 
 **seqname.uniq**
 
