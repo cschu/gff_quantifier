@@ -38,6 +38,8 @@ class OverlapCounter(dict):
 		self.unannotated_reads = 0
 		self.ambig_counts = dict()
 		self.has_ambig_counts = False
+		self.scaling_factor = None
+		self.scaling_factor_ambi = None
 		pass
 	def update_unique_counts(self, rid, overlaps, rev_strand=False):
 		'''
@@ -54,6 +56,9 @@ class OverlapCounter(dict):
 		print("Processing counts ...", flush=True)
 		t0 = time.time()
 
+		total, total_ambi = 0, 0
+		total_normed, total_ambi_normed = 0, 0
+
 		for rid in set(self.keys()).union(self.ambig_counts):
 			ref = bam.get_reference(rid)[0]
 			for start, end, rev_strand in set(self.get(rid, set())).union(self.ambig_counts.get(rid, set())):
@@ -62,25 +67,55 @@ class OverlapCounter(dict):
 				strand = region_annotation[0][1]
 
 				is_antisense = strand_specific and ((strand == "+" and rev_strand) or (strand == "-" and not rev_strand))
+				if strand_specific:
+					bins, bin_offset = 12, (8 if is_antisense else 4)
+				else:
+					bins, bin_offset = 4, 0
 
-				for ftype, values in region_annotation[1:]:
-					for v in values:
-						count = self.get(rid, dict()).get((start, end, rev_strand), 0)
-						ambi_count = count + self.ambig_counts.get(rid, dict()).get((start, end, rev_strand), 0)
-						if strand_specific:
-							bins, bin_offset = 12, (8 if is_antisense else 4)
-						else:
-							bins, bin_offset = 4, 0
-						fcounts = self.featcounts.setdefault(ftype, dict()).setdefault(v, numpy.array([0.0 for i in range(bins)]))
-						for i, c in enumerate((count, count / region_length, ambi_count, ambi_count / region_length)):
+				counts = [self.get(rid, dict()).get((start, end, rev_strand), 0)]
+				counts.append(counts[0] + self.ambig_counts.get(rid, dict()).get((start, end, rev_strand), 0))
+				counts.extend([counts[0] / region_length, counts[1] / region_length])
+
+				total += counts[0]
+				total_ambi += counts[1]
+				total_normed += counts[2]
+				total_ambi_normed += counts[3]
+
+				for ftype, ftype_counts in region_annotation[1:]:
+					for ft_ct in ftype_counts:
+						fcounts = self.featcounts.setdefault(ftype, dict()).setdefault(ft_ct, numpy.array([0.0 for i in range(bins)]))
+						for i, c in enumerate(counts):
 							fcounts[i] += c
 							if bin_offset:
 								fcounts[i + bin_offset] += c
+
+				#for ftype, values in region_annotation[1:]:
+				#	for v in values:
+				#		#count = self.get(rid, dict()).get((start, end, rev_strand), 0)
+				#		#ambi_count = count + self.ambig_counts.get(rid, dict()).get((start, end, rev_strand), 0)
+				#		#if strand_specific:
+				#		#	bins, bin_offset = 12, (8 if is_antisense else 4)
+				#		#else:
+				#		#	bins, bin_offset = 4, 0
+				#		fcounts = self.featcounts.setdefault(ftype, dict()).setdefault(v, numpy.array([0.0 for i in range(bins)]))
+				#		for i, c in enumerate((count, count / region_length, ambi_count, ambi_count / region_length)):
+				#			fcounts[i] += c
+				#			if bin_offset:
+				#				fcounts[i + bin_offset] += c
+
+		self.scaling_factor = (total / total_normed) if total_normed else None
+		self.scaling_factor_ambi = (total_ambi / total_ambi_normed) if total_ambi_normed else None
 
 		self.clear()
 		self.ambig_counts.clear()
 		t1 = time.time()
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
+
+
+
+
+
+
 
 	def update_ambiguous_counts(self, hits, n_aln, unannotated, gff_dbm, bam, feat_distmode="all1", strand_specific=False):
 		self.has_ambig_counts = True
@@ -154,32 +189,32 @@ class OverlapCounter(dict):
 			print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
 			for ftype, counts in sorted(self.featcounts.items()):
 				print("#{}".format(ftype), file=feat_out, flush=True)
-				feature_scaling_factor = OverlapCounter.calculate_feature_scaling_factor(counts)
-				feature_scaling_factor_ambig = OverlapCounter.calculate_feature_scaling_factor(counts, include_ambig=True)
+				#feature_scaling_factor = OverlapCounter.calculate_feature_scaling_factor(counts)
+				#feature_scaling_factor_ambig = OverlapCounter.calculate_feature_scaling_factor(counts, include_ambig=True)
 
 				for subf, sf_counts in sorted(counts.items()):
 					# first batch: unique
 					out_row = list(sf_counts[:2])
-					out_row.append(out_row[-1] * feature_scaling_factor)
+					out_row.append(out_row[-1] * self.scaling_factor)
 					# next batch: ambiguous (if exist)
 					if self.has_ambig_counts:
 						out_row.extend(sf_counts[2:4])
-						out_row.append(out_row[-1] * feature_scaling_factor_ambig)
+						out_row.append(out_row[-1] * self.scaling_factor_ambi)
 					# next batch: sense-strand unique
 					if strand_specific:
 						out_row.extend(sf_counts[4:6])
-						out_row.append(out_row[-1] * feature_scaling_factor)
+						out_row.append(out_row[-1] * self.scaling_factor)
 						# next batch: sense-strand ambiguous
 						if self.has_ambig_counts:
 							out_row.extend(sf_counts[6:8])
-							out_row.append(out_row[-1] * feature_scaling_factor_ambig)
+							out_row.append(out_row[-1] * self.scaling_factor_ambi)
 						# next batch antisense-strand unique
 						out_row.extend(sf_counts[8:10])
-						out_row.append(out_row[-1] * feature_scaling_factor)
+						out_row.append(out_row[-1] * self.scaling_factor)
 						# next batch: antisense-strand ambiguous
 						if self.has_ambig_counts:
 							out_row.extend(sf_counts[10:12])
-							out_row.append(out_row[-1] * feature_scaling_factor_ambig)
+							out_row.append(out_row[-1] * self.scaling_factor_ambi)
 
 					print(subf, out_row[0], *("{:.5f}".format(c) for c in out_row[1:]), flush=True, sep="\t", file=feat_out)
 
