@@ -72,13 +72,14 @@ class OverlapCounter(dict):
 				else:
 					bins, bin_offset = 4, 0
 
-				counts = [self.get(rid, dict()).get((start, end, rev_strand), 0)]
-				counts.append(counts[0] + self.ambig_counts.get(rid, dict()).get((start, end, rev_strand), 0))
-				counts.extend([counts[0] / region_length, counts[1] / region_length])
+				counts = [self.get(rid, dict()).get((start, end, rev_strand), 0), 0, 0, 0]
+				counts[1] = counts[0] / region_length
+				counts[2] = counts[0] + self.ambig_counts.get(rid, dict()).get((start, end, rev_strand), 0)
+				counts[3] = counts[2] / region_length
 
 				total += counts[0]
-				total_ambi += counts[1]
-				total_normed += counts[2]
+				total_normed += counts[1]
+				total_ambi += counts[2]
 				total_ambi_normed += counts[3]
 
 				for ftype, ftype_counts in region_annotation[1:]:
