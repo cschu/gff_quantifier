@@ -265,9 +265,12 @@ class AmbiguousAlignmentGroup:
 			self.uniq_alignments.add(short_aln[:-1])
 
 	def n_align(self):
-		return len(self.uniq_alignments)
+		return len(self.uniq_alignments.union((self.primary1, self.primary2)).difference({None}))
 
 	def resolve(self, counter, gff_dbm, bam, distmode="all1"):
+
+		#print("RESOLVING", self.qname, self.primary1, self.primary2, self.unannotated, self.n_align(), list(self.uniq_alignments)[:10])
+
 		hits = dict()
 
 		if self.primary1 is not None and self.primary2 is not None and self.primary1[:-1] == self.primary2[:-1]:
@@ -275,6 +278,7 @@ class AmbiguousAlignmentGroup:
 
 		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
 		for rid, start, end, flag in alignments:
+			# print(rid, bam.get_reference(rid), start, end, flag)
 			hits.setdefault(rid, set()).add((start, end, flag & REVCOMP_ALIGNMENT_FLAG))
 
 		counter.update_ambiguous_counts(hits, self.n_align(), self.unannotated, gff_dbm, bam, feat_distmode=distmode)

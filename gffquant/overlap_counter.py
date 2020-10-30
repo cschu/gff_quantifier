@@ -95,6 +95,8 @@ class OverlapCounter(dict):
 				# distribute the counts to the associated functional (sub-)categories
 				for ftype, ftype_counts in region_annotation[1:]:
 					for i, ft_ct in enumerate(ftype_counts, start=1):
+						#if ft_ct == "br01611":
+						#	print("br01611:", rid, ref, start, end, region_length, counts)
 						fcounts = self.featcounts.setdefault(ftype, dict()).setdefault(ft_ct, numpy.zeros(bins)) #array([0.0 for i in range(bins)]))
 						total_fcounts = feature_count_sums.setdefault(ftype, numpy.zeros(4)) #total_counts_per_feature.setdefault(ftype, numpy.zeros(4))
 
