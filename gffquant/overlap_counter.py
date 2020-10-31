@@ -60,6 +60,8 @@ class OverlapCounter(dict):
 		total_counts = numpy.zeros(4)
 		feature_count_sums = dict()
 
+		bins = 12 if strand_specific else 4
+
 		for rid in set(self.keys()).union(self.ambig_counts):
 			ref = bam.get_reference(rid)[0]
 			for start, end, rev_strand in set(self.get(rid, set())).union(self.ambig_counts.get(rid, set())):
@@ -72,10 +74,10 @@ class OverlapCounter(dict):
 				# att: _ambi counts are unique + ambiguous
 				# in case of strand-specific counts, these fields are replicated for sense-strand hits and antisense-strand hits
 				is_antisense = strand_specific and ((strand == "+" and rev_strand) or (strand == "-" and not rev_strand))
-				if strand_specific:
-					bins, bin_offset = 12, (8 if is_antisense else 4)
-				else:
-					bins, bin_offset = 4, 0
+				#if strand_specific:
+				#	bins, bin_offset = 12, (8 if is_antisense else 4)
+				#else:
+				#	bins, bin_offset = 4, 0
 
 				# calculate the count vector for the current region
 				counts = numpy.zeros(bins)
@@ -83,9 +85,9 @@ class OverlapCounter(dict):
 				counts[1] = counts[0] / region_length
 				counts[2] = counts[0] + self.ambig_counts.get(rid, dict()).get((start, end, rev_strand), 0.0)
 				counts[3] = counts[2] / region_length
-				if strand_specific and bin_offset:
+				if strand_specific:
+					bin_offset = 8 if is_antisense else 4
 					counts[bin_offset:bin_offset + 4] += counts[:4]
-
 
 				#total += counts[0]
 				#total_normed += counts[1]
