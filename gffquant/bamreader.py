@@ -5,6 +5,13 @@ import struct
 
 from collections import Counter
 
+class SamFlags:
+	READ_REVERSE = 0x10
+	@staticmethod
+	def is_reverse_strand(flag):
+		return bool(flag & SamFlags.READ_REVERSE)
+
+
 class BamAlignment:
 	CIGAR_OPS = "MIDNSHP=X"
 	@staticmethod
@@ -25,15 +32,15 @@ class BamAlignment:
 	def is_ambiguous(self):
 		return self.mapq == 0
 	def is_primary(self):
-		return not self.flag & 0x100
+		return not bool(self.flag & 0x100)
 	def is_supplementary(self):
-		return self.flag & 0x800
+		return bool(self.flag & 0x800)
 	def is_unique(self):
 		return self.mapq != 0
 	def is_reverse(self):
-		return self.flag & 0x10
+		return bool(self.flag & 0x10)
 	def is_paired(self):
-		return self.flag & 0x1
+		return bool(self.flag & 0x1)
 	def __init__(self, qname=None, flag=None, rid=None, pos=None,
 				 mapq=None, cigar=None, rnext=None, pnext=None,
 				 tlen=None, len_seq=None, tags=None):

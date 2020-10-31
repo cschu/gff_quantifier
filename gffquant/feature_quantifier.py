@@ -9,7 +9,7 @@ import contextlib
 import numpy
 import pandas
 
-from gffquant.bamreader import BamFile
+from gffquant.bamreader import BamFile, SamFlags
 from gffquant.gff_dbm import GffDatabaseManager
 from gffquant.overlap_counter import OverlapCounter
 
@@ -59,7 +59,7 @@ class AmbiguousAlignmentRecordKeeper:
 			for ovl in overlaps:
 				print(qname_id, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag, file=self.ambig_dump, sep="\t")
 	def n_unannotated(self):
-		""" returns the number of unannotated reads (all reads that didn't align to a single annotated region) """
+		""" returns the number of unannotated reads (all reads that didn't align to any annotated region) """
 		return len(self.unannotated.difference(self.annotated))
 
 
@@ -87,7 +87,7 @@ class FeatureQuantifier:
 			n_aln = len(uniq_aln)
 			if n_aln == 1:
 				start, end, flag = uniq_aln[0][1:]
-				rev_strand = flag & REVCOMP_ALIGNMENT_FLAG
+				rev_strand = SamFlags.is_reverse_strand(flag) # & REVCOMP_ALIGNMENT_FLAG
 			elif n_aln == 2:
 				start, end = BamFile.calculate_fragment_borders(*uniq_aln[0][1:-1], *uniq_aln[1][1:-1])
 				rev_strand = None #TODO: add strand-specific handling by RNAseq protocol
@@ -115,7 +115,7 @@ class FeatureQuantifier:
 		ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(self.out_prefix) if self.require_ambig_bookkeeping() else contextlib.nullcontext()
 		with ambig_bookkeeper:
 			for aln_count, aln in bam_stream:
-				start, end, rev_strand = aln.start, aln.end, aln.flag & REVCOMP_ALIGNMENT_FLAG
+				start, end, rev_strand = aln.start, aln.end, aln.is_reverse() #flag & REVCOMP_ALIGNMENT_FLAG
 
 				if aln.rid != current_rid:
 					# if a new reference sequence is encountered, empty the alignment cache (if needed)
@@ -279,6 +279,6 @@ class AmbiguousAlignmentGroup:
 		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
 		for rid, start, end, flag in alignments:
 			# print(rid, bam.get_reference(rid), start, end, flag)
-			hits.setdefault(rid, set()).add((start, end, flag & REVCOMP_ALIGNMENT_FLAG))
+			hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag))) # & REVCOMP_ALIGNMENT_FLAG))
 
 		counter.update_ambiguous_counts(hits, self.n_align(), self.unannotated, gff_dbm, bam, feat_distmode=distmode)
