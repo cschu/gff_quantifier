@@ -261,7 +261,7 @@ class AmbiguousAlignmentGroup:
 	def n_align(self):
 		return len(self.uniq_alignments.union((self.primary1, self.primary2)).difference({None}))
 
-	def resolve(self, counter, gff_dbm, bam, distmode="all1"):
+	def resolve(self, counter, gff_dbm, bam, distmode="1overN"):
 
 		#print("RESOLVING", self.qname, self.primary1, self.primary2, self.unannotated, self.n_align(), list(self.uniq_alignments)[:10])
 
