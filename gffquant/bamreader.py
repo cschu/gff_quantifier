@@ -6,7 +6,14 @@ import struct
 from collections import Counter
 
 class SamFlags:
-	READ_REVERSE = 0x10
+	PAIRED = 0x1
+	MATE_UNMAPPED = 0x8
+	REVERSE = 0x10
+	FIRST_IN_PAIR = 0x40
+	SECOND_IN_PAIR = 0x80
+	SECONDARY_ALIGNMENT = 0x100
+	SUPPLEMENTARY_ALIGNMENT = 0x800
+
 	@staticmethod
 	def is_reverse_strand(flag):
 		return bool(flag & SamFlags.READ_REVERSE)
@@ -32,15 +39,15 @@ class BamAlignment:
 	def is_ambiguous(self):
 		return self.mapq == 0
 	def is_primary(self):
-		return not bool(self.flag & 0x100)
+		return not bool(self.flag & SamFlags.SECONDARY_ALIGNMENT)
 	def is_supplementary(self):
-		return bool(self.flag & 0x800)
+		return bool(self.flag & SamFlags.SUPPLEMENTARY_ALIGNMENT
 	def is_unique(self):
 		return self.mapq != 0
 	def is_reverse(self):
-		return bool(self.flag & 0x10)
+		return bool(self.flag & SamFlags.REVERSE)
 	def is_paired(self):
-		return bool(self.flag & 0x1)
+		return bool(self.flag & SamFlags.PAIRED)
 	def __init__(self, qname=None, flag=None, rid=None, pos=None,
 				 mapq=None, cigar=None, rnext=None, pnext=None,
 				 tlen=None, len_seq=None, tags=None):
@@ -157,39 +164,6 @@ class BamFile:
 			if flag_check and atype_check:
 				yield aln_count, BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
 			aln_count += 1
-
-
-	def get_multimappers(self):
-		'''Returns information (readname, number of ambiguous alignments, genomic coordinates) on all multimapping reads in the bamfile.'''
-
-		multimappers = dict()
-
-		t0 = time.time()
-		# First pass: get the ids of all reads that have secondary alignments
-		if self._fpos != self._data_block_start:
-			self.rewind()
-		reads_with_secaln = Counter(
-			aln.qname for aln in self.get_alignments(
-				required_flags=0x100, disallowed_flags=0x800
-			)
-		)
-		# Second pass: collect information for each multimapping read
-		self.rewind()
-		for aln_count, aln in enumerate(self.get_alignments(disallowed_flags=0x900), start=1):
-			if reads_with_secaln[aln.qname]:
-				multimappers.setdefault(aln.qname, [reads_with_secaln[aln.qname], set()])[1].add(
-					(aln.rid, aln.start, aln.end)
-				)
-		self.rewind()
-		t1 = time.time()
-		print("Collected information for {n_multimappers} secondary alignments ({size} bytes) in {n_seconds:.3f}s. (total: {n_alignments})".format(
-			size=sys.getsizeof(multimappers), n_multimappers=len(multimappers), n_seconds=t1-t0, n_alignments=len(multimappers) + aln_count), flush=True,
-		)
-		missing = len(set(reads_with_secaln).difference(multimappers))
-		if missing:
-			print("{n_missing} secondary alignments don't have primary alignment in file.".format(n_missing=missing), flush=True)
-
-		return multimappers
 
 	@staticmethod
 	def calculate_fragment_borders(start1, end1, start2, end2):

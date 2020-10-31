@@ -13,12 +13,6 @@ from gffquant.bamreader import BamFile, SamFlags
 from gffquant.gff_dbm import GffDatabaseManager
 from gffquant.overlap_counter import OverlapCounter
 
-SUPPL_ALN_FLAG = 0x800 # we don't allow supplementary alignments
-MATE_UNMAPPED_FLAG = 0x8
-FIRST_IN_PAIR_FLAG = 0x40
-SECOND_IN_PAIR_FLAG = 0x80
-REVCOMP_ALIGNMENT_FLAG = 0x10
-
 DEBUG = True
 
 class AmbiguousAlignmentRecordKeeper:
@@ -87,7 +81,7 @@ class FeatureQuantifier:
 			n_aln = len(uniq_aln)
 			if n_aln == 1:
 				start, end, flag = uniq_aln[0][1:]
-				rev_strand = SamFlags.is_reverse_strand(flag) # & REVCOMP_ALIGNMENT_FLAG
+				rev_strand = SamFlags.is_reverse_strand(flag)
 			elif n_aln == 2:
 				start, end = BamFile.calculate_fragment_borders(*uniq_aln[0][1:-1], *uniq_aln[1][1:-1])
 				rev_strand = None #TODO: add strand-specific handling by RNAseq protocol
@@ -110,12 +104,12 @@ class FeatureQuantifier:
 
 		bam_stream = bam.get_alignments(
 			allow_multiple=self.allow_ambiguous_alignments(),
-			allow_unique=True, disallowed_flags=SUPPL_ALN_FLAG)
+			allow_unique=True, disallowed_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT)
 
 		ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(self.out_prefix) if self.require_ambig_bookkeeping() else contextlib.nullcontext()
 		with ambig_bookkeeper:
 			for aln_count, aln in bam_stream:
-				start, end, rev_strand = aln.start, aln.end, aln.is_reverse() #flag & REVCOMP_ALIGNMENT_FLAG
+				start, end, rev_strand = aln.start, aln.end, aln.is_reverse()
 
 				if aln.rid != current_rid:
 					# if a new reference sequence is encountered, empty the alignment cache (if needed)
@@ -134,7 +128,7 @@ class FeatureQuantifier:
 					overlaps = self.gff_dbm.get_overlaps(current_ref, start, end)
 					ambig_bookkeeper.process_alignment(aln, aln_count, overlaps=overlaps)
 					start, end, rev_strand = None, None, None
-				elif aln.is_unique() and aln.is_paired() and aln.rid == aln.rnext and not aln.flag & MATE_UNMAPPED_FLAG:
+				elif aln.is_unique() and aln.is_paired() and aln.rid == aln.rnext and not aln.flag & SamFlags.MATE_UNMAPPED:
 					# if a read belongs to a properly-paired (both mates align to the same reference sequence), unique alignment
 					# it can only be processed if the mate has already been encountered, otherwise it is stored
 					start, end, rev_strand = self._process_unique_properly_paired_alignment(aln)
@@ -255,9 +249,9 @@ class AmbiguousAlignmentGroup:
 		short_aln = tuple(aln[2:])
 		if short_aln[0] == -1:
 			self.unannotated += 1
-		elif flag & FIRST_IN_PAIR_FLAG and self.primary1 is None:
+		elif flag & SamFlags.FIRST_IN_PAIR and self.primary1 is None:
 			self.primary1 = short_aln
-		elif flag & SECOND_IN_PAIR_FLAG and self.primary2 is None:
+		elif flag & SamFlags.SECOND_IN_PAIR and self.primary2 is None:
 			self.primary2 = short_aln
 		else:
 			self.secondaries.append(short_aln)
@@ -279,6 +273,6 @@ class AmbiguousAlignmentGroup:
 		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
 		for rid, start, end, flag in alignments:
 			# print(rid, bam.get_reference(rid), start, end, flag)
-			hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag))) # & REVCOMP_ALIGNMENT_FLAG))
+			hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag)))
 
 		counter.update_ambiguous_counts(hits, self.n_align(), self.unannotated, gff_dbm, bam, feat_distmode=distmode)
