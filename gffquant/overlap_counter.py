@@ -155,11 +155,21 @@ class OverlapCounter(dict):
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
 
-	def update_ambiguous_counts(self, hits, n_aln, unannotated, gff_dbm, bam, feat_distmode="all1", strand_specific=False):
+	def update_ambiguous_counts(self, hits, n_aln, unannotated, gff_dbm, bam, feat_distmode="1overN", strand_specific=False):
 		self.has_ambig_counts = True
-		n_total = sum(self.seqcounts[rid] for rid in hits)
+		n_total_seq = sum(self.seqcounts[rid] for rid in hits)
+		n_total = sum(self[rid].values() for rid in hits)
 		for rid, regions in hits.items():
 			for start, end, rev_str in regions:
+
+				if feat_distmode == "1overN":
+					increment = 1 / n_aln
+				elif feat_distmode == "dist1":
+					uniq_counts = self.get((start, end, True), 0) + self.get((start, end, False), 0)
+					if n_total and uniq_counts:
+						increment = uniq_counts / n_total * n_aln
+					else:
+						increment = 1 / n_aln # no idea...
 #				reg_count = self.ambig_counts.setdefault(rid, Counter())
 #				
 #				if feat_distmode == "all1":
@@ -173,9 +183,9 @@ class OverlapCounter(dict):
 #				
 #				reg_count[(start, end, rev_str)] += increment
 				
-				self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += (1 / n_aln) if feat_distmode == "1overN" else 1
+				self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += increment 
 
-			if n_total and self.seqcounts[rid]:
+			if n_total_seq and self.seqcounts[rid]:
 				self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
 			else:
 				self.ambig_seqcounts[rid] += 1 / len(hits)
