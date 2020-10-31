@@ -205,7 +205,7 @@ class FeatureQuantifier:
 		self.gff_dbm.clear_caches()
 
 		# second pass: process ambiguous alignment groups
-		if self.ambig_mode in FeatureQuantifier.TRUE_AMBIG_MODES:
+		if self.require_ambig_bookkeeping():
 			t0 = time.time()
 
 			ambig_aln = self._read_ambiguous_alignments(ambig_dumpfile)
