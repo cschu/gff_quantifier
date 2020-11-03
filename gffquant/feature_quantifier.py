@@ -197,9 +197,9 @@ class FeatureQuantifier:
 
 		return n_align
 
-	def process_data(self, bamfile, strand_specific=False):
+	def process_data(self, bamfile, strand_specific=False, large_header=False):
 		""" processes one position-sorted bamfile """
-		bam = BamFile(bamfile)
+		bam = BamFile(bamfile, large_header=large_header)
 		# first pass: process uniqs and dump ambigs (if required)
 		unannotated_ambig, ambig_dumpfile = self.process_alignments(bam)
 		self.gff_dbm.clear_caches()

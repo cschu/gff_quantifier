@@ -16,7 +16,7 @@ class SamFlags:
 
 	@staticmethod
 	def is_reverse_strand(flag):
-		return bool(flag & SamFlags.READ_REVERSE)
+		return bool(flag & SamFlags.REVERSE)
 
 
 class BamAlignment:
@@ -41,7 +41,7 @@ class BamAlignment:
 	def is_primary(self):
 		return not bool(self.flag & SamFlags.SECONDARY_ALIGNMENT)
 	def is_supplementary(self):
-		return bool(self.flag & SamFlags.SUPPLEMENTARY_ALIGNMENT
+		return bool(self.flag & SamFlags.SUPPLEMENTARY_ALIGNMENT)
 	def is_unique(self):
 		return self.mapq != 0
 	def is_reverse(self):
@@ -80,9 +80,28 @@ class BamFile:
 		self._file = gzip.open(fn, "rb")
 		self._fpos = 0
 		self._data_block_start = 0
-		self._read_header(large_header=large_header)
+		# data structures to deal with large headers
+		self._refmap = dict()
 
-	def _read_header(self, large_header=False):
+		self._read_header(keep_refs=set() if large_header else None)
+		if large_header:
+			present_refs = set(aln.rid for _, aln in self.get_alignments())
+			self._file.seek(0)
+			self._refmap = {rid: i for i, rid in enumerate(sorted(present_refs))}
+			self._read_header(keep_refs=present_refs)
+
+	def _read_references(self, keep_refs=None):
+		n_ref = struct.unpack("I", self._file.read(4))[0]
+		for i in range(n_ref):
+			len_rname = struct.unpack("I", self._file.read(4))[0]
+			rname = self._file.read(len_rname)[:-1]
+			len_ref = struct.unpack("I", self._file.read(4))[0]
+			self._fpos += 8 + len_rname
+			if keep_refs is None or i in keep_refs:
+				yield rname, len_ref
+		return list()
+
+	def _read_header(self, keep_refs=None):
 		try:
 			magic = "".join(map(bytes.decode, struct.unpack("cccc", self._file.read(4))))
 		except:
@@ -104,19 +123,21 @@ class BamFile:
 			#else:
 			#	# header_str = struct.unpack("c" * len_header, self._file.read(len_header))
 			#	_ = self._file.read(len_header)
-		n_ref = struct.unpack("I", self._file.read(4))[0]
-		self._fpos += 4 + 4 + len_header + 4
-		for i in range(n_ref):
-			len_rname = struct.unpack("I", self._file.read(4))[0]
-			# rname = "".join(map(bytes.decode, struct.unpack("c" * len_rname, self._file.read(len_rname))[:-1]))
-			rname = self._file.read(len_rname)[:-1] # not decoding here anymore, this saves a couple bytes
-			len_ref = struct.unpack("I", self._file.read(4))[0]
-			self._references.append((rname, len_ref))
-			self._fpos += 4 + len_rname + 4
+		self._fpos = 12 + len_header
+		#n_ref = struct.unpack("I", self._file.read(4))[0]
+		#for i in range(n_ref):
+		#	len_rname = struct.unpack("I", self._file.read(4))[0]
+		#	# rname = "".join(map(bytes.decode, struct.unpack("c" * len_rname, self._file.read(len_rname))[:-1]))
+		#	rname = self._file.read(len_rname)[:-1] # not decoding here anymore, this saves a couple bytes
+		#	len_ref = struct.unpack("I", self._file.read(4))[0]
+		#	self._references.append((rname, len_ref))
+		#	self._fpos += 4 + len_rname + 4
+		self._references = list(self._read_references(keep_refs=keep_refs))
 		self._data_block_start = self._fpos
 
 	def get_reference(self, rid):
-		rname, rlen = self._references[rid]
+		rid_index = self._refmap.get(rid, rid)
+		rname, rlen = self._references[rid_index]
 		return rname.decode(), rlen
 	def n_references(self):
 		return len(self._references)

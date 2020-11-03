@@ -20,6 +20,7 @@ def main():
 	)
 	ap.add_argument("--strand_specific", action="store_true",
 		help="Perform strand-specific counting for RNAseq reads. This currently only works for single-end data. This flag is ignored for paired-end data.")
+	ap.add_argument("--large_reference", action="store_true", help="bam_file is expected to contain a large number of reference header lines (e.g. from mapping against a large database)")
 	args = ap.parse_args()
 
 	gff_index = args.gff_file + ".index"
@@ -41,7 +42,7 @@ def main():
 		ambig_mode=args.ambig_mode
 	)
 
-	fq.process_data(args.bam_file, strand_specific=args.strand_specific)
+	fq.process_data(args.bam_file, strand_specific=args.strand_specific, large_header=args.large_reference)
 
 
 if __name__ == "__main__":
