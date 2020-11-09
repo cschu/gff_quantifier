@@ -82,13 +82,22 @@ class BamFile:
 		self._data_block_start = 0
 		# data structures to deal with large headers
 		self._refmap = dict()
+		self._reverse_references = dict()
 
 		self._read_header(keep_refs=set() if large_header else None)
 		if large_header:
+			t0 = time.time()
+			print("Screening bam for used reference sequences... ", flush=True, end="")
 			present_refs = set(aln.rid for _, aln in self.get_alignments())
+			t1 = time.time()
+			print(" done. ({}s)".format(t1-t0), flush=True)
 			self._file.seek(0)
 			self._refmap = {rid: i for i, rid in enumerate(sorted(present_refs))}
 			self._read_header(keep_refs=present_refs)
+			self._reverse_references = {self.get_reference(rid)[0]: rid for rid in self._refmap}
+
+	def revlookup_reference(self, ref):
+		return self._reverse_references.get(ref)
 
 	def _read_references(self, keep_refs=None):
 		n_ref = struct.unpack("I", self._file.read(4))[0]
@@ -113,25 +122,7 @@ class BamFile:
 			# since we're quite close to the start, we don't lose much by seeking in bgzip'd file
 			# obviously, if the header is to be retained, need to handle differently
 			self._file.seek(len_header, 1)
-			#bufsize = 102400 # 100Mb buffer
-			#if large_header and len_header >= bufsize:
-			#	for offset in range(0, len_header, bufsize):
-			#		_ = self._file.read(min(bufsize, len_header - offset))
-			#
-			##>>> for i in range(0,5193,1024):
-			##...     print(i, min(1024, 5193-i))
-			#else:
-			#	# header_str = struct.unpack("c" * len_header, self._file.read(len_header))
-			#	_ = self._file.read(len_header)
 		self._fpos = 12 + len_header
-		#n_ref = struct.unpack("I", self._file.read(4))[0]
-		#for i in range(n_ref):
-		#	len_rname = struct.unpack("I", self._file.read(4))[0]
-		#	# rname = "".join(map(bytes.decode, struct.unpack("c" * len_rname, self._file.read(len_rname))[:-1]))
-		#	rname = self._file.read(len_rname)[:-1] # not decoding here anymore, this saves a couple bytes
-		#	len_ref = struct.unpack("I", self._file.read(4))[0]
-		#	self._references.append((rname, len_ref))
-		#	self._fpos += 4 + len_rname + 4
 		self._references = list(self._read_references(keep_refs=keep_refs))
 		self._data_block_start = self._fpos
 
@@ -139,18 +130,23 @@ class BamFile:
 		rid_index = self._refmap.get(rid, rid)
 		rname, rlen = self._references[rid_index]
 		return rname.decode(), rlen
+
 	def n_references(self):
 		return len(self._references)
+
 	def get_position(self):
 		return self._fpos
+
 	def rewind(self):
 		self._fpos = self._data_block_start
 		self._file.seek(self._data_block_start)
+
 	def seek(self, pos):
 		if pos < self._data_block_start:
 			raise ValueError("Position {pos} seeks back into the header (data_start={data_start}).".format(pos=pos, data_start=self._data_block_start))
 		self._file.seek(pos)
 		self._fpos = pos
+
 	def get_alignments(self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True):
 		aln_count = 1
 		if not allow_multiple and not allow_unique:
@@ -167,8 +163,7 @@ class BamFile:
 				self._file.read(32)
 			)
 
-			qname = self._file.read(len_rname) # qname
-			# qname = struct.unpack("{size}s".format(size=len_rname), self._file.read(len_rname))[0].decode().rstrip("\x00") # qname
+			qname = self._file.read(len_rname)
 			cigar = struct.unpack("I" * n_cigar_ops, self._file.read(4 * n_cigar_ops))
 			self._file.read((len_seq + 1) // 2) # encoded read sequence
 			self._file.read(len_seq) # quals
@@ -176,7 +171,6 @@ class BamFile:
 			total_read = 32 + len_rname + 4 * n_cigar_ops + (len_seq + 1) // 2 + len_seq
 			tags = self._file.read(aln_size - total_read) # get the tags
 			self._fpos += 4 + aln_size
-			# print(*map(bytes.decode, struct.unpack("c"*len(tags), tags)))
 
 			flag_check = (required_flags is None or (flag & required_flags)) and (disallowed_flags is None or not (flag & disallowed_flags)) 
 			is_unique = mapq != 0

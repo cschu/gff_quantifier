@@ -30,8 +30,9 @@ class OverlapCounter(dict):
 		normalised = counts / feature_len
 		scaled = normalised * scaling_factor
 		return counts, normalised, scaled
-	def __init__(self, out_prefix):
+	def __init__(self, out_prefix, db, do_overlap_detection=True):
 		self.out_prefix = out_prefix
+		self.db = db
 		self.seqcounts = Counter()
 		self.ambig_seqcounts = Counter()
 		self.featcounts = dict()
@@ -39,108 +40,101 @@ class OverlapCounter(dict):
 		self.ambig_counts = dict()
 		self.has_ambig_counts = False
 		self.feature_scaling_factors = dict()
-		pass
-	def update_unique_counts(self, rid, overlaps, rev_strand=False):
+		self.do_overlap_detection = do_overlap_detection
+
+	def update_unique_counts(self, rid, aln, rev_strand=False):
 		'''
 		Generates a hit list from the overlaps resulting from an intervaltree query,
 		adds the number of alternative alignments and stores the results for each reference sequence.
 		'''
-		if overlaps:
-			self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
-		else:
-			self.unannotated_reads += 1
+		if aln:
+			overlaps = self.db.get_overlaps(*aln)
+			if overlaps:
+				self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
+			else:
+				self.unannotated_reads += 1
 		self.seqcounts[rid] += 1
 
-	def annotate_counts(self, bam, gff_dbm, strand_specific=False):
+	def _compute_count_vector(self, bins, rid, aln, strand, strand_specific):
+		# calculate the count vector for the current region
+		# count vectors are of the format (raw_uniq, normed_uniq, raw_ambi, normed_ambi)
+		# att: _ambi counts are unique + ambiguous
+		counts = numpy.zeros(bins)
+		region_length = aln[1] - aln[0] + 1
+		counts[0] = counts[1] = self.get(rid, dict()).get(aln, 0.0)
+		counts[1] /= region_length
+		counts[2] = counts[3] = counts[0] + self.ambig_counts.get(rid, dict()).get(aln, 0.0)
+		counts[3] /= region_length
+		if strand_specific:
+			rev_strand = aln[-1]
+			is_antisense = (strand == "+" and rev_strand) or (strand == "-" and not rev_strand)
+			bin_offset = 8 if is_antisense else 4
+			counts[bin_offset:bin_offset + 4] += counts[:4]
+
+		return counts
+
+	def _iterate_database(self, bins, bam, strand_specific):
+		total_counts, feature_count_sums = numpy.zeros(4), dict()
+
+		for ref, region_annotation in self.db.iterate():
+			rid = bam.revlookup_reference(ref)
+			if rid is not None:
+				_, region_length = bam.get_reference(rid)
+				counts = numpy.zeros(bins)
+				counts[0] = counts[1] = self.seqcounts[rid]
+				counts[1] /= region_length
+				counts[2] = counts[3] = counts[0] + self.ambig_seqcounts[rid]
+				counts[3] /= region_length
+
+				total_counts, feature_count_sums = self._distribute_feature_counts(bins, counts, region_annotation[1:], total_counts, feature_count_sums)
+
+		return total_counts, feature_count_sums
+
+	def _distribute_feature_counts(self, bins, counts, region_annotation, total_counts, feature_count_sums):
+		for ftype, ftype_counts in region_annotation:
+			for i, ft_ct in enumerate(ftype_counts, start=1):
+				fcounts = self.featcounts.setdefault(ftype, dict()).setdefault(ft_ct, numpy.zeros(bins))
+				total_fcounts = feature_count_sums.setdefault(ftype, numpy.zeros(4))
+				fcounts += counts
+
+			inc = counts[:4] * i
+			total_counts += inc
+			total_fcounts += inc
+
+		return total_counts, feature_count_sums
+
+	def _iterate_counts(self, bins, bam, strand_specific):
+		total_counts, feature_count_sums = numpy.zeros(4), dict()
+
+		for rid in set(self.keys()).union(self.ambig_counts):
+			ref = bam.get_reference(rid)[0]
+			for start, end, rev_strand in set(self.get(rid, set())).union(self.ambig_counts.get(rid, set())):
+				# region_annotation is a tuple of key-value pairs: (strand, func_category1: subcategories, func_category2: subcategories, ...)
+				region_annotation = self.db.get_data(ref, start, end)
+				counts = self._compute_count_vector(bins, rid, (start, end, rev_strand), region_annotation[0][1], strand_specific)
+
+				# distribute the counts to the associated functional (sub-)categories
+				total_counts, feature_count_sums = self._distribute_feature_counts(bins, counts, region_annotation[1:], total_counts, feature_count_sums)
+
+		return total_counts, feature_count_sums
+
+
+	def annotate_counts(self, bam, strand_specific=False):
 		"""
 		Distributes read counts against aligned regions to the associated functional categories.
 		"""
 		print("Processing counts ...", flush=True)
 		t0 = time.time()
-		total_counts = numpy.zeros(4)
-		feature_count_sums = dict()
-
 		bins = 12 if strand_specific else 4
 
-		for rid in set(self.keys()).union(self.ambig_counts):
-			ref = bam.get_reference(rid)[0]
-			for start, end, rev_strand in set(self.get(rid, set())).union(self.ambig_counts.get(rid, set())):
-				region_length = end - start + 1
-				# region_annotation is a tuple of key-value pairs: (strand, func_category1: subcategories, func_category2: subcategories, ...)
-				region_annotation = gff_dbm.get_data(ref, start, end)
-				strand = region_annotation[0][1]
-
-				# count vectors are of the format (raw_uniq, normed_uniq, raw_ambi, normed_ambi)
-				# att: _ambi counts are unique + ambiguous
-				# in case of strand-specific counts, these fields are replicated for sense-strand hits and antisense-strand hits
-				is_antisense = strand_specific and ((strand == "+" and rev_strand) or (strand == "-" and not rev_strand))
-				#if strand_specific:
-				#	bins, bin_offset = 12, (8 if is_antisense else 4)
-				#else:
-				#	bins, bin_offset = 4, 0
-
-				# calculate the count vector for the current region
-				counts = numpy.zeros(bins)
-				counts[0] = self.get(rid, dict()).get((start, end, rev_strand), 0.0)
-				counts[1] = counts[0] / region_length
-				counts[2] = counts[0] + self.ambig_counts.get(rid, dict()).get((start, end, rev_strand), 0.0)
-				counts[3] = counts[2] / region_length
-				if strand_specific:
-					bin_offset = 8 if is_antisense else 4
-					counts[bin_offset:bin_offset + 4] += counts[:4]
-
-				#total += counts[0]
-				#total_normed += counts[1]
-				#total_ambi += counts[2]
-				#total_ambi_normed += counts[3]
-
-				# distribute the counts to the associated functional (sub-)categories
-				for ftype, ftype_counts in region_annotation[1:]:
-					for i, ft_ct in enumerate(ftype_counts, start=1):
-						#if ft_ct == "br01611":
-						#	print("br01611:", rid, ref, start, end, region_length, counts)
-						fcounts = self.featcounts.setdefault(ftype, dict()).setdefault(ft_ct, numpy.zeros(bins)) #array([0.0 for i in range(bins)]))
-						total_fcounts = feature_count_sums.setdefault(ftype, numpy.zeros(4)) #total_counts_per_feature.setdefault(ftype, numpy.zeros(4))
-
-						fcounts += counts
-
-					inc = counts[:4] * i
-					total_counts += inc #counts[:4]
-					total_fcounts += inc #counts[:4]
-
-					#
-					#	for i, c in enumerate(counts):
-					#		#TODO use proper numpy addition,
-					#		fcounts[i] += c
-					#		total_counts[i] += c
-					#		total_fcounts[i] += c
-					#		if bin_offset:
-					#			fcounts[i + bin_offset] += c
-
-					#	total_counts += (i+1) * counts
-					#	total_fcounts += (i+1) * counts
-
-				#for ftype, values in region_annotation[1:]:
-				#	for v in values:
-				#		#count = self.get(rid, dict()).get((start, end, rev_strand), 0)
-				#		#ambi_count = count + self.ambig_counts.get(rid, dict()).get((start, end, rev_strand), 0)
-				#		#if strand_specific:
-				#		#	bins, bin_offset = 12, (8 if is_antisense else 4)
-				#		#else:
-				#		#	bins, bin_offset = 4, 0
-				#		fcounts = self.featcounts.setdefault(ftype, dict()).setdefault(v, numpy.array([0.0 for i in range(bins)]))
-				#		for i, c in enumerate((count, count / region_length, ambi_count, ambi_count / region_length)):
-				#			fcounts[i] += c
-				#			if bin_offset:
-				#				fcounts[i + bin_offset] += c
+		annotation_f = self._iterate_counts if self.do_overlap_detection else self._iterate_database
+		total_counts, feature_count_sums = annotation_f(bins, bam, strand_specific)
 
 		# calculate the scaling factors
 		total, total_normed, total_ambi, total_ambi_normed = total_counts
 
 		self.feature_scaling_factors["total"] = (total / total_normed) if total_normed else None
 		self.feature_scaling_factors["total_ambi"] = (total_ambi / total_ambi_normed) if total_ambi_normed else None
-		#self.scaling_factor = (total / total_normed) if total_normed else None
-		#self.scaling_factor_ambi = (total_ambi / total_ambi_normed) if total_ambi_normed else None
 
 		for ftype, counts in feature_count_sums.items():
 			total, total_normed, total_ambi, total_ambi_normed = counts
@@ -155,11 +149,13 @@ class OverlapCounter(dict):
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
 
-	def update_ambiguous_counts(self, hits, n_aln, unannotated, gff_dbm, bam, feat_distmode="all1", strand_specific=False):
+	def update_ambiguous_counts(self, hits, n_aln, unannotated, bam, feat_distmode="all1", strand_specific=False):
 		self.has_ambig_counts = True
 		n_total = sum(self.seqcounts[rid] for rid in hits)
 		for rid, regions in hits.items():
-			for start, end, rev_str in regions:
+			if self.do_overlap_detection:
+				for start, end, rev_str in regions:
+					self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += (1 / n_aln) if feat_distmode == "1overN" else 1
 #				reg_count = self.ambig_counts.setdefault(rid, Counter())
 #				
 #				if feat_distmode == "all1":
@@ -169,16 +165,16 @@ class OverlapCounter(dict):
 #				else:
 #					uniq_counts = self.get((start, end, True), 0) + self.get((start, end, False), 0)
 #					if n_total and uniq_counts:
-#						increment = uniq_counts / 
+#						increment = uniq_counts /
 #				
 #				reg_count[(start, end, rev_str)] += increment
-				
-				self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += (1 / n_aln) if feat_distmode == "1overN" else 1
 
-			if n_total and self.seqcounts[rid]:
-				self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
+				if n_total and self.seqcounts[rid]:
+					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
+				else:
+					self.ambig_seqcounts[rid] += 1 / len(hits)
 			else:
-				self.ambig_seqcounts[rid] += 1 / len(hits)
+				self.ambig_seqcounts[rid] += (1 / n_aln) if feat_distmode == "1overN" else 1
 
 	@staticmethod
 	def calculate_seqcount_scaling_factor(counts, bam):
