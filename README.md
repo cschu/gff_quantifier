@@ -20,11 +20,19 @@ Install (will be automatically installed if pip install is used as described bel
 After this, the relevant commands `gff_indexer` and `gffquant` should be in your path.
 
 ### Running gffquant
-1. Pre-index your gff-file with `gffindex <input_gff>`.
-  - This will write the index to `<input_gff>.index` and only needs to be done once per gff.
-  - For best results, the gff should be strictly sorted by seqname (column 1).
-  - The gff must not be gzipped (random access of gzipped files via seek() is not feasible, hence gzipped gffs are not supported).
-2. Run `gffquant <input_gff> <input_bam> -o <out_prefix> [--ambig_mode {[unique_only], all1, 1overN}]`
+`gffquant` supports two kinds of input data, controlled by the `--mode` or `-m` parameter.
+
+- Mode `-m genome` is the default mode. In this mode, `gffquant` takes as input a bamfile containing alignments against a set of genomic reference contigs and a gff3 file containing functional annotations for the genes encoded on the input contigs. The functional profiling strategy in this mode is to only ever have a small portion of the annotation loaded into an interval tree at any given time, thus shifting the memory requirements towards the number of alignments. To do this efficiently, the  annotation gff3 must be pre-indexed with `gffindex <input_gff>`.
+
+    - This will write the index to `<input_gff>.index` and only needs to be done once per gff.
+    - For best results, the gff should be strictly sorted by seqname (column 1).
+    - The gff must not be gzipped (random access of gzipped files via seek() is not feasible, hence gzipped gffs are not supported).
+
+  Furthermore, the `genome` mode allows to process single-end stranded RNAseq reads using the option `--strand_specific`. In this case, the final count tables will contain and additional 6 columns (raw, normalised, scaled for both sense-strand and antisense-strand hits).
+    
+- Mode `-m genes` allows large sets of genes to be used as reference. In this mode, `gffquant` takes as input a bamfile containing alignments against a set of gene sequences. The functional annotation for these sequences has to be provided in a gzipped tab-separated file following the GMGC convention (columns 1 is the gene id, and the functional categories start in column 7.) As no overlap detection is done in this mode (all reads align against annotated genes), this mode also doesn't require pre-indexing the annotation. However, in order to save memory, this mode pre-scans the bamfile and discards information regarding unused reference sequences.
+
+Run `gffquant <input_db> <input_bam> -o <out_prefix> [--ambig_mode {[unique_only], all1, 1overN}] [--mode {genome, genes}] [--strand_specific]`
   - The `<input_bam>` file needs to be position sorted.
   - Output files are `<out_prefix>.seqname.txt` (contig counts) and `<out_prefix>.feature_counts.txt` (feature/subfeature counts).
   - `--ambig_mode` controls how ambiguously mapping reads are processed. These are analogous to the ngless modes:
