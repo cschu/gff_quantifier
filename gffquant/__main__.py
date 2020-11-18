@@ -25,8 +25,8 @@ def main():
 	#ap.add_argument("--large_reference", action="store_true", help="bam_file is expected to contain a large number of reference header lines (e.g. from mapping against a large database)")
 	args = ap.parse_args()
 
-	if args.strand_specific and args.mode == "genes":
-		raise ValueError("Strand-specific RNAseq is not yet supported in 'genes' mode.")
+	#if args.strand_specific and args.mode == "genes":
+	#	raise ValueError("Strand-specific RNAseq is not yet supported in 'genes' mode.")
 
 	if not os.path.exists(args.bam_file):
 		raise ValueError("bam file does not exist", args.bam_file)
@@ -47,10 +47,11 @@ def main():
 		db_index,
 		out_prefix=args.out_prefix,
 		ambig_mode=args.ambig_mode,
-		do_overlap_detection=args.mode=="genome"
+		do_overlap_detection=args.mode=="genome",
+		strand_specific=args.strand_specific
 	)
 
-	fq.process_data(args.bam_file, strand_specific=args.strand_specific)
+	fq.process_data(args.bam_file) #, strand_specific=args.strand_specific)
 
 
 if __name__ == "__main__":

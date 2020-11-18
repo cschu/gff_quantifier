@@ -30,7 +30,7 @@ class OverlapCounter(dict):
 		normalised = counts / feature_len
 		scaled = normalised * scaling_factor
 		return counts, normalised, scaled
-	def __init__(self, out_prefix, db, do_overlap_detection=True):
+	def __init__(self, out_prefix, db, do_overlap_detection=True, strand_specific=False):
 		self.out_prefix = out_prefix
 		self.db = db
 		self.seqcounts = Counter()
@@ -41,6 +41,7 @@ class OverlapCounter(dict):
 		self.has_ambig_counts = False
 		self.feature_scaling_factors = dict()
 		self.do_overlap_detection = do_overlap_detection
+		self.strand_specific = strand_specific
 
 	def update_unique_counts(self, rid, aln, rev_strand=False):
 		'''
@@ -119,16 +120,16 @@ class OverlapCounter(dict):
 		return total_counts, feature_count_sums
 
 
-	def annotate_counts(self, bam, strand_specific=False):
+	def annotate_counts(self, bam): #, strand_specific=False):
 		"""
 		Distributes read counts against aligned regions to the associated functional categories.
 		"""
 		print("Processing counts ...", flush=True)
 		t0 = time.time()
-		bins = 12 if strand_specific else 4
+		bins = 12 if self.strand_specific else 4
 
 		annotation_f = self._iterate_counts if self.do_overlap_detection else self._iterate_database
-		total_counts, feature_count_sums = annotation_f(bins, bam, strand_specific)
+		total_counts, feature_count_sums = annotation_f(bins, bam, self.strand_specific)
 
 		# calculate the scaling factors
 		total, total_normed, total_ambi, total_ambi_normed = total_counts
@@ -149,7 +150,7 @@ class OverlapCounter(dict):
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
 
-	def update_ambiguous_counts(self, hits, n_aln, unannotated, bam, feat_distmode="all1", strand_specific=False):
+	def update_ambiguous_counts(self, hits, n_aln, unannotated, bam, feat_distmode="all1"): #, strand_specific=False):
 		self.has_ambig_counts = True
 		n_total = sum(self.seqcounts[rid] for rid in hits)
 		for rid, regions in hits.items():
@@ -192,7 +193,7 @@ class OverlapCounter(dict):
 				normed_total += norm_ambi
 		return raw_total / normed_total
 
-	def dump_counts(self, bam, strand_specific=False):
+	def dump_counts(self, bam): #, strand_specific=False):
 
 		COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
 		SEQ_COUNT_HEADER = ["seqid_int", "seqid", "length"] + COUNT_HEADER_ELEMENTS
@@ -213,7 +214,7 @@ class OverlapCounter(dict):
 			header.extend("uniq_{}".format(element) for element in COUNT_HEADER_ELEMENTS)
 			if self.has_ambig_counts:
 				header.extend("ambig_{}".format(element) for element in COUNT_HEADER_ELEMENTS)
-			if strand_specific:
+			if self.strand_specific:
 				for strand in ("ss", "as"):
 					header.extend("uniq_{}_{}".format(element, strand) for element in COUNT_HEADER_ELEMENTS)
 					if self.has_ambig_counts:
@@ -236,7 +237,7 @@ class OverlapCounter(dict):
 						out_row.extend(sf_counts[2:4])
 						out_row.append(out_row[-1] * scaling_factor_ambi)
 					# next batch: sense-strand unique
-					if strand_specific:
+					if self.strand_specific:
 						out_row.extend(sf_counts[4:6])
 						out_row.append(out_row[-1] * scaling_factor)
 						# next batch: sense-strand ambiguous

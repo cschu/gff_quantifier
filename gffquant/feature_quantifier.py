@@ -70,10 +70,10 @@ class AmbiguousAlignmentRecordKeeper:
 class FeatureQuantifier:
 	TRUE_AMBIG_MODES = ("dist1", "1overN")
 
-	def __init__(self, db, db_index, out_prefix="gffquant", ambig_mode="unique_only", do_overlap_detection=True):
+	def __init__(self, db, db_index, out_prefix="gffquant", ambig_mode="unique_only", do_overlap_detection=True, strand_specific=False):
 		self.gff_dbm = GffDatabaseManager(db, db_index=db_index)
 		self.umap_cache = dict()
-		self.overlap_counter = OverlapCounter(out_prefix, self.gff_dbm, do_overlap_detection=do_overlap_detection)
+		self.overlap_counter = OverlapCounter(out_prefix, self.gff_dbm, do_overlap_detection=do_overlap_detection, strand_specific=strand_specific)
 		self.out_prefix = out_prefix
 		self.ambig_mode = ambig_mode
 		self.do_overlap_detection = do_overlap_detection
@@ -215,7 +215,7 @@ class FeatureQuantifier:
 
 		return n_align
 
-	def process_data(self, bamfile, strand_specific=False):
+	def process_data(self, bamfile): #, strand_specific=False):
 		""" processes one position-sorted bamfile """
 		bam = BamFile(bamfile, large_header=not self.do_overlap_detection) # this is ugly!
 		# first pass: process uniqs and dump ambigs (if required)
@@ -236,9 +236,9 @@ class FeatureQuantifier:
 			print("Processed {n_align} secondary alignments in {n_seconds:.3f}s.".format(
 				n_align=n_align, n_seconds=t1-t0), flush=True)
 
-		self.overlap_counter.annotate_counts(bam, strand_specific=strand_specific)
+		self.overlap_counter.annotate_counts(bam) #, strand_specific=strand_specific)
 		self.overlap_counter.unannotated_reads += unannotated_ambig
-		self.overlap_counter.dump_counts(bam, strand_specific=strand_specific)
+		self.overlap_counter.dump_counts(bam) #, strand_specific=strand_specific)
 
 		print("Finished.", flush=True)
 
