@@ -11,9 +11,9 @@ class GffIndexer:
 		cur_ref = None
 		index_fn = gff + ".index"
 		if os.path.exists(index_fn):
-			if not force:
+			if not overwrite:
 				raise FileExistsError("Index {fn} already exists. Please use -f/--force option to overwrite.".format(fn=index_fn))
-			print("--force enabled: overwriting existing index {fn}.".format(fn=index_fn))
+			print("--force parameter is set: overwriting existing index {fn}.".format(fn=index_fn))
 
 		with open(gff, "rt") as f, open(index_fn, "wt") as index_out:
 			for line in f:
