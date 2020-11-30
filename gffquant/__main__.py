@@ -21,12 +21,8 @@ def main():
 	)
 	ap.add_argument("--strand_specific", action="store_true",
 		help="Perform strand-specific counting for RNAseq reads. This currently only works for single-end data. This flag is ignored for paired-end data.")
-	#this is taken over by the 'genes'-mode?
-	#ap.add_argument("--large_reference", action="store_true", help="bam_file is expected to contain a large number of reference header lines (e.g. from mapping against a large database)")
-	args = ap.parse_args()
 
-	#if args.strand_specific and args.mode == "genes":
-	#	raise ValueError("Strand-specific RNAseq is not yet supported in 'genes' mode.")
+	args = ap.parse_args()
 
 	if not os.path.exists(args.bam_file):
 		raise ValueError("bam file does not exist", args.bam_file)
