@@ -54,7 +54,10 @@ class OverlapCounter(dict):
 				self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
 			else:
 				self.unannotated_reads += 1
-		self.seqcounts[rid] += 1
+		if self.strand_specific and not self.do_overlap_detection:
+			self.seqcounts[(rid, rev_strand)] += 1
+		else:
+			self.seqcounts[rid] += 1
 
 	def _compute_count_vector(self, bins, rid, aln, strand, strand_specific):
 		# calculate the count vector for the current region
@@ -82,10 +85,25 @@ class OverlapCounter(dict):
 			if rid is not None:
 				_, region_length = bam.get_reference(rid)
 				counts = numpy.zeros(bins)
-				counts[0] = counts[1] = self.seqcounts[rid]
-				counts[1] /= region_length
-				counts[2] = counts[3] = counts[0] + self.ambig_seqcounts[rid]
-				counts[3] /= region_length
+
+				if strand_specific:
+					counts[0] = counts[1] = self.seqcounts[(rid, True)] + self.seqcounts[(rid, False)]
+					counts[1] /= region_length
+					counts[2] = counts[3] = counts[0] + self.ambig_seqcounts[(rid, True)] + self.ambig_seqcounts[(rid, False)]
+					counts[3] /= region_length
+					counts[4] = counts[5] = self.seqcounts[(rid, True)]
+					counts[5] /= region_length
+					counts[6] = counts[7] = counts[4] + self.ambig_seqcounts[(rid, True)]
+					counts[7] /= region_length
+					counts[8] = counts[9] = self.seqcounts[(rid, False)]
+					counts[9] /= region_length
+					counts[10] = counts[11] = counts[8] + self.ambig_seqcounts[(rid, False)]
+					counts[11] /= region_length
+				else:
+					counts[0] = counts[1] = self.seqcounts[rid]
+					counts[1] /= region_length
+					counts[2] = counts[3] = counts[0] + self.ambig_seqcounts[rid]
+					counts[3] /= region_length
 
 				total_counts, feature_count_sums = self._distribute_feature_counts(bins, counts, region_annotation[1:], total_counts, feature_count_sums)
 
@@ -120,7 +138,7 @@ class OverlapCounter(dict):
 		return total_counts, feature_count_sums
 
 
-	def annotate_counts(self, bam): #, strand_specific=False):
+	def annotate_counts(self, bam):
 		"""
 		Distributes read counts against aligned regions to the associated functional categories.
 		"""
@@ -134,6 +152,7 @@ class OverlapCounter(dict):
 		# calculate the scaling factors
 		total, total_normed, total_ambi, total_ambi_normed = total_counts
 
+		# are these used?
 		self.feature_scaling_factors["total"] = (total / total_normed) if total_normed else None
 		self.feature_scaling_factors["total_ambi"] = (total_ambi / total_ambi_normed) if total_ambi_normed else None
 
@@ -150,15 +169,18 @@ class OverlapCounter(dict):
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
 
-	def update_ambiguous_counts(self, hits, n_aln, unannotated, bam, feat_distmode="all1"): #, strand_specific=False):
+	def update_ambiguous_counts(self, hits, n_aln, unannotated, bam, feat_distmode="all1"):
 		self.has_ambig_counts = True
-		n_total = sum(self.seqcounts[rid] for rid in hits)
+		if self.strand_specific and not self.do_overlap_detection:
+			n_total = sum(self.seqcounts[(rid, True)] + self.seqcounts[(rid, False)] for rid in hits)
+		else:
+			n_total = sum(self.seqcounts[rid] for rid in hits)
 		for rid, regions in hits.items():
 			if self.do_overlap_detection:
 				for start, end, rev_str in regions:
 					self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += (1 / n_aln) if feat_distmode == "1overN" else 1
 #				reg_count = self.ambig_counts.setdefault(rid, Counter())
-#				
+#
 #				if feat_distmode == "all1":
 #					increment = 1
 #				elif feat_distmode == "1overN":
@@ -167,15 +189,19 @@ class OverlapCounter(dict):
 #					uniq_counts = self.get((start, end, True), 0) + self.get((start, end, False), 0)
 #					if n_total and uniq_counts:
 #						increment = uniq_counts /
-#				
+#
 #				reg_count[(start, end, rev_str)] += increment
+
+#290             hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag)))
 
 				if n_total and self.seqcounts[rid]:
 					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
 				else:
 					self.ambig_seqcounts[rid] += 1 / len(hits)
 			else:
-				self.ambig_seqcounts[rid] += (1 / n_aln) if feat_distmode == "1overN" else 1
+				start, end, rev_str = list(regions)[0]
+				key = (rid, rev_str) if self.strand_specific else rid
+				self.ambig_seqcounts[key] += (1 / n_aln) if feat_distmode == "1overN" else 1
 
 	@staticmethod
 	def calculate_seqcount_scaling_factor(counts, bam):
@@ -193,7 +219,7 @@ class OverlapCounter(dict):
 				normed_total += norm_ambi
 		return raw_total / normed_total
 
-	def dump_counts(self, bam): #, strand_specific=False):
+	def dump_counts(self, bam):
 
 		COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
 		SEQ_COUNT_HEADER = ["seqid_int", "seqid", "length"] + COUNT_HEADER_ELEMENTS
@@ -201,6 +227,17 @@ class OverlapCounter(dict):
 
 		print("Dumping overlap counters...", flush=True)
 		print("Has ambiguous counts:", self.has_ambig_counts, flush=True)
+		if self.strand_specific and not self.do_overlap_detection:
+			 _seqcounts = Counter()
+			 for (rid, rev_strand), count in self.seqcounts.items():
+				 _seqcounts[rid] += count
+			 self.seqcounts = _seqcounts
+			 if self.has_ambig_counts:
+				 _seqcounts = Counter()
+				 for (rid, rev_strand), count in self.ambig_seqcounts.items():
+					 _seqcounts[rid] += count
+				 self.ambig_seqcounts = _seqcounts
+
 		with open("{prefix}.seqname.uniq.txt".format(prefix=self.out_prefix), "w") as seq_out:
 			print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
 			seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
