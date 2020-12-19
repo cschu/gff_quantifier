@@ -13,10 +13,11 @@ def main():
 			"(e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0.")
 	ap.add_argument("--mode", "-m", type=str, default="genome", choices=("genome", "genes"), help="There are two run modes: - 'genome' counts reads aligned against contigs, which are annotated with a gff3 file. The gff3 needs to have been indexed with gffindex prior to the run.\n - 'genes' counts reads aligned against gene sequences, which are annotated with a tab-separated file.")
 	ap.add_argument("--out_prefix", "-o", type=str, default="gffquant", help="Prefix for output files.")
-	ap.add_argument("--ambig_mode", type=str, choices=("unique_only", "all1", "1overN"), default="unique_only",
+	ap.add_argument("--ambig_mode", type=str, choices=("unique_only", "all1", "primary_only", "1overN"), default="unique_only",
 		help="Setting how ambiguous alignments should be treated. This setting mimics ngLess' behaviour.\n"
 			"- 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). This is the default setting.\n"
 			"- 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to)\n"
+			"- 'primary_only' takes the unique alignments and the primary and alignment of each ambiguous read group\n"
 			"- '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to."
 	)
 	ap.add_argument("--strand_specific", action="store_true",
