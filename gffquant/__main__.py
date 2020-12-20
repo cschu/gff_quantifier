@@ -28,6 +28,8 @@ def main():
 
 	args = ap.parse_args()
 
+	print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
+
 	if not os.path.exists(args.bam_file):
 		raise ValueError("bam file does not exist", args.bam_file)
 	if not os.path.exists(args.annotation_db):
