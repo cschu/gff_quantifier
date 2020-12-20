@@ -1,3 +1,4 @@
+import sys
 import argparse
 import os
 import pathlib
@@ -23,6 +24,8 @@ def main():
 		help="Perform strand-specific counting for RNAseq reads. This currently only works for single-end data. This flag is ignored for paired-end data.")
 
 	args = ap.parse_args()
+
+	print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
 
 	if not os.path.exists(args.bam_file):
 		raise ValueError("bam file does not exist", args.bam_file)
