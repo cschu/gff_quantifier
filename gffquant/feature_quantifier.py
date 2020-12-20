@@ -97,7 +97,7 @@ class FeatureQuantifier:
 	def process_cache(self, rid, ref, process_unique=True):
 		cache = self.umap_cache if process_unique else self.ambig_cache
 		for qname, aln in cache.items():
-			n_aln = len(uniq_aln)
+			n_aln = len(aln)
 			if n_aln == 1:
 				start, end, flag = aln[0][1:]
 				rev_strand = SamFlags.is_reverse_strand(flag)

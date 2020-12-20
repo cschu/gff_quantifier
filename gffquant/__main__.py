@@ -1,3 +1,4 @@
+import sys
 import argparse
 import os
 import pathlib
@@ -22,6 +23,8 @@ def main():
 	)
 	ap.add_argument("--strand_specific", action="store_true",
 		help="Perform strand-specific counting for RNAseq reads. This currently only works for single-end data. This flag is ignored for paired-end data.")
+
+	print("Command:", *sys.argv)
 
 	args = ap.parse_args()
 
