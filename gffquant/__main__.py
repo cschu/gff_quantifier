@@ -4,9 +4,10 @@ import os
 import pathlib
 
 from gffquant.feature_quantifier import FeatureQuantifier
+from . import __version__
 
 def main():
-	ap = argparse.ArgumentParser()
+	ap = argparse.ArgumentParser(prog="gffquant")
 	ap.add_argument("annotation_db", type=str, help="Path to a text file containing the reference annotation. The required type of file is determined by the --mode argument (gff3 or tsv).")
 	ap.add_argument("bam_file", type=str,
 		help="Path to a position-sorted bam file. Ambiguous alignments need to be flagged as secondary "
@@ -23,11 +24,12 @@ def main():
 	)
 	ap.add_argument("--strand_specific", action="store_true",
 		help="Perform strand-specific counting for RNAseq reads. This currently only works for single-end data. This flag is ignored for paired-end data.")
+	ap.add_argument("--version", "-v", action="version", version="%(prog)s " + __version__)
 
-	print("Command:", *sys.argv)
 
 	args = ap.parse_args()
 
+	print("Version:", __version__)
 	print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
 
 	if not os.path.exists(args.bam_file):
