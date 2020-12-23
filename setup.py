@@ -50,6 +50,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 			"console_scripts": [
 				"gffquant=gffquant.__main__:main",
 				"gffindex=gffquant.gff_indexer:main",
+				"collate_counts=gffquant.collate_counts:main"
 			],
 		},
 		scripts=["nextflow/gffquant.nf"],
