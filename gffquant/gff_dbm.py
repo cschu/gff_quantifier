@@ -49,7 +49,7 @@ class GffDatabaseManager:
 					features = dict()
 					if include_payload:
 						features = (("strand", line[6]),)
-						features += tuple((item.split("=")[0], tuple(sorted(item.split("=")[1].split(",")))) for item in line[8].strip().split(";") if not item.startswith("ID"))
+						features += tuple((item.split("=")[0], tuple(sorted(item.split("=")[1].split(",")))) for item in line[8].strip().split(";"))
 					key = (line[0], int(line[3]), int(line[4]) + 1)
 					gff_annotation[key] = features
 		if not gff_annotation and not include_payload:

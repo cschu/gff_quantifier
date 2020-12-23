@@ -129,11 +129,15 @@ class OverlapCounter(dict):
 			ref = bam.get_reference(rid)[0]
 			for start, end, rev_strand in set(self.get(rid, set())).union(self.ambig_counts.get(rid, set())):
 				# region_annotation is a tuple of key-value pairs: (strand, func_category1: subcategories, func_category2: subcategories, ...)
+				# the first is the strand, the second is the gene id, the rest are the features
 				region_annotation = self.db.get_data(ref, start, end)
 				counts = self._compute_count_vector(bins, rid, (start, end, rev_strand), region_annotation[0][1], strand_specific)
+				# how to extract the gene counts in genome mode?
+				# self.seqcounts[(region_annotation[1][1], rev_strand)] += counts[0]
+				# self.ambig_seqcounts[(region_annotation[1][1], rev_strand)] += counts[2] - counts[0]
 
 				# distribute the counts to the associated functional (sub-)categories
-				total_counts, feature_count_sums = self._distribute_feature_counts(bins, counts, region_annotation[1:], total_counts, feature_count_sums)
+				total_counts, feature_count_sums = self._distribute_feature_counts(bins, counts, region_annotation[2:], total_counts, feature_count_sums)
 
 		return total_counts, feature_count_sums
 
@@ -171,6 +175,7 @@ class OverlapCounter(dict):
 
 	def update_ambiguous_counts(self, hits, n_aln, unannotated, bam, feat_distmode="all1"):
 		self.has_ambig_counts = True
+		self.unannotated_reads += unannotated
 		if self.strand_specific and not self.do_overlap_detection:
 			n_total = sum(self.seqcounts[(rid, True)] + self.seqcounts[(rid, False)] for rid in hits)
 		else:
@@ -250,12 +255,12 @@ class OverlapCounter(dict):
 			header = ["subfeature"]
 			header.extend("uniq_{}".format(element) for element in COUNT_HEADER_ELEMENTS)
 			if self.has_ambig_counts:
-				header.extend("ambig_{}".format(element) for element in COUNT_HEADER_ELEMENTS)
+				header.extend("combined_{}".format(element) for element in COUNT_HEADER_ELEMENTS)
 			if self.strand_specific:
 				for strand in ("ss", "as"):
 					header.extend("uniq_{}_{}".format(element, strand) for element in COUNT_HEADER_ELEMENTS)
 					if self.has_ambig_counts:
-						header.extend("ambig_{}_{}".format(element, strand) for element in COUNT_HEADER_ELEMENTS)
+						header.extend("combined_{}_{}".format(element, strand) for element in COUNT_HEADER_ELEMENTS)
 			print(*header, sep="\t", file=feat_out, flush=True)
 
 			print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
