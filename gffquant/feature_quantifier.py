@@ -91,8 +91,8 @@ class FeatureQuantifier:
 		return self.allow_ambiguous_alignments() and not self.treat_ambiguous_as_unique()
 
 	def process_caches(self, rid, ref):
-		self.process_cache(self.umap_cache, rid, ref)
-		self.process_cache(self.ambig_cache, rid, ref)
+		self.process_cache(rid, ref)
+		self.process_cache(rid, ref)
 
 	def process_cache(self, rid, ref, process_unique=True):
 		cache = self.umap_cache if process_unique else self.ambig_cache
@@ -112,21 +112,24 @@ class FeatureQuantifier:
 				short_aln = (ref, start, end) if self.do_overlap_detection else None
 				self.overlap_counter.update_unique_counts(rid, short_aln, rev_strand=rev_strand)
 			else:
-				#counter.update_ambiguous_counts(hits, self.n_align(), self.unannotated, bam, feat_distmode=distmode)
-				hits = {rid: set()}
-				if self.do_overlap_detection:
-					overlaps = self.db.get_overlaps(ref, aln.start, aln.end)
-					if overlaps:
-						for ovl in overlaps:
-							hits[rid].add((ovl.begin, ovl.end, rev_strand))
-						aln_count, unannotated = 1, 0
-					else:
-						aln_count, unannotated = 0, 1
-				else:
-					hits[rid].add((-1, -1, rev_strand))
-				self.overlap_counter.update_ambiguous_counts(hits, aln_count, unannotated, self.bamfile, feat_distmode=self.ambig_mode)
+				self._update_ambig_counts(self, rid, ref, aln, rev_strand)
 
 		cache.clear()
+
+	def _update_ambig_counts(self, rid, ref, aln, rev_strand):
+		hits = {rid: set()}
+		if self.do_overlap_detection:
+			overlaps = self.gff_dbm.get_overlaps(ref, aln.start, aln.end)
+			if overlaps:
+				for ovl in overlaps:
+					hits[rid].add((ovl.begin, ovl.end, rev_strand))
+				aln_count, unannotated = 1, 0
+			else:
+				aln_count, unannotated = 0, 1
+		else:
+			hits[rid].add((-1, -1, rev_strand))
+			aln_count, unannotated = 1, 0
+		self.overlap_counter.update_ambiguous_counts(hits, aln_count, unannotated, self.bamfile, feat_distmode=self.ambig_mode)
 
 
 	def process_unique_cache(self, rid, ref):
@@ -147,7 +150,7 @@ class FeatureQuantifier:
 
 		self.umap_cache.clear()
 
-	def process_alignments(self): #, bam):
+	def process_alignments(self):
 		"""
 		Reads from a position-sorted bam file are processed in batches according to the reference sequence they were aligned to.
 		This allows a partitioning of the reference annotation (which saves memory and time in case of large reference data sets).
@@ -197,8 +200,11 @@ class FeatureQuantifier:
 				# at this point only single-end reads, 'improper' and merged pairs should be processed here ( + ambiguous reads in "all1" mode )
 				# remember: in all1, pair information is not easily to retain for the secondary alignments!
 				if start is not None:
-					short_aln = (current_ref, start, end) if self.do_overlap_detection else None
-					self.overlap_counter.update_unique_counts(aln.rid, short_aln, rev_strand=rev_strand)
+					if aln.is_unique():
+						short_aln = (current_ref, start, end) if self.do_overlap_detection else None
+						self.overlap_counter.update_unique_counts(current_rid, short_aln, rev_strand=rev_strand)
+					else:
+						self._update_ambig_counts(current_rid, current_ref, aln, rev_strand)
 
 			self.process_caches(current_rid, current_ref)
 			t1 = time.time()
@@ -261,11 +267,11 @@ class FeatureQuantifier:
 
 		return n_align
 
-	def process_data(self, bamfile): #, strand_specific=False):
+	def process_data(self, bamfile):
 		""" processes one position-sorted bamfile """
 		self.bamfile = BamFile(bamfile, large_header=not self.do_overlap_detection) # this is ugly!
 		# first pass: process uniqs and dump ambigs (if required)
-		unannotated_ambig, ambig_dumpfile = self.process_alignments() #bam)
+		unannotated_ambig, ambig_dumpfile = self.process_alignments()
 		self.gff_dbm.clear_caches()
 
 		# second pass: process ambiguous alignment groups
@@ -273,7 +279,7 @@ class FeatureQuantifier:
 			t0 = time.time()
 
 			ambig_aln = self._read_ambiguous_alignments(ambig_dumpfile)
-			n_align = self._process_ambiguous_aln_groups(ambig_aln) #, bam)
+			n_align = self._process_ambiguous_aln_groups(ambig_aln)
 
 			if not DEBUG:
 				os.remove(ambig_dumpfile)
@@ -282,9 +288,9 @@ class FeatureQuantifier:
 			print("Processed {n_align} secondary alignments in {n_seconds:.3f}s.".format(
 				n_align=n_align, n_seconds=t1-t0), flush=True)
 
-		self.overlap_counter.annotate_counts(self.bamfile) #, strand_specific=strand_specific)
+		self.overlap_counter.annotate_counts(self.bamfile)
 		self.overlap_counter.unannotated_reads += unannotated_ambig
-		self.overlap_counter.dump_counts(self.bamfile) #, strand_specific=strand_specific)
+		self.overlap_counter.dump_counts(self.bamfile)
 
 		print("Finished.", flush=True)
 
