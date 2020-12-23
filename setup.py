@@ -15,7 +15,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 	description = long_description = description.read()
 
 	name="gffquant"
-	version = "0.10.1"
+	version = [line.strip().split(" ")[-1] for line in open("gffquant/__init__.py") if line.startswith("__version__")][0]
 
 	if sys.version_info.major != 3:
 		raise EnvironmentError("""{toolname} is a python module that requires python3, and is not compatible with python2.""".format(toolname=name))
@@ -52,6 +52,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 				"gffindex=gffquant.gff_indexer:main",
 			],
 		},
+		scripts=["nextflow/gffquant.nf"],
 		package_data={},
 		include_package_data=True,
 		data_files=[],
