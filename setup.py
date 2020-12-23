@@ -52,6 +52,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 				"gffindex=gffquant.gff_indexer:main",
 			],
 		},
+		scripts=["nextflow/gffquant.nf"],
 		package_data={},
 		include_package_data=True,
 		data_files=[],
