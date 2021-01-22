@@ -42,7 +42,6 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 		#scripts=["util/gff_indexer.py"],
 		install_requires=[
 			"intervaltree",
-			"pyyaml>=5.3",
 			"numpy",
 			"pandas"
 		],
