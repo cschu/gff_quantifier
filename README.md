@@ -38,7 +38,7 @@ As all (aligned) reads align against annotated genes, no overlap detection is do
 
 #### Running gffquant
 
-Run `gffquant <input_db> <input_bam> -o <out_prefix> [--ambig_mode {[unique_only], all1, 1overN}] [--mode {genome, genes}] [--strand_specific]`
+Run `gffquant <input_db> <input_bam> -o <out_prefix> [--ambig_mode {[unique_only], all1, primary_only, 1overN}] [--mode {genome, genes}] [--strand_specific]`
   * The `<input_bam>` file needs to be position sorted.
   * Output files are `<out_prefix>.seqname.txt` (contig counts) and `<out_prefix>.feature_counts.txt` (feature/subfeature counts).
   * `--ambig_mode` controls how ambiguously mapping reads are processed. These are analogous to the ngless modes:
@@ -54,6 +54,7 @@ Single-end RNAseq reads can be processed preserving strandness information via t
 	  
 ### Resource requirements
 *(Note: numbers are under revision)*
+
 Memory and computing time requirements correspond to bamfile size. For current bamfile sizes of up to 24GB:
   - `uniq_only` and `all1`: ~10GB memory and ~4h (up to 7h for `all1`)
   - `primary_only`: TBD
