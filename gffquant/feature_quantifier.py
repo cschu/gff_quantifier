@@ -287,7 +287,7 @@ class FeatureQuantifier:
 					n_align=n_align, n_seconds=t1-t0), flush=True)
 			else:
 				print("Warning: ambig-mode chosen, but bamfile does not contain secondary alignments.")
-				self.overlap_counts.has_ambig_counts = True # we expect ambig cols in the outfile!
+				self.overlap_counter.has_ambig_counts = True # we expect ambig cols in the outfile!
 
 			try:
 				if not DEBUG:
