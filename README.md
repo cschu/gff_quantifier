@@ -6,7 +6,6 @@ Build:
 - wheel 
 
 Install (will be automatically installed if pip install is used as described below):
-- pyyaml
 - intervaltree
 - numpy
 - pandas
@@ -17,32 +16,48 @@ Install (will be automatically installed if pip install is used as described bel
 3. `python setup.py bdist_wheel`.
 4. `pip install [--user] -U dist/gffquant-<version>-py3-none-any.whl`. The `--user` option is only necessary if you're running this with a shared python version.
 
-After this, the relevant commands `gff_indexer` and `gffquant` should be in your path.
+After this, the relevant commands `gffindex` and `gffquant` should be in your path.
 
-### Running gffquant
+### Usage
 `gffquant` supports two kinds of input data, controlled by the `--mode` or `-m` parameter.
 
-- Mode `-m genome` is the default mode. In this mode, `gffquant` takes as input a bamfile containing alignments against a set of genomic reference contigs and a gff3 file containing functional annotations for the genes encoded on the input contigs. The functional profiling strategy in this mode is to only ever have a small portion of the annotation loaded into an interval tree at any given time, thus shifting the memory requirements towards the number of alignments. To do this efficiently, the  annotation gff3 must be pre-indexed with `gffindex <input_gff>`.
-
-    - This will write the index to `<input_gff>.index` and only needs to be done once per gff.
+#### The genome mode
+Mode `-m genome` is the default mode. The functional profiling strategy in this mode is to only ever have a small portion of the annotation loaded into an interval tree at any given time, thus shifting the memory requirements towards the number of alignments. In `genome` mode, `gffquant` takes as input:
+  * a bamfile containing alignments against a set of genomic reference contigs, and 
+  * a gff3 file containing functional annotations for the genes encoded on the input contigs. This gff3 must be pre-indexed with `gffindex <input_gff>` in order to allow random access.
+    - Pre-indexing will write the index to a file named `<input_gff>.index` and only needs to be done once per gff.
     - For best results, the gff should be strictly sorted by seqname (column 1).
     - The gff must not be gzipped (random access of gzipped files via seek() is not feasible, hence gzipped gffs are not supported).
 
-  Furthermore, the `genome` mode allows to process single-end stranded RNAseq reads using the option `--strand_specific`. In this case, the final count tables will contain and additional 6 columns (raw, normalised, scaled for both sense-strand and antisense-strand hits).
-    
-- Mode `-m genes` allows large sets of genes to be used as reference. In this mode, `gffquant` takes as input a bamfile containing alignments against a set of gene sequences. The functional annotation for these sequences has to be provided in a gzipped tab-separated file following the GMGC convention (columns 1 is the gene id, and the functional categories start in column 7.) As no overlap detection is done in this mode (all reads align against annotated genes), this mode also doesn't require pre-indexing the annotation. However, in order to save memory, this mode pre-scans the bamfile and discards information regarding unused reference sequences.
+#### The gene mode
+Mode `-m genes` allows large sets of genes to be used as reference. In this mode, `gffquant` takes as input:
+  * a bamfile containing alignments against a set of gene sequences, and
+  * a gzipped, tab-separated functional annotation file following the GMGC convention (column 1 is the gene id, and the functional categories start in column 7.) 
 
-Run `gffquant <input_db> <input_bam> -o <out_prefix> [--ambig_mode {[unique_only], all1, 1overN}] [--mode {genome, genes}] [--strand_specific]`
-  - The `<input_bam>` file needs to be position sorted.
-  - Output files are `<out_prefix>.seqname.txt` (contig counts) and `<out_prefix>.feature_counts.txt` (feature/subfeature counts).
-  - `--ambig_mode` controls how ambiguously mapping reads are processed. These are analogous to the ngless modes:
+As all (aligned) reads align against annotated genes, no overlap detection is done in this mode. Thus, the `gene` mode does not require pre-indexing the annotation. However, in order to preserve memory, the bamfile is pre-scanned and information regarding unused reference sequences is discarded (leading to increased runtimes).
+
+#### Running gffquant
+
+Run `gffquant <input_db> <input_bam> -o <out_prefix> [--ambig_mode {[unique_only], all1, primary_only, 1overN}] [--mode {genome, genes}] [--strand_specific]`
+  * The `<input_bam>` file needs to be position sorted.
+  * Output files are `<out_prefix>.seqname.txt` (contig counts) and `<out_prefix>.feature_counts.txt` (feature/subfeature counts).
+  * `--ambig_mode` controls how ambiguously mapping reads are processed. These are analogous to the ngless modes:
       - `'unique_only` will simply ignore any reads that is labeled as ambiguous (`MAPQ=0`). Runtime increases with bamfile size, memory should remain more or less constant.
-	  - `all1` will treat all ambiguous alignments as single ended individual reads. Runtime increases with bamfile size, memory should remain more or less constant.
-	  - `1overN` will dump all ambiguous alignments to disk (in reduced form), finish the processing of the unique alignments, then read and process the ambiguous alignments. Runtime and memory increase significantly with bamfile size. In addition, temporary disk space proportional to the number of ambiguous alignments is needed. In this mode (and only in this mode), sequence counting will include an additional output with reads distributed to reference contigs according to the `dist1` mode of ngless.
+      - `all1` will treat all ambiguous alignments as single ended individual reads. Runtime increases with bamfile size, memory should remain more or less constant.
+      - `primary_only` will only count unique alignments and the primary alignment of a group of ambiguous alignments. Bamfiles that were filtered by `NGLess` will experience decreased counts as it is likely that the primary alignment was removed during filtering.
+      - `1overN` will dump all ambiguous alignments to disk (in reduced form), finish the processing of the unique alignments, then read and process the ambiguous alignments. Runtime and memory increase significantly with bamfile size. In addition, temporary disk space proportional to the number of ambiguous alignments is needed. In this mode (and only in this mode), sequence counting will include an additional output with reads distributed to reference contigs according to the `dist1` mode of ngless.
+
+##### RNAseq reads
+
+Single-end RNAseq reads can be processed preserving strandness information via the `--strand_specific` parameter. In this case, the final count tables will contain an additional 6 columns (raw, normalised, scaled for both sense-strand and antisense-strand hits).
+
 	  
 ### Resource requirements
+*(Note: numbers are under revision)*
+
 Memory and computing time requirements correspond to bamfile size. For current bamfile sizes of up to 24GB:
   - `uniq_only` and `all1`: ~10GB memory and ~4h (up to 7h for `all1`)
+  - `primary_only`: TBD
   - `1overN`: >10GB memory, ~10min - >8h
   
 ### Count model 
@@ -51,7 +66,8 @@ Memory and computing time requirements correspond to bamfile size. For current b
 * The count contribution of reads with multiple (ambiguous) alignments depends on the mode:
   1. In `unique_only`, ambiguous reads are ignored.
   2. In `all1`, ambiguous reads contribute 1 to each region they align to. Each alignment is treated (and reported) as unique read.
-  3. In `1overN`, each alignment against an annotated region contributes `1/N` to the region. `N` is the number of alignments against an annotated region. Alignments against unannotated regions are ignored.
+  3. In `primary_only`, all primary alignments contribute 1 to each region they align to. Secondary alignments are discarded.
+  4. In `1overN`, each alignment against an annotated region contributes `1/N` to the region. `N` is the number of alignments against an annotated region. Alignments against unannotated regions are ignored.
 <img src="./doc/count_distribution.svg" width="640">
 
 
@@ -85,7 +101,7 @@ Count tables consist of the following columns:
 3. `uniq_lnorm`: the sum of the length-normalised unique raw counts (s. section Count Model)
 4. `uniq_scaled`: the scaled, normalised unique counts
 
-If ambiguous reads are not treated as unique (`mode=1overN`), the next 4 columns (5-8; (`ambig_`)) additionally contain the contributions from ambiguous alignments.
+If ambiguous reads are not treated as unique (`mode=1overN`), the next 4 columns (5-8; (`combined_`)) additionally contain the sum of contributions from ambiguous alignments **and** unique alignments.
 
 If a strand-specific mode (currently only available for single-end RNAseq reads) was chosen, the table will further continue column blocks for sense-strand counts (`_ss`) and antisense-strand counts (`_as`). 
 

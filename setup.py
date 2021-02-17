@@ -33,7 +33,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 			"Development Status :: 4 - Beta",
 			"Topic :: Scientific Engineering :: Bio/Informatics",
 			"License :: OSI Approved :: MIT License",
-	        "Operating System :: POSIX :: Linux",
+			"Operating System :: POSIX :: Linux",
 			"Programming Language :: Python :: 3.7"
 		],
 		zip_safe=False,
