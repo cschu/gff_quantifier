@@ -275,18 +275,25 @@ class FeatureQuantifier:
 		self.gff_dbm.clear_caches()
 
 		# second pass: process ambiguous alignment groups
-		if self.require_ambig_bookkeeping():
-			t0 = time.time()
+		if ambig_dumpfile:
+			if os.path.isfile(ambig_dumpfile) and os.stat(ambig_dumpfile).st_size > 0:
+				t0 = time.time()
 
-			ambig_aln = self._read_ambiguous_alignments(ambig_dumpfile)
-			n_align = self._process_ambiguous_aln_groups(ambig_aln)
+				ambig_aln = self._read_ambiguous_alignments(ambig_dumpfile)
+				n_align = self._process_ambiguous_aln_groups(ambig_aln)
 
-			if not DEBUG:
-				os.remove(ambig_dumpfile)
+				t1 = time.time()
+				print("Processed {n_align} secondary alignments in {n_seconds:.3f}s.".format(
+					n_align=n_align, n_seconds=t1-t0), flush=True)
+			else:
+				print("Warning: ambig-mode chosen, but bamfile does not contain secondary alignments.")
+				self.overlap_counter.has_ambig_counts = True # we expect ambig cols in the outfile!
 
-			t1 = time.time()
-			print("Processed {n_align} secondary alignments in {n_seconds:.3f}s.".format(
-				n_align=n_align, n_seconds=t1-t0), flush=True)
+			try:
+				if not DEBUG:
+					os.remove(ambig_dumpfile)
+			except:
+				pass
 
 		self.overlap_counter.annotate_counts(self.bamfile)
 		self.overlap_counter.unannotated_reads += unannotated_ambig

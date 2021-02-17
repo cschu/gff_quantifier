@@ -8,14 +8,14 @@ import glob
 import re
 import sys
 
-
+from gffquant import __version__ as gffquant_version
 here = path.abspath(path.dirname("__file__"))
 
 with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 	description = long_description = description.read()
 
 	name="gffquant"
-	version = [line.strip().split(" ")[-1] for line in open("gffquant/__init__.py") if line.startswith("__version__")][0]
+	version = gffquant_version
 
 	if sys.version_info.major != 3:
 		raise EnvironmentError("""{toolname} is a python module that requires python3, and is not compatible with python2.""".format(toolname=name))
@@ -33,7 +33,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 			"Development Status :: 4 - Beta",
 			"Topic :: Scientific Engineering :: Bio/Informatics",
 			"License :: OSI Approved :: MIT License",
-	        "Operating System :: POSIX :: Linux",
+			"Operating System :: POSIX :: Linux",
 			"Programming Language :: Python :: 3.7"
 		],
 		zip_safe=False,
