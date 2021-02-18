@@ -76,6 +76,6 @@ process run_gffquant {
 	echo $sample $bamfile
 	mkdir -p logs
 	gffquant ${params.db} ${bamfile} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
-	touch ${sample}/${sample}.seqname.dist1.txt
+	touch ${sample}/${sample}.seqname.dist1.txt ${sample}/${sample}.seqname.uniq.txt ${sample}/${sample}.seqname.dist1.txt
 	"""
 }
