@@ -170,6 +170,7 @@ class FeatureQuantifier:
 			ambig_bookkeeper = contextlib.nullcontext()
 
 		with ambig_bookkeeper:
+			aln_count = 0
 			for aln_count, aln in bam_stream:
 				start, end, rev_strand = aln.start, aln.end, aln.is_reverse()
 
@@ -212,11 +213,13 @@ class FeatureQuantifier:
 			print("Processed {n_align} alignments in {n_seconds:.3f}s.".format(
 				n_align=aln_count, n_seconds=t1-t0), flush=True
 			)
+			if aln_count == 0:
+				print("Warning: bam file does not contain any alignments.")
 
 		if self.require_ambig_bookkeeping():
-			return ambig_bookkeeper.n_unannotated(), ambig_bookkeeper.dumpfile 
+			return aln_count, ambig_bookkeeper.n_unannotated(), ambig_bookkeeper.dumpfile 
 
-		return 0, None
+		return aln_count, 0, None
 
 	def _process_properly_paired_alignment(self, aln):
 		# need to keep track of read pairs to avoid dual counts
@@ -271,33 +274,34 @@ class FeatureQuantifier:
 		""" processes one position-sorted bamfile """
 		self.bamfile = BamFile(bamfile, large_header=not self.do_overlap_detection) # this is ugly!
 		# first pass: process uniqs and dump ambigs (if required)
-		unannotated_ambig, ambig_dumpfile = self.process_alignments()
+		aln_count, unannotated_ambig, ambig_dumpfile = self.process_alignments()
 		self.gff_dbm.clear_caches()
 
-		# second pass: process ambiguous alignment groups
-		if ambig_dumpfile:
-			if os.path.isfile(ambig_dumpfile) and os.stat(ambig_dumpfile).st_size > 0:
-				t0 = time.time()
+		if aln_count:
+			# second pass: process ambiguous alignment groups
+			if ambig_dumpfile:
+				if os.path.isfile(ambig_dumpfile) and os.stat(ambig_dumpfile).st_size > 0:
+					t0 = time.time()
 
-				ambig_aln = self._read_ambiguous_alignments(ambig_dumpfile)
-				n_align = self._process_ambiguous_aln_groups(ambig_aln)
+					ambig_aln = self._read_ambiguous_alignments(ambig_dumpfile)
+					n_align = self._process_ambiguous_aln_groups(ambig_aln)
 
-				t1 = time.time()
-				print("Processed {n_align} secondary alignments in {n_seconds:.3f}s.".format(
-					n_align=n_align, n_seconds=t1-t0), flush=True)
-			else:
-				print("Warning: ambig-mode chosen, but bamfile does not contain secondary alignments.")
-				self.overlap_counter.has_ambig_counts = True # we expect ambig cols in the outfile!
+					t1 = time.time()
+					print("Processed {n_align} secondary alignments in {n_seconds:.3f}s.".format(
+						n_align=n_align, n_seconds=t1-t0), flush=True)
+				else:
+					print("Warning: ambig-mode chosen, but bamfile does not contain secondary alignments.")
+					self.overlap_counter.has_ambig_counts = True # we expect ambig cols in the outfile!
 
-			try:
-				if not DEBUG:
-					os.remove(ambig_dumpfile)
-			except:
-				pass
+			self.overlap_counter.annotate_counts(self.bamfile)
+			self.overlap_counter.unannotated_reads += unannotated_ambig
+			self.overlap_counter.dump_counts(self.bamfile)
 
-		self.overlap_counter.annotate_counts(self.bamfile)
-		self.overlap_counter.unannotated_reads += unannotated_ambig
-		self.overlap_counter.dump_counts(self.bamfile)
+		try:
+			if not DEBUG:
+				os.remove(ambig_dumpfile)
+		except:
+			pass
 
 		print("Finished.", flush=True)
 
