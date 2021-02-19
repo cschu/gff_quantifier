@@ -36,7 +36,7 @@ if (!params.db) {
 }
 
 if (!params.file_pattern) {
-	params.file_pattern = "/**.bam"
+	params.file_pattern = "**.bam"
 }
 
 if (!params.output_dir) {
@@ -44,24 +44,23 @@ if (!params.output_dir) {
 }
 output_dir = "${params.output_dir}/${params.ambig_mode}_${params.mode}"
 
+suffix_pattern = params.file_pattern.replaceAll(/\*\*/, "")
+
 Channel
-	//.fromPath(params.input_dir + "/**.bam")
-	//.fromPath(params.input_dir + "/*.fr12RepContigs.sorted.bam")
 	.fromPath(params.input_dir + "/" + params.file_pattern)
 	.map { file -> 
-		def sample = file.name.replaceAll(/\..+/, "")
+        def sample = file.name.replaceAll(suffix_pattern, "")
+        sample = sample.replaceAll(/\.$/, "")
 		return tuple(sample, file)
 	}
 	.groupTuple()
 	.set { samples_ch }
 
 process run_gffquant {
-	//conda ""
 	publishDir "$output_dir", mode: "link"
 
 	input:
 	set sample, file(bamfile) from samples_ch
-	//file("${params.db}")
 
 	output:
 	stdout result_run_gffquant
