@@ -8,19 +8,19 @@ import numpy
 
 """
 normalizeCounts nmethod counts sizes
-    | nmethod `elem` [NMScaled, NMFpkm] = do
-        -- count vectors always include a -1 at this point (it is
-        -- ignored in output if the user does not request it, but is
-        -- always computed). Thus, we compute the sum without it and do
-        -- not normalize it later:
-        let totalCounts v = withVector v (VU.sum . VU.tail)
-        initial <- totalCounts counts
-        normalizeCounts NMNormed counts sizes
-        afternorm <- totalCounts counts
-        let factor
-                | nmethod == NMScaled = initial / afternorm
-                | otherwise = 1.0e9 / initial --- 1e6 [million fragments] * 1e3 [kilo basepairs] = 1e9
-        liftIO $ forM_ [1.. VUM.length counts - 1] (VUM.unsafeModify counts (* factor))
+	| nmethod `elem` [NMScaled, NMFpkm] = do
+		-- count vectors always include a -1 at this point (it is
+		-- ignored in output if the user does not request it, but is
+		-- always computed). Thus, we compute the sum without it and do
+		-- not normalize it later:
+		let totalCounts v = withVector v (VU.sum . VU.tail)
+		initial <- totalCounts counts
+		normalizeCounts NMNormed counts sizes
+		afternorm <- totalCounts counts
+		let factor
+				| nmethod == NMScaled = initial / afternorm
+				| otherwise = 1.0e9 / initial --- 1e6 [million fragments] * 1e3 [kilo basepairs] = 1e9
+		liftIO $ forM_ [1.. VUM.length counts - 1] (VUM.unsafeModify counts (* factor))
 """
 
 class OverlapCounter(dict):
@@ -157,14 +157,15 @@ class OverlapCounter(dict):
 		total, total_normed, total_ambi, total_ambi_normed = total_counts
 
 		# are these used?
-		self.feature_scaling_factors["total"] = (total / total_normed) if total_normed else None
-		self.feature_scaling_factors["total_ambi"] = (total_ambi / total_ambi_normed) if total_ambi_normed else None
+		default_scaling_factor = 0
+		self.feature_scaling_factors["total"] = (total / total_normed) if total_normed else default_scaling_factor
+		self.feature_scaling_factors["total_ambi"] = (total_ambi / total_ambi_normed) if total_ambi_normed else default_scaling_factor
 
 		for ftype, counts in feature_count_sums.items():
 			total, total_normed, total_ambi, total_ambi_normed = counts
 			self.feature_scaling_factors[ftype] = (
-				(total / total_normed) if total_normed else None,
-				(total_ambi / total_ambi_normed) if total_ambi_normed else None
+				(total / total_normed) if total_normed else default_scaling_factor,
+				(total_ambi / total_ambi_normed) if total_ambi_normed else default_scaling_factor
 			)
 
 		self.clear()
@@ -197,7 +198,7 @@ class OverlapCounter(dict):
 #
 #				reg_count[(start, end, rev_str)] += increment
 
-#290             hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag)))
+#290			 hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag)))
 
 				if n_total and self.seqcounts[rid]:
 					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
