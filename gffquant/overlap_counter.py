@@ -246,10 +246,11 @@ class OverlapCounter(dict):
 
         with open("{prefix}.seqname.uniq.txt".format(prefix=self.out_prefix), "w") as seq_out:
             print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
-            seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
-            for rid, count in self.seqcounts.items():
-                seq_id, seq_len = bam.get_reference(rid)
-                print(rid, seq_id, seq_len, count, "{:.5f}\t{:.5f}".format(*OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)[1:]), flush=True, sep="\t", file=seq_out)
+            if sum(self.seqcounts.values()):
+                seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
+                for rid, count in self.seqcounts.items():
+                    seq_id, seq_len = bam.get_reference(rid)
+                    print(rid, seq_id, seq_len, count, "{:.5f}\t{:.5f}".format(*OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)[1:]), flush=True, sep="\t", file=seq_out)
 
         with open("{prefix}.feature_counts.txt".format(prefix=self.out_prefix), "w") as feat_out:
 
