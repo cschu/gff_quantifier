@@ -57,7 +57,7 @@ Channel
 	.set { samples_ch }
 
 process run_gffquant {
-	publishDir "$output_dir", mode: "link"
+	publishDir "$output_dir", mode: "symlink"
 
 	input:
 	set sample, file(bamfile) from samples_ch
