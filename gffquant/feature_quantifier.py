@@ -12,66 +12,16 @@ import pandas
 from gffquant.bamreader import BamFile, SamFlags
 from gffquant.gff_dbm import GffDatabaseManager
 from gffquant.overlap_counter import OverlapCounter
+from gffquant.ambig_aln import AmbiguousAlignmentRecordKeeper, AmbiguousAlignmentGroup
 
 DEBUG = False
-
-class AmbiguousAlignmentRecordKeeper:
-	"""
-	This class takes care of the specific record keeping for ambiguous alignments.
-	This includes:
-		- counting of annotated / unannotated reads
-		- assignment of integer read ids to save space
-		- writing of annotated read information to a temporary file
-		(this last one is a painful workaround, the alternative would be to
-		 split the bam file into unique and ambiguous alignments, with the latter sorted by name)
-		 The task here is to save memory, which now comes at the cost of a bit of (temporary) disk space.
-
-	The class is used as a contextmanager, it is only instanced when ambiguous alignments require special treatment.
-	"""
-
-	def __init__(self, prefix, db, do_overlap_detection=True):
-		self.annotated = set()
-		self.unannotated = set()
-		self.readids = dict()
-		self.dumpfile = prefix + ".ambig_tmp.txt"
-		self.ambig_dump = open(self.dumpfile, "wt")
-		self.db = db
-		self.do_overlap_detection = do_overlap_detection
-
-	def __enter__(self):
-		return self
-
-	def __exit__(self, exc_type, exc_val, exc_tb):
-		self.ambig_dump.close()
-
-	def process_alignment(self, ref, aln, aln_count):
-		"""
-		- obtains/assigns a unique integer (correlating to the read id) to an alignment for alignment group identification
-		- updates the unannotated/annotated records, depending on whether the alignment could be annotated
-		- writes the relevant alignment information to disk if alignment could be annotated
-		"""
-		qname_id = self.readids.setdefault(aln.qname, len(self.readids))
-		if self.do_overlap_detection:
-			overlaps = self.db.get_overlaps(ref, aln.start, aln.end)
-			if not overlaps:
-				self.unannotated.add(qname_id)
-			else:
-				self.annotated.add(qname_id)
-				for ovl in overlaps:
-					print(qname_id, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag, file=self.ambig_dump, sep="\t")
-		else:
-			print(qname_id, aln_count, aln.rid, -1, -1, aln.flag, file=self.ambig_dump, sep="\t")
-
-	def n_unannotated(self):
-		""" returns the number of unannotated reads (all reads that didn't align to any annotated region) """
-		return len(self.unannotated.difference(self.annotated))
 
 
 class FeatureQuantifier:
 	TRUE_AMBIG_MODES = ("dist1", "1overN")
 
-	def __init__(self, db, db_index, out_prefix="gffquant", ambig_mode="unique_only", do_overlap_detection=True, strand_specific=False):
-		self.gff_dbm = GffDatabaseManager(db, db_index=db_index)
+	def __init__(self, db=None, db_index=None, out_prefix="gffquant", ambig_mode="unique_only", do_overlap_detection=True, strand_specific=False):
+		self.gff_dbm = GffDatabaseManager(db, db_index=db_index) if db and db_index else None
 		self.umap_cache = dict()
 		self.ambig_cache = dict()
 		self.overlap_counter = OverlapCounter(out_prefix, self.gff_dbm, do_overlap_detection=do_overlap_detection, strand_specific=strand_specific)
@@ -110,7 +60,7 @@ class FeatureQuantifier:
 
 			if process_unique:
 				short_aln = (ref, start, end) if self.do_overlap_detection else None
-				self.overlap_counter.update_unique_counts(rid, short_aln, rev_strand=rev_strand)
+				self.overlap_counter.update_unique_counts(rid, aln=short_aln, rev_strand=rev_strand)
 			else:
 				self._update_ambig_counts(self, rid, ref, aln, rev_strand)
 
@@ -146,7 +96,7 @@ class FeatureQuantifier:
 				continue
 
 			short_aln = (ref, start, end) if self.do_overlap_detection else None
-			self.overlap_counter.update_unique_counts(rid, short_aln, rev_strand=rev_strand)
+			self.overlap_counter.update_unique_counts(rid, aln=short_aln, rev_strand=rev_strand)
 
 		self.umap_cache.clear()
 
@@ -203,7 +153,7 @@ class FeatureQuantifier:
 				if start is not None:
 					if aln.is_unique():
 						short_aln = (current_ref, start, end) if self.do_overlap_detection else None
-						self.overlap_counter.update_unique_counts(current_rid, short_aln, rev_strand=rev_strand)
+						self.overlap_counter.update_unique_counts(current_rid, aln=short_aln, rev_strand=rev_strand)
 					else:
 						self._update_ambig_counts(current_rid, current_ref, aln, rev_strand)
 
@@ -270,7 +220,7 @@ class FeatureQuantifier:
 
 		return n_align
 
-	def process_data(self, bamfile):
+	def process_bamfile(self, bamfile):
 		""" processes one position-sorted bamfile """
 		self.bamfile = BamFile(bamfile, large_header=not self.do_overlap_detection) # this is ugly!
 		# first pass: process uniqs and dump ambigs (if required)
@@ -293,9 +243,9 @@ class FeatureQuantifier:
 					print("Warning: ambig-mode chosen, but bamfile does not contain secondary alignments.")
 					self.overlap_counter.has_ambig_counts = True # we expect ambig cols in the outfile!
 
-			self.overlap_counter.annotate_counts(self.bamfile)
+			self.overlap_counter.annotate_counts(bamfile=self.bamfile)
 			self.overlap_counter.unannotated_reads += unannotated_ambig
-			self.overlap_counter.dump_counts(self.bamfile)
+			self.overlap_counter.dump_counts(bam=self.bamfile)
 
 		try:
 			if not DEBUG:
@@ -305,51 +255,38 @@ class FeatureQuantifier:
 
 		print("Finished.", flush=True)
 
-
-class AmbiguousAlignmentGroup:
-	"""
-	Represents a group of ambiguous alignments of a single read/read pair.
-	bwa -A assigns a primary read (pair) and flags all others as secondary alignments (0x100)
-	due to the ngless filtering, we also have the case that the primary was filtered out
-
-	Caveat: paired-end information is currently not considered for ambiguous alignment groups.
-	This means that overlapping mates will result in duplicate counts.
-	"""
-
-	def __init__(self, aln):
-		self.secondaries = list() # these are the secondary alignments
-		self.primary1, self.primary2 = None, None
-		self.qname = aln[0]
-		self.uniq_alignments = set() # this is the set of alignments that can be annotated
-		self.unannotated = 0
-		self.add_alignment(aln)
-
-	def add_alignment(self, aln):
-		qname, flag = aln[0], aln[-1]
-		short_aln = tuple(aln[2:])
-		if short_aln[0] == -1:
-			self.unannotated += 1
-		elif flag & SamFlags.FIRST_IN_PAIR and self.primary1 is None:
-			self.primary1 = short_aln
-		elif flag & SamFlags.SECOND_IN_PAIR and self.primary2 is None:
-			self.primary2 = short_aln
+	def process_ovl_group(self, ovl_group):
+		n_ovl = len(ovl_group)
+		if n_ovl == 1:
+			self.overlap_counter.update_unique_counts(f"{ovl_group[0][0]}::{ovl_group[0][8]}", rev_strand=ovl_group[0][5]=="-")
 		else:
-			self.secondaries.append(short_aln)
-		if short_aln[0] != -1:
-			self.uniq_alignments.add(short_aln[:-1])
+			if n_ovl == 2 and all(int(ovl[4]) != 0 for ovl in ovl_group):
+				if ovl_group[0][8] != ovl_group[1][8]:
+					self.overlap_counter.update_unique_counts(f"{ovl_group[1][0]}::{ovl_group[1][8]}", rev_strand=ovl_group[1][5]=="-")
+				self.overlap_counter.update_unique_counts(f"{ovl_group[0][0]}::{ovl_group[0][8]}", rev_strand=ovl_group[0][5]=="-")
+			else:
+				hits = dict()
+				for ovl in ovl_group:
+					hits.setdefault(f"{ovl[0]}::{ovl[8]}", set()).add((ovl[1], ovl[2], ovl_group[1][5]=="-"))
+				n_aln = sum(len(v) for v in hits.values())
+				self.overlap_counter.update_ambiguous_counts(hits, n_aln, feat_distmode=self.ambig_mode)
 
-	def n_align(self):
-		return len(self.uniq_alignments.union((self.primary1, self.primary2)).difference({None}))
+	def process_bedfile(self, bedfile):
+		current_group = list()
+		feature_lengths = dict()
+		for ovl in csv.reader(open(bedfile), delimiter="\t"):
+			ref, rstart, rend, rname, mapq, strand, *_, start, end, features, ovl_len = ovl
+			feature_lengths[f"{ref}::{features}"] = int(end) - int(start) + 1
+			rname = rname.replace("/1", "").replace("/2", "")
+			ovl = ref, rstart, rend, rname, mapq, strand, start, end, features, ovl_len
+			if current_group and current_group[0][3] != ovl[3]:
+				self.process_ovl_group(current_group)
+				current_group.clear()
+			current_group.append(ovl)
+		if current_group:
+			self.process_ovl_group(current_group)
 
-	def resolve(self, counter, bam, distmode="1overN"):
-
-		hits = dict()
-
-		if self.primary1 is not None and self.primary2 is not None and self.primary1[:-1] == self.primary2[:-1]:
-			self.primary2 = None
-
-		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
-		for rid, start, end, flag in alignments:
-			hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag)))
-
-		counter.update_ambiguous_counts(hits, self.n_align(), self.unannotated, bam, feat_distmode=distmode)
+		self.overlap_counter.annotate_counts(feature_lengths=feature_lengths, itermode="bedcounts")
+		# self.overlap_counter.unannotated_reads += unannotated_ambig
+		self.overlap_counter.dump_counts()
+		print("Finished.", flush=True)

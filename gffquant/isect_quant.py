@@ -8,31 +8,14 @@ from gffquant.feature_quantifier import FeatureQuantifier
 from . import __version__
 
 def main():
-    ap = argparse.ArgumentParser(prog="gffquant", formatter_class=argparse.RawTextHelpFormatter)
+    ap = argparse.ArgumentParser(prog="isect_quant", formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument(
-        "annotation_db", type=str,
+        "bed_file", type=str,
         help=textwrap.dedent("""\
-            Path to a text file containing the reference annotation.
-            The required type of file is determined by the --mode argument (gff3 or tsv)."""
-        )
-    )
-    ap.add_argument(
-        "bam_file", type=str,
-        help=textwrap.dedent("""\
-            Path to a position-sorted bam file. Ambiguous alignments need to be flagged as secondary
-            alignments with the same read id as their primary alignment.
+            Path to a name-sorted bed file (bedtools intersect output).
+            Ambiguous alignments need to be flagged as secondary
+            alignments with the same read id as their primary alignment. 
             (e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0."""
-        )
-    )
-    ap.add_argument(
-        "--mode", "-m", type=str, default="genome", choices=("genome", "genes", "gene", "domain"),
-        help=textwrap.dedent("""\
-            Run mode:"
-             - 'genome' counts reads aligned against contigs, which are annotated with a gff3 file.
-                The gff3 needs to have been indexed with gffindex prior to the run.
-             - 'gene' counts reads aligned against gene sequences, which are annotated with a tab-separated file.
-             - 'genes' is an alias for the 'gene' mode
-             - 'domain' counts reads against domain annotations within gene sequences, which are annotated with a bed4 file."""
         )
     )
     ap.add_argument(
@@ -61,30 +44,20 @@ def main():
     print("Version:", __version__)
     print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
 
-    if not os.path.exists(args.bam_file):
-        raise ValueError("bam file does not exist", args.bam_file)
-    if not os.path.exists(args.annotation_db):
-        raise ValueError("annotation database does not exist", args.annotation_db)
-
-    db_index = None
-    if args.mode == "genome":
-        db_index = args.annotation_db + ".index"
-        if not os.path.exists(db_index):
-            raise ValueError("gff index '{}' does not exist (please generate index with 'gffindex {}')".format(db_index, args.annotation_db))
+    if not os.path.exists(args.bed_file):
+        raise ValueError("bed file does not exist", args.bed_file)
 
     if os.path.dirname(args.out_prefix):
         pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(exist_ok=True, parents=True)
 
     fq = FeatureQuantifier(
-        db=args.annotation_db,
-        db_index=db_index,
         out_prefix=args.out_prefix,
         ambig_mode=args.ambig_mode,
-        do_overlap_detection=args.mode in ("genome", "domain"),
+        do_overlap_detection=False,
         strand_specific=args.strand_specific
     )
 
-    fq.process_bamfile(args.bam_file)
+    fq.process_bedfile(args.bed_file)
 
 
 if __name__ == "__main__":
