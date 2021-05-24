@@ -258,18 +258,64 @@ class FeatureQuantifier:
 	def process_ovl_group(self, ovl_group):
 		n_ovl = len(ovl_group)
 		if n_ovl == 1:
-			self.overlap_counter.update_unique_counts(f"{ovl_group[0][0]}::{ovl_group[0][8]}", rev_strand=ovl_group[0][5]=="-")
+			self.overlap_counter.update_unique_counts(f"{ovl_group[0].ref}::{ovl_group[0].features}", rev_strand=ovl_group[0].is_negative())
+			self.overlap_counter.update_coverage_intervals(ovl_group[0])
 		else:
-			if n_ovl == 2 and all(int(ovl[4]) != 0 for ovl in ovl_group):
-				if ovl_group[0][8] != ovl_group[1][8]:
-					self.overlap_counter.update_unique_counts(f"{ovl_group[1][0]}::{ovl_group[1][8]}", rev_strand=ovl_group[1][5]=="-")
-				self.overlap_counter.update_unique_counts(f"{ovl_group[0][0]}::{ovl_group[0][8]}", rev_strand=ovl_group[0][5]=="-")
+			if n_ovl == 2 and all(not ovl.is_ambiguous() for ovl in ovl_group):
+				if ovl_group[0].features != ovl_group[1].features or ovl_group[0].ref != ovl_group[1].ref:
+					self.overlap_counter.update_unique_counts(f"{ovl_group[1].ref}::{ovl_group[1].features}", rev_strand=ovl_group[1].is_negative())
+					self.overlap_counter.update_coverage_intervals(ovl_group[0])
+					self.overlap_counter.update_coverage_intervals(ovl_group[1])
+				else:
+					overlaps = ovl_group[0].calc_paired_ref_overlap(ovl_group[1])
+					if isinstance(overlaps[0], tuple):
+						# mates are not overlapping
+						self.overlap_counter.update_coverage_intervals(ovl_group[0], overlap_extent=overlaps[0])
+						self.overlap_counter.update_coverage_intervals(ovl_group[1], overlap_extent=overlaps[1])
+					else:			 
+						#self.overlap_counter.update_coverage_intervals(ovl_group[0].get_ref_interval(), overlaps, features=ovl_group[0].features)
+						self.overlap_counter.update_coverage_intervals(ovl_group[0], overlap_extent=overlaps)
+				self.overlap_counter.update_unique_counts(f"{ovl_group[0].ref}::{ovl_group[0].features}", rev_strand=ovl_group[0].is_negative())
 			else:
 				hits = dict()
 				for ovl in ovl_group:
-					hits.setdefault(f"{ovl[0]}::{ovl[8]}", set()).add((ovl[1], ovl[2], ovl_group[1][5]=="-"))
+					hits.setdefault(f"{ovl.ref}::{ovl.features}", set()).add((ovl.ref_start, ovl.ref_end, ovl.is_negative()))
+					self.overlap_counter.update_coverage_intervals(ovl, ambig_aln=True)
 				n_aln = sum(len(v) for v in hits.values())
 				self.overlap_counter.update_ambiguous_counts(hits, n_aln, feat_distmode=self.ambig_mode)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	def process_bedfile(self, bedfile):
 		current_group = list()
@@ -278,8 +324,8 @@ class FeatureQuantifier:
 			ref, rstart, rend, rname, mapq, strand, *_, start, end, features, ovl_len = ovl
 			feature_lengths[f"{ref}::{features}"] = int(end) - int(start) + 1
 			rname = rname.replace("/1", "").replace("/2", "")
-			ovl = ref, rstart, rend, rname, mapq, strand, start, end, features, ovl_len
-			if current_group and current_group[0][3] != ovl[3]:
+			ovl = FeatureOverlap(ref, int(rstart), int(rend), rname, int(mapq), strand, int(start), int(end), features, int(ovl_len))
+			if current_group and current_group[0].rname != ovl.rname:
 				self.process_ovl_group(current_group)
 				current_group.clear()
 			current_group.append(ovl)
@@ -289,4 +335,39 @@ class FeatureQuantifier:
 		self.overlap_counter.annotate_counts(feature_lengths=feature_lengths, itermode="bedcounts")
 		# self.overlap_counter.unannotated_reads += unannotated_ambig
 		self.overlap_counter.dump_counts()
+		self.overlap_counter.summarise_coverage() 
 		print("Finished.", flush=True)
+
+
+from dataclasses import dataclass
+@dataclass
+class FeatureOverlap:
+	ref: str
+	ref_start: int
+	ref_end: int
+	rname: str
+	mapq: int
+	strand: str
+	start: int
+	end: int
+	features: str
+	ovl_len: int
+
+	@staticmethod
+	def calc_overlap(interval_a, interval_b):
+		first, second = sorted([interval_a, interval_b])
+		return max(first[0], second[0]), min(first[1], second[1])
+	def calc_ref_overlap(self):
+		return FeatureOverlap.calc_overlap((self.start, self.end), (self.ref_start, self.ref_end))	
+	def is_negative(self):
+		return self.strand == "-"
+	def is_ambiguous(self):
+		return self.mapq == 0
+	def calc_paired_ref_overlap(self, other):
+		first, second = sorted([(self.start, self.end), (other.start, other.end)])
+		if first[1] < second[0]:
+			return self.calc_ref_overlap(), other.calc_ref_overlap()
+		merged = min((first[0], second[0])), max((first[1], second[1]))
+		return FeatureOverlap.calc_overlap(merged, (self.ref_start, self.ref_end))
+	def get_ref_interval(self):
+		return self.ref, self.ref_start, self.ref_end
