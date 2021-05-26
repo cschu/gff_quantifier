@@ -81,25 +81,6 @@ class FeatureQuantifier:
 			aln_count, unannotated = 1, 0
 		self.overlap_counter.update_ambiguous_counts(hits, aln_count, unannotated, self.bamfile, feat_distmode=self.ambig_mode)
 
-
-	def process_unique_cache(self, rid, ref):
-		for qname, uniq_aln in self.umap_cache.items():
-			n_aln = len(uniq_aln)
-			if n_aln == 1:
-				start, end, flag = uniq_aln[0][1:]
-				rev_strand = SamFlags.is_reverse_strand(flag)
-			elif n_aln == 2:
-				start, end = BamFile.calculate_fragment_borders(*uniq_aln[0][1:-1], *uniq_aln[1][1:-1])
-				rev_strand = None #TODO: add strand-specific handling by RNAseq protocol
-			else:
-				print("WARNING: more than two primary alignments for {qname} ({n}). Ignoring.".format(qname=qname, n=n_aln), file=sys.stderr, flush=True)
-				continue
-
-			short_aln = (ref, start, end) if self.do_overlap_detection else None
-			self.overlap_counter.update_unique_counts(rid, aln=short_aln, rev_strand=rev_strand)
-
-		self.umap_cache.clear()
-
 	def process_alignments(self):
 		"""
 		Reads from a position-sorted bam file are processed in batches according to the reference sequence they were aligned to.
