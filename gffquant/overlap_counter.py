@@ -354,7 +354,9 @@ class OverlapCounter(dict):
                         scaling_factor=self.feature_scaling_factors["total"],
                         ambig_scaling_factor=self.feature_scaling_factors["total_ambi"]
                     )
-                    print(gene[0], out_row[0], *(f"{c:.5f}" for c in out_row[1:]), flush=True, sep="\t", file=gene_out)
+                    if isinstance(gene, tuple):
++                       gene = gene[0]
+                    print(gene, out_row[0], *(f"{c:.5f}" for c in out_row[1:]), flush=True, sep="\t", file=gene_out)
 
         if bam:
             with open(f"{self.out_prefix}.seqname.uniq.txt", "w") as seq_out:
