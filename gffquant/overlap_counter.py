@@ -24,6 +24,8 @@ normalizeCounts nmethod counts sizes
 """
 
 class OverlapCounter(dict):
+    COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
+
     @staticmethod
     def normalise_counts(counts, feature_len, scaling_factor):
         '''Returns raw, length-normalised, and scaled feature counts.'''
@@ -42,6 +44,8 @@ class OverlapCounter(dict):
         self.feature_scaling_factors = dict()
         self.do_overlap_detection = do_overlap_detection
         self.strand_specific = strand_specific
+        self.gene_counts = dict()
+        #self.ambig_gene_counts = Counter()
 
     def update_unique_counts(self, rid, aln=None, rev_strand=False):
         '''
@@ -106,6 +110,7 @@ class OverlapCounter(dict):
                     counts[3] /= region_length
 
                 total_counts, feature_count_sums = self._distribute_feature_counts(bins, counts, region_annotation[1:], total_counts, feature_count_sums)
+                self._add_count_vector(counts, ref, self.gene_counts, bins)
 
         return total_counts, feature_count_sums
 
@@ -147,16 +152,20 @@ class OverlapCounter(dict):
 
     def _distribute_feature_counts(self, bins, counts, region_annotation, total_counts, feature_count_sums):
         for ftype, ftype_counts in region_annotation:
+            total_fcounts = feature_count_sums.setdefault(ftype, numpy.zeros(4))
             for i, ft_ct in enumerate(ftype_counts, start=1):
-                fcounts = self.featcounts.setdefault(ftype, dict()).setdefault(ft_ct, numpy.zeros(bins))
-                total_fcounts = feature_count_sums.setdefault(ftype, numpy.zeros(4))
-                fcounts += counts
+                fcounts = self.featcounts.setdefault(ftype, dict())
+                self._add_count_vector(counts, ft_ct, fcounts, bins)
 
             inc = counts[:4] * i
             total_counts += inc
             total_fcounts += inc
 
         return total_counts, feature_count_sums
+
+    def _add_count_vector(self, count_vector, target_id, target_ctr, bins):
+        counts = target_ctr.setdefault(target_id, numpy.zeros(bins))
+        counts += count_vector
 
     def _iterate_counts(self, bins, bam, strand_specific):
         total_counts, feature_count_sums = numpy.zeros(4), dict()
@@ -169,8 +178,7 @@ class OverlapCounter(dict):
                 region_annotation = self.db.get_data(ref, start, end)
                 counts = self._compute_count_vector(bins, rid, (start, end, rev_strand), region_annotation[0][1], strand_specific)
                 # how to extract the gene counts in genome mode?
-                # self.seqcounts[(region_annotation[1][1], rev_strand)] += counts[0]
-                # self.ambig_seqcounts[(region_annotation[1][1], rev_strand)] += counts[2] - counts[0]
+                self._add_count_vector(counts, region_annotation[1][1], self.gene_counts, bins)
 
                 # distribute the counts to the associated functional (sub-)categories
                 total_counts, feature_count_sums = self._distribute_feature_counts(bins, counts, region_annotation[2:], total_counts, feature_count_sums)
@@ -206,7 +214,6 @@ class OverlapCounter(dict):
         # calculate the scaling factors
         total, total_normed, total_ambi, total_ambi_normed = total_counts
 
-        # are these used?
         default_scaling_factor = 0
         self.feature_scaling_factors["total"] = (total / total_normed) if total_normed else default_scaling_factor
         self.feature_scaling_factors["total_ambi"] = (total_ambi / total_ambi_normed) if total_ambi_normed else default_scaling_factor
@@ -275,11 +282,55 @@ class OverlapCounter(dict):
                 normed_total += norm_ambi
         return raw_total / normed_total
 
+
+    def _compile_output_row(self, counts, scaling_factor=1, ambig_scaling_factor=1):
+        p, row = 0, list()
+        # unique counts
+        row.extend(counts[p:p + 2])
+        row.append(row[-1] * scaling_factor)
+        p += 2
+        # ambiguous counts
+        if self.has_ambig_counts:
+            row.extend(counts[p:p + 2])
+            row.append(row[-1] * ambig_scaling_factor)
+            p += 2
+        # sense-strand unique
+        if self.strand_specific:
+            row.extend(counts[p:p + 2])
+            row.append(row[-1] * scaling_factor)
+            p += 2
+            # sense-strand ambiguous
+            if self.has_ambig_counts:
+                row.extend(counts[p:p + 2])
+                row.append(row[-1] * ambig_scaling_factor)
+                p += 2
+            # antisense-strand unique
+            row.extend(counts[p:p + 2])
+            row.append(row[-1] * scaling_factor)
+            p += 2
+            if self.has_ambig_counts:
+                row.extend(counts[p:p + 2])
+                row.append(row[-1] * ambig_scaling_factor)
+        return row
+
+    def get_header(self):
+        header = list()
+        header.extend(f"uniq_{element}" for element in OverlapCounter.COUNT_HEADER_ELEMENTS)
+        if self.has_ambig_counts:
+            header.extend(f"combined_{element}" for element in OverlapCounter.COUNT_HEADER_ELEMENTS)
+        if self.strand_specific:
+            for strand in ("ss", "as"):
+                header.extend(f"uniq_{element}_{strand}" for element in OverlapCounter.COUNT_HEADER_ELEMENTS)
+                if self.has_ambig_counts:
+                    header.extend(f"combined_{element}_{strand}" for element in OverlapCounter.COUNT_HEADER_ELEMENTS)
+        return header
+
+
     def dump_counts(self, bam=None):
 
-        COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
-        SEQ_COUNT_HEADER = ["seqid_int", "seqid", "length"] + COUNT_HEADER_ELEMENTS
+        SEQ_COUNT_HEADER = ["seqid_int", "seqid", "length"] + OverlapCounter.COUNT_HEADER_ELEMENTS
         counts_template = "{:.5f}\t{:.5f}\t{:.5f}"
+        header = self.get_header()
 
         print("Dumping overlap counters...", flush=True)
         print("Has ambiguous counts:", self.has_ambig_counts, flush=True)
@@ -294,8 +345,21 @@ class OverlapCounter(dict):
                      _seqcounts[rid] += count
                  self.ambig_seqcounts = _seqcounts
 
+        if self.gene_counts:
+            with open(f"{self.out_prefix}.gene_counts.txt", "w") as gene_out:
+                print("gene", *header, sep="\t", file=gene_out, flush=True)
+                for gene, g_counts in sorted(self.gene_counts.items()):
+                    out_row = self._compile_output_row(
+                        g_counts,
+                        scaling_factor=self.feature_scaling_factors["total"],
+                        ambig_scaling_factor=self.feature_scaling_factors["total_ambi"]
+                    )
+                    if isinstance(gene, tuple):
++                       gene = gene[0]
+                    print(gene, out_row[0], *(f"{c:.5f}" for c in out_row[1:]), flush=True, sep="\t", file=gene_out)
+
         if bam:
-            with open("{prefix}.seqname.uniq.txt".format(prefix=self.out_prefix), "w") as seq_out:
+            with open(f"{self.out_prefix}.seqname.uniq.txt", "w") as seq_out:
                 print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
                 if sum(self.seqcounts.values()):
                     seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
@@ -303,54 +367,18 @@ class OverlapCounter(dict):
                         seq_id, seq_len = bam.get_reference(rid)
                         print(rid, seq_id, seq_len, count, "{:.5f}\t{:.5f}".format(*OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)[1:]), flush=True, sep="\t", file=seq_out)
 
-        with open("{prefix}.feature_counts.txt".format(prefix=self.out_prefix), "w") as feat_out:
-
-            header = ["subfeature"]
-            header.extend("uniq_{}".format(element) for element in COUNT_HEADER_ELEMENTS)
-            if self.has_ambig_counts:
-                header.extend("combined_{}".format(element) for element in COUNT_HEADER_ELEMENTS)
-            if self.strand_specific:
-                for strand in ("ss", "as"):
-                    header.extend("uniq_{}_{}".format(element, strand) for element in COUNT_HEADER_ELEMENTS)
-                    if self.has_ambig_counts:
-                        header.extend("combined_{}_{}".format(element, strand) for element in COUNT_HEADER_ELEMENTS)
-            print(*header, sep="\t", file=feat_out, flush=True)
-
+        with open(f"{self.out_prefix}.feature_counts.txt", "w") as feat_out:
+            print("subfeature", *header, sep="\t", file=feat_out, flush=True)
             print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
             for ftype, counts in sorted(self.featcounts.items()):
-                print("#{}".format(ftype), file=feat_out, flush=True)
-                #feature_scaling_factor = OverlapCounter.calculate_feature_scaling_factor(counts)
-                #feature_scaling_factor_ambig = OverlapCounter.calculate_feature_scaling_factor(counts, include_ambig=True)
-                scaling_factor, scaling_factor_ambi = self.feature_scaling_factors[ftype]
-
+                print(f"#{ftype}", file=feat_out, flush=True)
+                scaling_factor, ambig_scaling_factor = self.feature_scaling_factors[ftype]
                 for subf, sf_counts in sorted(counts.items()):
-                    # first batch: unique
-                    out_row = list(sf_counts[:2])
-                    out_row.append(out_row[-1] * scaling_factor)
-                    # next batch: ambiguous (if exist)
-                    if self.has_ambig_counts:
-                        out_row.extend(sf_counts[2:4])
-                        out_row.append(out_row[-1] * scaling_factor_ambi)
-                    # next batch: sense-strand unique
-                    if self.strand_specific:
-                        out_row.extend(sf_counts[4:6])
-                        out_row.append(out_row[-1] * scaling_factor)
-                        # next batch: sense-strand ambiguous
-                        if self.has_ambig_counts:
-                            out_row.extend(sf_counts[6:8])
-                            out_row.append(out_row[-1] * scaling_factor_ambi)
-                        # next batch antisense-strand unique
-                        out_row.extend(sf_counts[8:10])
-                        out_row.append(out_row[-1] * scaling_factor)
-                        # next batch: antisense-strand ambiguous
-                        if self.has_ambig_counts:
-                            out_row.extend(sf_counts[10:12])
-                            out_row.append(out_row[-1] * scaling_factor_ambi)
-
-                    print(subf, out_row[0], *("{:.5f}".format(c) for c in out_row[1:]), flush=True, sep="\t", file=feat_out)
+                    out_row = self._compile_output_row(sf_counts, scaling_factor=scaling_factor, ambig_scaling_factor=ambig_scaling_factor)
+                    print(subf, out_row[0], *(f"{c:.5f}" for c in out_row[1:]), flush=True, sep="\t", file=feat_out)
 
         if bam and self.ambig_seqcounts:
-                with open("{prefix}.seqname.dist1.txt".format(prefix=self.out_prefix), "w") as seq_out:
+                with open(f"{self.out_prefix}.seqname.dist1.txt", "w") as seq_out:
                     print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
                     self.seqcounts.update(self.ambig_seqcounts)
                     seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
