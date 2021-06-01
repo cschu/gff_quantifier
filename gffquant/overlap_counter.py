@@ -355,7 +355,7 @@ class OverlapCounter(dict):
                         ambig_scaling_factor=self.feature_scaling_factors["total_ambi"]
                     )
                     if isinstance(gene, tuple):
-+                       gene = gene[0]
+                        gene = gene[0]
                     print(gene, out_row[0], *(f"{c:.5f}" for c in out_row[1:]), flush=True, sep="\t", file=gene_out)
 
         if bam:
