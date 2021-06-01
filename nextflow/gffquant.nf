@@ -39,6 +39,10 @@ if (!params.file_pattern) {
 	params.file_pattern = "**.bam"
 }
 
+if (!params.publish_mode) {
+	params.publish_mode = "link"
+}
+
 if (!params.output_dir) {
 	params.output_dir = "gffquant_out"
 }
@@ -49,15 +53,15 @@ suffix_pattern = params.file_pattern.replaceAll(/\*\*/, "")
 Channel
 	.fromPath(params.input_dir + "/" + params.file_pattern)
 	.map { file -> 
-        def sample = file.name.replaceAll(suffix_pattern, "")
-        sample = sample.replaceAll(/\.$/, "")
+		def sample = file.name.replaceAll(suffix_pattern, "")
+		sample = sample.replaceAll(/\.$/, "")
 		return tuple(sample, file)
 	}
 	.groupTuple()
 	.set { samples_ch }
 
 process run_gffquant {
-	publishDir "$output_dir", mode: "symlink"
+	publishDir "$output_dir", mode: params.publish_mode
 
 	input:
 	set sample, file(bamfile) from samples_ch
