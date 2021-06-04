@@ -21,7 +21,7 @@ class FeatureQuantifier:
 	TRUE_AMBIG_MODES = ("dist1", "1overN")
 
 	def __init__(self, db=None, db_index=None, out_prefix="gffquant", ambig_mode="unique_only", do_overlap_detection=True, strand_specific=False):
-		self.gff_dbm = GffDatabaseManager(db, db_index=db_index) if db and db_index else None
+		self.gff_dbm = GffDatabaseManager(db, db_index=db_index)
 		self.umap_cache = dict()
 		self.ambig_cache = dict()
 		self.overlap_counter = OverlapCounter(out_prefix, self.gff_dbm, do_overlap_detection=do_overlap_detection, strand_specific=strand_specific)
