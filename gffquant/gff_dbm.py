@@ -32,7 +32,7 @@ class GffDatabaseManager:
 
     def __init__(self, db, db_index=None):
         gz_magic = "\x1f\x8b\x08"
-        gzipped = open(db).read(3).startswith(gz_magic)
+        gzipped = open(db, "rb").read(3).startswith(gz_magic)
         if db_index:
             if gzipped:
                 raise ValueError(f"Database {db} is gzipped. This doesn't work together with an index. Please unzip and re-index.")
