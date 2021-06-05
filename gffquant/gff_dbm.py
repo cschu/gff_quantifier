@@ -31,7 +31,7 @@ class GffDatabaseManager:
         return db_index
 
     def __init__(self, db, db_index=None):
-        gz_magic = "\x1f\x8b\x08"
+        gz_magic = b"\x1f\x8b\x08"
         gzipped = open(db, "rb").read(3).startswith(gz_magic)
         if db_index:
             if gzipped:
