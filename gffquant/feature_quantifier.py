@@ -243,7 +243,7 @@ class FeatureQuantifier:
 					print("Warning: ambig-mode chosen, but bamfile does not contain secondary alignments.")
 					self.overlap_counter.has_ambig_counts = True # we expect ambig cols in the outfile!
 
-			self.overlap_counter.annotate_counts(bamfile=self.bamfile)
+			self.overlap_counter.annotate_counts(bamfile=self.bamfile, itermode="counts" if self.do_overlap_detection else "database")
 			self.overlap_counter.unannotated_reads += unannotated_ambig
 			self.overlap_counter.dump_counts(bam=self.bamfile)
 
