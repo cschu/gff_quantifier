@@ -360,6 +360,8 @@ class OverlapCounter(dict):
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
             if self.do_overlap_detection:
                 gene_counts = self.gene_counts
+                scaling_factor = self.feature_scaling_factors["total"]
+                ambig_scaling_factor = self.feature_scaling_factors["total_ambi"]
             else:
                 gene_counts = dict()
                 gene_ids = set((gene_id[0] if isinstance(gene_id, tuple) else gene_id) for gene_id in set(self.seqcounts).union(self.ambig_seqcounts))
@@ -367,11 +369,17 @@ class OverlapCounter(dict):
                     gene_id: self._compute_genes_count_vector(gene_id, bam.get_reference(gene_id)[1], strand_specific=self.strand_specific)
                     for gene_id in gene_ids
                 }
+                counts_for_scaling = numpy.zeros(4)
+                for counts in gene_counts.values():
+                    counts_for_scaling += counts[:4]
+                scaling_factor = counts_for_scaling[0] / counts_for_scaling[1]
+                ambig_scaling_factor = counts_for_scaling[2] / counts_for_scaling[3]
+
             for gene, g_counts in sorted(gene_counts.items()):
                 out_row = self._compile_output_row(
                     g_counts,
-                    scaling_factor=self.feature_scaling_factors["total"],
-                    ambig_scaling_factor=self.feature_scaling_factors["total_ambi"]
+                    scaling_factor=scaling_factor,
+                    ambig_scaling_factor=ambig_scaling_factor
                 )
                 if isinstance(gene, tuple):
                     gene = gene[0]
