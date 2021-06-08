@@ -1,19 +1,7 @@
-import csv
-import os
-import time
-import sys
-from collections import Counter
-from datetime import datetime
-import contextlib
-
-import numpy
-import pandas
-
-from gffquant.bamreader import BamFile, SamFlags
-from gffquant.gff_dbm import GffDatabaseManager
-from gffquant.overlap_counter import OverlapCounter
+from gffquant.bamreader import SamFlags
 
 DEBUG = False
+
 
 class AmbiguousAlignmentRecordKeeper:
 	"""
@@ -26,7 +14,8 @@ class AmbiguousAlignmentRecordKeeper:
 		 split the bam file into unique and ambiguous alignments, with the latter sorted by name)
 		 The task here is to save memory, which now comes at the cost of a bit of (temporary) disk space.
 
-	The class is used as a contextmanager, it is only instanced when ambiguous alignments require special treatment.
+	The class is used as a contextmanager. It is only instanced when ambiguous alignments require
+	special treatment.
 	"""
 
 	def __init__(self, prefix, db, do_overlap_detection=True):
@@ -46,7 +35,8 @@ class AmbiguousAlignmentRecordKeeper:
 
 	def process_alignment(self, ref, aln, aln_count):
 		"""
-		- obtains/assigns a unique integer (correlating to the read id) to an alignment for alignment group identification
+		- obtains/assigns a unique integer (correlating to the read id) to an alignment for
+          alignment group identification
 		- updates the unannotated/annotated records, depending on whether the alignment could be annotated
 		- writes the relevant alignment information to disk if alignment could be annotated
 		"""
@@ -58,12 +48,17 @@ class AmbiguousAlignmentRecordKeeper:
 			else:
 				self.annotated.add(qname_id)
 				for ovl in overlaps:
-					print(qname_id, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag, file=self.ambig_dump, sep="\t")
+					print(
+						qname_id, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag,
+						file=self.ambig_dump, sep="\t"
+					)
 		else:
 			print(qname_id, aln_count, aln.rid, -1, -1, aln.flag, file=self.ambig_dump, sep="\t")
 
 	def n_unannotated(self):
-		""" returns the number of unannotated reads (all reads that didn't align to any annotated region) """
+		"""
+		returns the number of unannotated reads (all reads that didn't align to any annotated region)
+		"""
 		return len(self.unannotated.difference(self.annotated))
 
 
@@ -78,15 +73,15 @@ class AmbiguousAlignmentGroup:
 	"""
 
 	def __init__(self, aln):
-		self.secondaries = list() # these are the secondary alignments
+		self.secondaries = list()  # these are the secondary alignments
 		self.primary1, self.primary2 = None, None
 		self.qname = aln[0]
-		self.uniq_alignments = set() # this is the set of alignments that can be annotated
+		self.uniq_alignments = set()  # this is the set of alignments that can be annotated
 		self.unannotated = 0
 		self.add_alignment(aln)
 
 	def add_alignment(self, aln):
-		qname, flag = aln[0], aln[-1]
+		flag = aln[-1]
 		short_aln = tuple(aln[2:])
 		if short_aln[0] == -1:
 			self.unannotated += 1
@@ -106,11 +101,17 @@ class AmbiguousAlignmentGroup:
 
 		hits = dict()
 
-		if self.primary1 is not None and self.primary2 is not None and self.primary1[:-1] == self.primary2[:-1]:
+		if all([
+			self.primary1 is not None,
+			self.primary2 is not None,
+			self.primary1[:-1] == self.primary2[:-1]
+		]):
 			self.primary2 = None
 
 		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
 		for rid, start, end, flag in alignments:
 			hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag)))
 
-		counter.update_ambiguous_counts(hits, self.n_align(), self.unannotated, bam, feat_distmode=distmode)
+		counter.update_ambiguous_counts(
+			hits, self.n_align(), self.unannotated, bam, feat_distmode=distmode
+		)

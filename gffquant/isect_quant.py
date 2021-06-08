@@ -7,6 +7,7 @@ import textwrap
 from gffquant.feature_quantifier import FeatureQuantifier
 from . import __version__
 
+
 def main():
 	ap = argparse.ArgumentParser(prog="isect_quant", formatter_class=argparse.RawTextHelpFormatter)
 	ap.add_argument(
@@ -14,7 +15,7 @@ def main():
 		help=textwrap.dedent("""\
 			Path to a name-sorted bed file (bedtools intersect output).
 			Ambiguous alignments need to be flagged as secondary
-			alignments with the same read id as their primary alignment. 
+			alignments with the same read id as their primary alignment.
 			(e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0."""
 		)
 	)

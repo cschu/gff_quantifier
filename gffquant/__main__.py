@@ -51,7 +51,8 @@ def main():
 	)
 	ap.add_argument(
 		"--strand_specific", action="store_true",
-		help="Perform strand-specific counting for RNAseq reads. This currently only works for single-end data. This flag is ignored for paired-end data."
+		help="Perform strand-specific counting for RNAseq reads. " \
+			 "This flag is currently ignored for paired-end data."
 	)
 	ap.add_argument("--version", "-v", action="version", version="%(prog)s " + __version__)
 
@@ -70,7 +71,7 @@ def main():
 	if args.mode == "genome":
 		db_index = args.annotation_db + ".index"
 		if not os.path.exists(db_index):
-			raise ValueError("gff index '{}' does not exist (please generate index with 'gffindex {}')".format(db_index, args.annotation_db))
+			raise ValueError(f"gff index '{db_index}' does not exist (please generate index with `gffindex {args.annotation_db}`)")
 
 	if os.path.dirname(args.out_prefix):
 		pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(exist_ok=True, parents=True)

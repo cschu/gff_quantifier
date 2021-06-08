@@ -1,8 +1,8 @@
 import csv
 import glob
-import sys
 import os
 import argparse
+
 
 def read_counts(count_file, columns=("uniq_scaled",)):
 	counts = dict()
@@ -15,6 +15,7 @@ def read_counts(count_file, columns=("uniq_scaled",)):
 			else:
 				sf_counts[line["subfeature"]] = [line.get(col) for col in columns]
 	return counts
+
 
 def main():
 	ap = argparse.ArgumentParser()
@@ -33,8 +34,6 @@ def main():
 		for feat, subfeat_d in counts[key].items():
 			if feat != "unannotated":
 				features.setdefault(feat, set()).update(subfeat_d.keys())
-		if False: #i > 10:
-			break
 
 	for feature, subfeatures in features.items():
 		with open(feature + ".summary.txt", "w") as _out:
@@ -43,6 +42,7 @@ def main():
 			for subfeature in sorted(subfeatures):
 				subfeature_counts = [feature_counts.get(feature, dict()).get(subfeature, [0.0])[0] for sample, feature_counts in sorted(counts.items())]
 				print(subfeature, *subfeature_counts, sep="\t", file=_out)
-		
+
+
 if __name__ == "__main__":
-	main()		
+	main()

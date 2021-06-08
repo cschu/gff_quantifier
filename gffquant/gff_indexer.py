@@ -1,7 +1,7 @@
-import gzip
 import sys
 import argparse
 import os
+
 
 class GffIndexer:
 	def __init__(self, gff, overwrite=False):
@@ -10,16 +10,16 @@ class GffIndexer:
 		cur_ref = None
 		index_fn = gff + ".index"
 		if os.path.exists(index_fn):
-			if not overwrite:
-				raise FileExistsError("Index {fn} already exists. Please use -f/--force option to overwrite.".format(fn=index_fn))
-			print("--force parameter is set: overwriting existing index {fn}.".format(fn=index_fn))
+			if overwrite:
+				print(f"--force parameter is set: overwriting existing index {index_fn}.")
+			else:
+				raise FileExistsError(f"Index {index_fn} already exists. Please use -f/--force option to overwrite.")
 
 		with open(gff, "rt") as f, open(index_fn, "wt") as index_out:
 			for line in f:
 				if not line.startswith("#"):
 					ref = line.split("\t")[0]
 					if ref != cur_ref:
-						#print(self._refs)
 						if cur_ref is not None:
 							self._refs[cur_ref][-1][1] = offset - self._refs[cur_ref][-1][0]
 							print(cur_ref, *self._refs[cur_ref][-1], sep="\t", flush=True, file=index_out)
@@ -43,6 +43,7 @@ def main():
 	args = ap.parse_args()
 
 	GffIndexer(args.gff_file, overwrite=args.force)
+
 
 if __name__ == "__main__":
 	main()
