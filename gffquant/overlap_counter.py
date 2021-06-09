@@ -354,6 +354,8 @@ class OverlapCounter(dict):
                         scaling_factor=self.feature_scaling_factors["total"],
                         ambig_scaling_factor=self.feature_scaling_factors["total_ambi"]
                     )
+                    if isinstance(gene, tuple):
+                        gene = gene[0]
                     print(gene, out_row[0], *(f"{c:.5f}" for c in out_row[1:]), flush=True, sep="\t", file=gene_out)
 
         if bam:
@@ -372,7 +374,7 @@ class OverlapCounter(dict):
                 print(f"#{ftype}", file=feat_out, flush=True)
                 scaling_factor, ambig_scaling_factor = self.feature_scaling_factors[ftype]
                 for subf, sf_counts in sorted(counts.items()):
-                    out_row = self._compile_output_row(sf_counts, scaling_factor=scaling_factor1, ambig_scaling_factor=ambig_scaling_factor)
+                    out_row = self._compile_output_row(sf_counts, scaling_factor=scaling_factor, ambig_scaling_factor=ambig_scaling_factor)
                     print(subf, out_row[0], *(f"{c:.5f}" for c in out_row[1:]), flush=True, sep="\t", file=feat_out)
 
         if bam and self.ambig_seqcounts:
