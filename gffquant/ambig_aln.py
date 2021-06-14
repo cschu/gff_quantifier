@@ -52,15 +52,15 @@ class AmbiguousAlignmentRecordKeeper:
 		"""
 		qname_id = self.readids.setdefault(aln.qname, len(self.readids))
 		if self.do_overlap_detection:
-			overlaps = self.db.get_overlaps(ref, aln.start, aln.end)
+			overlaps, coverage = self.db.get_overlaps(ref, aln.start, aln.end)
 			if not overlaps:
 				self.unannotated.add(qname_id)
 			else:
 				self.annotated.add(qname_id)
-				for ovl in overlaps:
-					print(qname_id, aln_count, aln.rid, ovl.begin, ovl.end, aln.flag, file=self.ambig_dump, sep="\t")
+				for ovl, (cstart, cend) in zip(overlaps, coverage):
+					print(qname_id, aln_count, aln.rid, ovl.begin, ovl.end, cstart, cend, aln.flag, file=self.ambig_dump, sep="\t")
 		else:
-			print(qname_id, aln_count, aln.rid, -1, -1, aln.flag, file=self.ambig_dump, sep="\t")
+			print(qname_id, aln_count, aln.rid, -1, -1, -1, -1, aln.flag, file=self.ambig_dump, sep="\t")
 
 	def n_unannotated(self):
 		""" returns the number of unannotated reads (all reads that didn't align to any annotated region) """
@@ -110,7 +110,7 @@ class AmbiguousAlignmentGroup:
 			self.primary2 = None
 
 		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
-		for rid, start, end, flag in alignments:
-			hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag)))
+		for rid, start, end, cstart, cend, flag in alignments:
+			hits.setdefault(rid, set()).add((start, end, cstart, cend, SamFlags.is_reverse_strand(flag)))
 
 		counter.update_ambiguous_counts(hits, self.n_align(), self.unannotated, bam, feat_distmode=distmode)
