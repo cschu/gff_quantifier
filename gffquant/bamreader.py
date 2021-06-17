@@ -36,7 +36,7 @@ class CigarOps:
 		return start + sum(oplen for oplen, op in cigar if op in CigarOps.REF_CONSUMERS)
 
 class BamAlignment:
-		TAG_PARAMS = {
+	TAG_PARAMS = {
 		"A": ("c", 1),
 		"c": ("b", 1), # int8
 		"C": ("B", 1), # uint8
