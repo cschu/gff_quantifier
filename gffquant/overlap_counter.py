@@ -1,7 +1,7 @@
 import time
 from collections import Counter
 
-import numpy
+import numpy as np
 
 
 """
@@ -65,7 +65,7 @@ class OverlapCounter(dict):
 		# calculate the count vector for the current region
 		# count vectors are of the format (raw_uniq, normed_uniq, raw_ambi, normed_ambi)
 		# att: _ambi counts are unique + ambiguous
-		counts = numpy.zeros(bins)
+		counts = np.zeros(bins)
 		region_length = aln[1] - aln[0] + 1
 		counts[0] = counts[1] = self.get(rid, dict()).get(aln, 0.0)
 		counts[1] /= region_length
@@ -80,7 +80,7 @@ class OverlapCounter(dict):
 		return counts
 
 	def _compute_genes_count_vector(self, rid, length, strand_specific=False):
-		counts = numpy.zeros(12 if strand_specific else 4)
+		counts = np.zeros(12 if strand_specific else 4)
 		if strand_specific:
 			PLUS_STRAND, MINUS_STRAND = True, False
 			uniq_plus = self.seqcounts[(rid, PLUS_STRAND)]
@@ -107,7 +107,7 @@ class OverlapCounter(dict):
 		return counts
 
 	def _iterate_database(self, bins, bam, strand_specific):
-		total_counts, feature_count_sums = numpy.zeros(4), dict()
+		total_counts, feature_count_sums = np.zeros(4), dict()
 
 		for ref, region_annotation in self.db.iterate():
 			rid = bam.revlookup_reference(ref)
@@ -123,7 +123,7 @@ class OverlapCounter(dict):
 
 
 	def _iterate_bedcounts(self, bins, feature_lengths, strand_specific):
-		total_counts, feature_count_sums = numpy.zeros(4), dict()
+		total_counts, feature_count_sums = np.zeros(4), dict()
 
 		for rid in set(self.seqcounts).union(self.ambig_seqcounts):
 			region_length = feature_lengths.get(rid)
@@ -144,7 +144,7 @@ class OverlapCounter(dict):
 		self, bins, counts, region_annotation, total_counts, feature_count_sums
 	):
 		for ftype, ftype_counts in region_annotation:
-			total_fcounts = feature_count_sums.setdefault(ftype, numpy.zeros(4))
+			total_fcounts = feature_count_sums.setdefault(ftype, np.zeros(4))
 			for i, ft_ct in enumerate(ftype_counts, start=1):
 				fcounts = self.featcounts.setdefault(ftype, dict())
 				self._add_count_vector(counts, ft_ct, fcounts, bins)
@@ -159,11 +159,11 @@ class OverlapCounter(dict):
 		return total_counts, feature_count_sums
 
 	def _add_count_vector(self, count_vector, target_id, target_ctr, bins):
-		counts = target_ctr.setdefault(target_id, numpy.zeros(bins))
+		counts = target_ctr.setdefault(target_id, np.zeros(bins))
 		counts += count_vector
 
 	def _iterate_counts(self, bins, bam, strand_specific):
-		total_counts, feature_count_sums = numpy.zeros(4), dict()
+		total_counts, feature_count_sums = np.zeros(4), dict()
 
 		for rid in set(self.keys()).union(self.ambig_counts):
 			ref = bam.get_reference(rid)[0]
@@ -415,7 +415,7 @@ class OverlapCounter(dict):
 					)
 					for gene_id in gene_ids
 				}
-				counts_for_scaling = numpy.zeros(4)
+				counts_for_scaling = np.zeros(4)
 				for counts in gene_counts.values():
 					counts_for_scaling += counts[:4]
 				scaling_factor = counts_for_scaling[0] / counts_for_scaling[1]
