@@ -43,7 +43,6 @@ class OverlapCounter(dict):
 		self.do_overlap_detection = do_overlap_detection
 		self.strand_specific = strand_specific
 		self.gene_counts = dict()
-		#self.ambig_gene_counts = Counter()
 
 	def update_unique_counts(self, rid, aln=None, rev_strand=False):
 		'''
