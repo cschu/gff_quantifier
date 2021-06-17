@@ -68,8 +68,17 @@ class GffDatabaseManager:
 	def get_data(self, ref, start, end):
 		return self._read_data(ref, include_payload=True).get((ref, start, end), dict())
 
-	def get_overlaps(self, ref, start, end, cache_data=False):
-		return self._get_tree(ref, cache_data=cache_data)[start:end]
+    def get_overlaps(self, ref, start, end, cache_data=False):
+        def calc_covered_fraction(start, end, interval):
+            if start < interval.begin:
+                return interval.begin, end
+            elif interval.end < end:
+                return start, interval.end
+            return start, end
+        overlaps = self._get_tree(ref, cache_data=cache_data)[start:end]
+        covered = [calc_covered_faction(start, end, interval) for interval in overlaps]
+
+        return overlaps, covered
 
 	def clear_caches(self):
 		print(self._read_data.cache_info(), flush=True)

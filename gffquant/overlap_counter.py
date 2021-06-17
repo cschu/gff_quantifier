@@ -43,7 +43,15 @@ class OverlapCounter(dict):
 		self.do_overlap_detection = do_overlap_detection
 		self.strand_specific = strand_specific
 		self.gene_counts = dict()
-		#self.ambig_gene_counts = Counter()
+		self.coverage_intervals = dict()
+		self.ambig_coverage = dict()
+
+	def update_coverage_intervals(self, rid, intervals, coverage, ambig_aln=False):
+		for (istart, iend), (cstart, cend) in zip(intervals, coverage):
+			if ambig_aln:
+				self.ambig_coverage.setdefault(rid, list()).append((rid, istart, iend, cstart, cend))
+			else:
+				self.coverage_intervals.setdefault(rid, dict()).setdefault((istart, iend), Counter())[(cstart, cend)] += 1
 
 	def update_unique_counts(self, rid, aln=None, rev_strand=False):
 		'''
@@ -51,9 +59,10 @@ class OverlapCounter(dict):
 		adds the number of alternative alignments and stores the results for each reference sequence.
 		'''
 		if aln:
-			overlaps = self.db.get_overlaps(*aln)
+			overlaps, coverage = self.db.get_overlaps(*aln)
 			if overlaps:
 				self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
+				self.update_coverage_intervals(rid, overlaps, coverage)
 			else:
 				self.unannotated_reads += 1
 		if self.strand_specific and not self.do_overlap_detection:
@@ -131,8 +140,8 @@ class OverlapCounter(dict):
 
 			if region_length is None:
 				raise ValueError(f"Cannot determine length of reference {rid}.")
-			counts = self._compute_genes_count_vector(rid, region_length, strand_specific=strand_specific)
 
+			counts = self._compute_genes_count_vector(rid, region_length, strand_specific=strand_specific)
 			total_counts, feature_count_sums = self._distribute_feature_counts(
 				bins, counts, [("feature", (feature,))], total_counts, feature_count_sums
 			)
@@ -153,6 +162,7 @@ class OverlapCounter(dict):
 				inc = counts[:4] * i
 			except NameError:
 				inc = 0
+
 			total_counts += inc
 			total_fcounts += inc
 
@@ -245,31 +255,22 @@ class OverlapCounter(dict):
 		increment = (1 / n_aln) if feat_distmode == "1overN" else 1
 		for rid, regions in hits.items():
 			if self.do_overlap_detection:
-				for start, end, rev_str in regions:
-					self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += increment
-#				reg_count = self.ambig_counts.setdefault(rid, Counter())
-#
-#				if feat_distmode == "all1":
-#					increment = 1
-#				elif feat_distmode == "1overN":
-#					increment = 1 / n_aln
-#				else:
-#					uniq_counts = self.get((start, end, True), 0) + self.get((start, end, False), 0)
-#					if n_total and uniq_counts:
-#						increment = uniq_counts /
-#
-#				reg_count[(start, end, rev_str)] += increment
-
-#290			 hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag)))
+				seen_regions = set()
+				for start, end, cstart, cend, rev_str in regions:
+					if region[:3] not in seen_regions:
+						self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += increment
+						seen_regions.add(region[:3])
+					self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
 
 				if n_total and self.seqcounts[rid]:
 					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
 				else:
 					self.ambig_seqcounts[rid] += 1 / len(hits)
 			else:
-				start, end, rev_str = list(regions)[0]
+				start, end, rev_str, cstart, cend = list(regions)[0]
 				key = (rid, rev_str) if self.strand_specific else rid
-				self.ambig_seqcounts[key] += (1 / n_aln) if feat_distmode == "1overN" else 1
+				self.ambig_seqcounts[key] += increment
+				self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
 
 	@staticmethod
 	def calculate_seqcount_scaling_factor(counts, bam):
@@ -320,24 +321,23 @@ class OverlapCounter(dict):
 
 	def get_header(self):
 		header = list()
-		header.extend(
+		header += (
 			f"uniq_{element}" for element in OverlapCounter.COUNT_HEADER_ELEMENTS
 		)
 		if self.has_ambig_counts:
-			header.extend(
+			header += (
 				f"combined_{element}" for element in OverlapCounter.COUNT_HEADER_ELEMENTS
 			)
 		if self.strand_specific:
 			for strand in ("ss", "as"):
-				header.extend(
+				header += (
 					f"uniq_{element}_{strand}" for element in OverlapCounter.COUNT_HEADER_ELEMENTS
 				)
 				if self.has_ambig_counts:
-					header.extend(
+					header += (
 						f"combined_{element}_{strand}" for element in OverlapCounter.COUNT_HEADER_ELEMENTS
 					)
 		return header
-
 
 	def _dump_feature_counts(self):
 		with open(f"{self.out_prefix}.feature_counts.txt", "w") as feat_out:
@@ -354,7 +354,6 @@ class OverlapCounter(dict):
 						subf, out_row[0], *(f"{c:.5f}" for c in out_row[1:]),
 						flush=True, sep="\t", file=feat_out
 					)
-
 
 	def _dump_seq_counts(self, bam):
 		SEQ_COUNT_HEADER = ["seqid_int", "seqid", "length"] + OverlapCounter.COUNT_HEADER_ELEMENTS
@@ -395,7 +394,6 @@ class OverlapCounter(dict):
 						flush=True, sep="\t", file=seq_out
 					)
 
-
 	def _dump_gene_counts(self, bam=None):
 		with open(f"{self.out_prefix}.gene_counts.txt", "w") as gene_out:
 			print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
@@ -404,7 +402,6 @@ class OverlapCounter(dict):
 				scaling_factor = self.feature_scaling_factors["total"]
 				ambig_scaling_factor = self.feature_scaling_factors["total_ambi"]
 			else:
-				gene_counts = dict()
 				gene_ids = set(
 					(gene_id[0] if isinstance(gene_id, tuple) else gene_id)
 					for gene_id in set(self.seqcounts).union(self.ambig_seqcounts)

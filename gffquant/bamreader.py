@@ -36,6 +36,17 @@ class CigarOps:
 		return start + sum(oplen for oplen, op in cigar if op in CigarOps.REF_CONSUMERS)
 
 class BamAlignment:
+	TAG_PARAMS = {
+		"A": ("c", 1),
+		"c": ("b", 1), # int8
+		"C": ("B", 1), # uint8
+		"s": ("h", 2), #int16
+		"S": ("H", 2), #uint16
+		"i": ("i", 4), #int32
+		"I": ("I", 4), #uint32
+		"f": ("f", 4), #float
+	}
+
 	def is_ambiguous(self):
 		return self.mapq == 0
 	def is_primary(self):
@@ -151,8 +162,51 @@ class BamFile:
 		self._file.seek(pos)
 		self._fpos = pos
 
+	def _parse_tags(self, size):
+		tags = dict()
+		bytes_read = 0
+
+		while bytes_read < size:
+			print(bytes_read, size)
+			*tag, tag_type = map(bytes.decode, struct.unpack("ccc", self._file.read(3)))
+			tag = "".join(tag)
+			params = BamAlignment.TAG_PARAMS.get(tag_type)
+			if params is not None:
+				fmt, tsize = params
+				tags[tag] = struct.unpack(fmt, self._file.read(tsize))
+				if tsize == 1:
+					tags[tag] = tags[tag][0]
+			elif tag_type in ("Z", "H"):
+				tag_str = list()
+				while bytes_read < size:
+					_byte = self._file.read(1)
+					try:
+						_byte = struct.unpack("c", _byte)
+					except TypeError:
+						break
+					_byte = _byte[0].decode()
+					if _byte == "\x00":
+						break
+					tag_str.append(_byte)
+					bytes_read += 1
+				tags[tag] = "".join(tag_str) #map(bytes.decode, tag_str))
+				# tsize = len(tags[tag]) + 1
+				tize = 0
+			elif tag_type == "B":
+				tag_type, array_size = struct.unpack("cI", self._file.read(5))
+				params = BamAlignment.TAG_PARAMS.get(tag_type.decode())
+				tsize = array_size * params[1]
+				tags[tag] = struct.unpack(f"{array_size}{params[0]}", self._file.read(tsize))
+				tsize += 5
+			else:
+				raise ValueError(f"Cannot work with tag type {tag}:{tag_type}")
+			bytes_read += tsize + 3
+
+		return tags
+
+
 	def get_alignments(
-		self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True
+		self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True, min_identity=None, min_length=None
 	):
 		aln_count = 1
 		if not allow_multiple and not allow_unique:
@@ -174,18 +228,29 @@ class BamFile:
 			self._file.read((len_seq + 1) // 2) # encoded read sequence
 			self._file.read(len_seq) # quals
 
-			total_read = 32 + len_rname + 4 * n_cigarops + (len_seq + 1) // 2 + len_seq
-			tags = self._file.read(aln_size - total_read) # get the tags
-			self._fpos += 4 + aln_size
+			total_read = 32 + len_rname + 4 * n_cigar_ops + (len_seq + 1) // 2 + len_seq
+			self._fpos += 4 + total_read
+			tags_size = aln_size - total_read
+			tags = self._parse_tags(tags_size)
+			# tags = self._file.read(aln_size - total_read) # get the tags
+			self._fpos += tags_size #4 + aln_size
 
 			flag_check = all([
 				(required_flags is None or (flag & required_flags)),
 				(disallowed_flags is None or not (flag & disallowed_flags))
 			])
-			is_unique = mapq != 0
-			atype_check = (is_unique and allow_unique) or (not is_unique and allow_multiple)
 
-			if flag_check and atype_check:
+			is_unique = mapq != 0
+			atype_check = any([
+				(is_unique and allow_unique),
+				(not is_unique and allow_multiple)
+			])
+			filter_check = all([
+				(min_length is None or len_seq >= min_length),
+				(min_identity is None or 1 - (tags.get("NM", 0) / len_seq) >= min_identity)
+			])
+
+			if all(flag_check, atype_check, filter_check):
 				yield (
 					aln_count,
 					BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
