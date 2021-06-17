@@ -76,11 +76,12 @@ class FeatureQuantifier:
 	def _update_ambig_counts(self, rid, ref, aln, rev_strand):
 		hits = {rid: set()}
 		if self.do_overlap_detection:
-			overlaps = self.gff_dbm.get_overlaps(ref, aln.start, aln.end)
+			overlaps, coverage = self.gff_dbm.get_overlaps(ref, aln.start, aln.end)
 			if overlaps:
-				for ovl in overlaps:
-					hits[rid].add((ovl.begin, ovl.end, rev_strand))
+				for ovl, (cstart, cend) in zip(overlaps, coverage):
+					hits[rid].add((ovl.begin, ovl.end, rev_strand, cstart, cend))
 				aln_count, unannotated = 1, 0
+                # self.overlap_counter.update_coverage_intervals(rid, overlaps, coverage, ambig_aln=True)
 			else:
 				aln_count, unannotated = 0, 1
 		else:
