@@ -133,6 +133,9 @@ class BamFile:
 	def n_references(self):
 		return len(self._references)
 
+	def get_refdata(self):
+		return {rid: self.get_reference(rid) for rid in self._refmap}
+
 	def get_position(self):
 		return self._fpos
 
