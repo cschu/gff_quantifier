@@ -54,7 +54,7 @@ class AmbiguousAlignmentRecordKeeper:
 					)
 		else:
 			print(
-				qname_id, aln_count, aln.rid, -1, -1, -1, -1, aln.flag, 
+				qname_id, aln_count, aln.rid, -1, -1, -1, -1, aln.flag,
 				file=self.ambig_dump, sep="\t"
 			)
 

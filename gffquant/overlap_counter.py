@@ -257,9 +257,10 @@ class OverlapCounter(dict):
 			if self.do_overlap_detection:
 				seen_regions = set()
 				for start, end, cstart, cend, rev_str in regions:
-					if region[:3] not in seen_regions:
-						self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += increment
-						seen_regions.add(region[:3])
+					region = (start, end, rev_str)
+					if region not in seen_regions:
+						self.ambig_counts.setdefault(rid, Counter())[region] += increment
+						seen_regions.add(region)
 					self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
 
 				if n_total and self.seqcounts[rid]:
@@ -430,6 +431,54 @@ class OverlapCounter(dict):
 					gene, _ = bam.get_reference(gene)
 				print(gene, out_row[0], *(f"{c:.5f}" for c in out_row[1:]), flush=True, sep="\t", file=gene_out)
 
+	def summarise_coverage(self):
+		ref_coverage = dict()
+		dist1_ref_coverage = Counter()
+		pos_feature_dict = dict()
+
+		for ref, intervals in self.coverage_intervals.items():
+			for (start, end, feature), overlaps in intervals.items():
+				region = (ref, start, end)
+				ref_coverage.setdefault(region, Counter())
+				pos_feature_dict.setdefault(region, set()).add(feature)
+				for (ovl_start, ovl_end), count in overlaps.items():
+					dist1_ref_coverage[region] += count
+					for p in range(ovl_start, ovl_end):
+						ref_coverage[region][p] += count
+
+		for region, coverage in ref_coverage.items():
+			ref_coverage[region] = sum(coverage) / (end - start + 1)
+
+		ambig_ref_coverage = Counter()
+		for rname, overlaps in self.ambig_coverage.items():
+			where = Counter()
+			for rid, istart, iend, cstart, cend in overlaps:
+				features = {None} # get from gff_dbm
+				region = (rid, istart, iend)
+				pos_feature_dict.setdefault(region, set()).update(features)
+				where[region] += 1
+			uniq_dist = {pos: dist1_ref_coverage.get(pos, 0) for pos in where}
+			n_uniq_reads, n_ambig_reads = sum(uniq_dist.values()), sum(where.values())
+			if n_uniq_reads:
+				for pos in uniq_dist:
+					ambig_ref_coverage[pos] += uniq_dist[pos] / n_uniq_reads # scale with n_ambig?
+			else:
+				for pos, counts in where.items():
+					ambig_ref_coverage[pos] += 1 / n_ambig_reads
+
+		domain_cov = dict()
+		for pos in set(ref_coverage).union(ambig_ref_coverage):
+			for domtype in pos_feature_dict.get(pos, set()):
+				domain_cov.setdefault(domtype, dict())
+				domain_cov[domtype].setdefault("uniq", list()).append(ref_coverage.get(pos, 0))
+				domain_cov[domtype].setdefault("ambig", list()).append(ambig_ref_coverage.get(pos, 0))
+
+		with open(self.out_prefix + ".covsum.txt", "wt") as cov_out:
+			print("#header", file=cov_out)
+			for domtype, counts in sorted(domain_cov.items()):
+				print(domtype, counts.get("uniq", 0), counts.get("ambig", 0) + counts.get("uniq", 0), sep="\t", file=cov_out)
+				
+				
 
 	def dump_counts(self, bam=None):
 		print("Dumping overlap counters...", flush=True)
@@ -442,3 +491,5 @@ class OverlapCounter(dict):
 
 		if bam:
 			self._dump_seq_counts(bam)
+
+		self.summarise_coverage()

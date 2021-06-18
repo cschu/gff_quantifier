@@ -54,6 +54,14 @@ def main():
 		help="Perform strand-specific counting for RNAseq reads. " \
 			 "This flag is currently ignored for paired-end data."
 	)
+
+	ap.add_argument(
+		"--min_identity", type=float, default=0.97, help="Minimum sequence identity [n_match/length] for an alignment to be considered."
+	)
+	ap.add_argument(
+		"--min_seqlen", type=int, default=45, help="Minimum read length [bp] for an alignment to be considered."
+	)
+
 	ap.add_argument("--version", "-v", action="version", version="%(prog)s " + __version__)
 
 
@@ -81,11 +89,15 @@ def main():
 		db_index=db_index,
 		out_prefix=args.out_prefix,
 		ambig_mode=args.ambig_mode,
-		do_overlap_detection=args.mode in ("genome", "domain"),
+		reference_type=args.mode,
 		strand_specific=args.strand_specific
 	)
 
-	fq.process_bamfile(args.bam_file)
+	fq.process_bamfile(
+		args.bam_file,
+		min_identity=args.min_identity,
+		min_seqlen=args.min_seqlen
+	)
 
 
 if __name__ == "__main__":

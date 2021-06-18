@@ -21,7 +21,7 @@ class SamFlags:
 class CigarOps:
 	CIGAR_OPS = "MIDNSHP=X"
 	# MIDNSHP=X
-	# 012345678; 02378 consume reference: 0000 0010 0011 0111 1000	
+	# 012345678; 02378 consume reference: 0000 0010 0011 0111 1000
 	REF_CONSUMERS = {0, 2, 3, 7, 8}
 
 	@staticmethod
@@ -38,13 +38,13 @@ class CigarOps:
 class BamAlignment:
 	TAG_PARAMS = {
 		"A": ("c", 1),
-		"c": ("b", 1), # int8
-		"C": ("B", 1), # uint8
-		"s": ("h", 2), #int16
-		"S": ("H", 2), #uint16
-		"i": ("i", 4), #int32
-		"I": ("I", 4), #uint32
-		"f": ("f", 4), #float
+		"c": ("b", 1),  # int8
+		"C": ("B", 1),  # uint8
+		"s": ("h", 2),  # int16
+		"S": ("H", 2),  # uint16
+		"i": ("i", 4),  # int32
+		"I": ("I", 4),  # uint32
+		"f": ("f", 4),  # float
 	}
 
 	def is_ambiguous(self):
@@ -190,8 +190,8 @@ class BamFile:
 					tag_str.append(_byte)
 					bytes_read += 1
 				tags[tag] = "".join(tag_str) #map(bytes.decode, tag_str))
-				# tsize = len(tags[tag]) + 1
-				tize = 0
+				tsize = len(tags[tag]) + 1
+				# tsize = 0
 			elif tag_type == "B":
 				tag_type, array_size = struct.unpack("cI", self._file.read(5))
 				params = BamAlignment.TAG_PARAMS.get(tag_type.decode())
@@ -206,7 +206,8 @@ class BamFile:
 
 
 	def get_alignments(
-		self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True, min_identity=None, min_length=None
+		self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True,
+		min_identity=None, min_length=None
 	):
 		aln_count = 1
 		if not allow_multiple and not allow_unique:
@@ -228,11 +229,10 @@ class BamFile:
 			self._file.read((len_seq + 1) // 2) # encoded read sequence
 			self._file.read(len_seq) # quals
 
-			total_read = 32 + len_rname + 4 * n_cigar_ops + (len_seq + 1) // 2 + len_seq
+			total_read = 32 + len_rname + 4 * n_cigarops + (len_seq + 1) // 2 + len_seq
 			self._fpos += 4 + total_read
 			tags_size = aln_size - total_read
 			tags = self._parse_tags(tags_size)
-			# tags = self._file.read(aln_size - total_read) # get the tags
 			self._fpos += tags_size #4 + aln_size
 
 			flag_check = all([
@@ -245,6 +245,7 @@ class BamFile:
 				(is_unique and allow_unique),
 				(not is_unique and allow_multiple)
 			])
+
 			filter_check = all([
 				(min_length is None or len_seq >= min_length),
 				(min_identity is None or 1 - (tags.get("NM", 0) / len_seq) >= min_identity)
