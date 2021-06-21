@@ -103,12 +103,11 @@ class AmbiguousAlignmentGroup:
 	def resolve(self, counter, bam, distmode="1overN"):
 
 		hits = dict()
+		print(self.qname, self.primary1, self.primary2)
 
-		if all([
-			self.primary1 is not None,
-			self.primary2 is not None,
-			self.primary1[:-1] == self.primary2[:-1]
-		]):
+		# https://stackoverflow.com/questions/64090762/python-lazy-function-evaluation-in-any-all 
+		# cannot be evaluated with all
+		if self.primary1 is not None and self.primary2 is not None and self.primary1[:-1] == self.primary2[:-1]:
 			self.primary2 = None
 
 		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
@@ -116,5 +115,5 @@ class AmbiguousAlignmentGroup:
 			hits.setdefault(rid, set()).add((start, end, cstart, cend, SamFlags.is_reverse_strand(flag)))
 
 		counter.update_ambiguous_counts(
-			hits, self.n_align(), self.unannotated, bam, feat_distmode=distmode
+			hits, self.n_align(), self.unannotated, feat_distmode=distmode
 		)
