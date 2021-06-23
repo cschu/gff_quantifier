@@ -508,12 +508,12 @@ class OverlapCounter(dict):
 					uniq_cov = sum(uniq_counts) / len(uniq_counts)
 				except ZeroDivisionError:
 					uniq_cov = 0
-				print("UNIQ", uniq_counts, sum(uniq_counts), len(uniq_counts), "=", uniq_cov)
+				print(domtype, "UNIQ", uniq_counts, sum(uniq_counts), len(uniq_counts), "=", uniq_cov)
 				try:
 					ambig_cov = sum(ambig_counts) / len(ambig_counts)
 				except ZeroDivisionError:
 					ambig_cov = 0
-				print("AMBIG", ambig_counts, sum(ambig_counts), len(ambig_counts), "=", ambig_cov)
+				print(domtype, "AMBIG", ambig_counts, sum(ambig_counts), len(ambig_counts), "=", ambig_cov)
 
 				if ambig_cov < uniq_cov:
 					raise ValueError(f"{domtype}: uniq cov + ambig cov {ambig_cov:.5f} is smaller than uniq cov {uniq_cov:.5f}.")

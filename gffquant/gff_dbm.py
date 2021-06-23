@@ -93,6 +93,7 @@ class GffDatabaseManager:
 			return start, end
 		overlaps = self._get_tree(ref, cache_data=cache_data)[start:end]
 		covered = [calc_covered_fraction(start, end, interval) for interval in overlaps]
+		print("OVL_DEBUG", ref, overlaps, covered)
 
 		return overlaps, covered
 
