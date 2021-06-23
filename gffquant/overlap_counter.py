@@ -443,10 +443,6 @@ class OverlapCounter(dict):
 		ref_coverage, ambig_ref_coverage = dict(), dict()
 		pos_feature_dict = dict()
 
-		with open("DB.dump.txt", "wt") as db_dump:
-			for key, value in self.db.db.items():
-				print(key, value, file=db_dump, sep="\t")
-
 		for rid, intervals in self.coverage_intervals.items():
 			ref, reflen = bam.get_reference(rid)
 			print("REF", ref, rid)
@@ -494,7 +490,6 @@ class OverlapCounter(dict):
 			features_at_position = pos_feature_dict.get(pos, set())
 			for domtype in pos_feature_dict.get(pos, set()):
 				domain_cov.setdefault(domtype, dict()).update({"uniq": list(), "ambig": list()})
-				# print("X", ref_coverage.get(pos, list()))
 
 				uniq_cov = ref_coverage.get(pos, Counter())
 				ambig_cov = ambig_ref_coverage.get(pos, Counter())
@@ -502,7 +497,7 @@ class OverlapCounter(dict):
 				if uniq_cov:
 					domain_cov[domtype].setdefault("uniq", list()).append(sum(uniq_cov.values()) / len(uniq_cov.values()))
 				if ambig_cov:
-					domain_cov[domtype].setdefault("ambig", list()).append(sum(ambig_cov.values()) / len(ambig_cov.values())) # + uniq_cov)
+					domain_cov[domtype].setdefault("ambig", list()).append(sum(ambig_cov.values()) / len(ambig_cov.values()))
 
 
 		with open(self.out_prefix + ".covsum.txt", "wt") as cov_out:
@@ -512,12 +507,12 @@ class OverlapCounter(dict):
 				try:
 					uniq_cov = sum(uniq_counts) / len(uniq_counts)
 				except ZeroDivisionError:
-					uniq_cov = 0 #"NA"
+					uniq_cov = 0
 				print("UNIQ", uniq_counts, sum(uniq_counts), len(uniq_counts), "=", uniq_cov)
 				try:
 					ambig_cov = sum(ambig_counts) / len(ambig_counts)
 				except ZeroDivisionError:
-					ambig_cov = 0 #"NA"
+					ambig_cov = 0
 				print("AMBIG", ambig_counts, sum(ambig_counts), len(ambig_counts), "=", ambig_cov)
 
 				if ambig_cov < uniq_cov:
