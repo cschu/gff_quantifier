@@ -86,15 +86,17 @@ class GffDatabaseManager:
 
 	def get_overlaps(self, ref, start, end, cache_data=False):
 		def calc_covered_fraction(start, end, interval):
+			if interval.begin <= start <= end <= interval.end:
+				return start, end
+
 			if start < interval.begin:
-				return interval.begin, end
+				return interval.begin, min(end, interval.end)
 			elif interval.end < end:
-				return start, interval.end
+				return max(start, interval.begin), interval.end
 			return start, end
 		overlaps = self._get_tree(ref, cache_data=cache_data)[start:end]
 		covered = [calc_covered_fraction(start, end, interval) for interval in overlaps]
-		print("OVL_DEBUG", ref, overlaps, covered)
-
+		print("OVL_DEBUG", ref, start, end, overlaps, covered)
 		return overlaps, covered
 
 	def clear_caches(self):
