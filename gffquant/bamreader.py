@@ -5,6 +5,7 @@ import struct
 import hashlib
 import re
 
+# https://stackoverflow.com/questions/22216076/unicodedecodeerror-utf8-codec-cant-decode-byte-0xa5-in-position-0-invalid-s
 
 class SamFlags:
 	PAIRED = 0x1
@@ -247,17 +248,17 @@ class BamFile:
 			tags = self._parse_tags(tags_size)
 			self._fpos += tags_size #4 + aln_size
 
-			# print(tags)
-			if not len_seq:
-				# in case of secondary alignments, we need to recover the read length from the MD tag
-				md_tag = tags.get("MD", "")
+			md_tag = tags.get("MD", "")
+			if md_tag:
 				len_seq = sum((
 					sum(map(lambda x:int(x.group()), re.finditer("[0-9]+", md_tag))),
 					sum(map(lambda x:len(x.group()), re.finditer("[A-Z]+", md_tag)))
 				))
+			else:
+				len_seq = None
 
-				if not len_seq:
-					print(f"Read {qname} does not have length information. Skipping", file=sys.stderr, flush=True)
+			if not len_seq:
+				print(f"Read {qname} does not have length information. Skipping", file=sys.stderr, flush=True)
 
 			flag_check = all([
 				(required_flags is None or (flag & required_flags)),
