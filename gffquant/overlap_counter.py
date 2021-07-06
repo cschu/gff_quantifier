@@ -489,36 +489,52 @@ class OverlapCounter(dict):
 		for pos in set(ref_coverage).union(ambig_ref_coverage):
 			features_at_position = pos_feature_dict.get(pos, set())
 			for domtype in pos_feature_dict.get(pos, set()):
-				domain_cov.setdefault(domtype, dict()).update({"uniq": list(), "ambig": list()})
+				domain_cov.setdefault(domtype, dict()).update({
+					"depth_uniq": list(),
+					"depth_ambig": list(),
+					"cov_uniq": list(),
+					"cov_ambig": list()
+				})
 
 				uniq_cov = ref_coverage.get(pos, Counter())
 				ambig_cov = ambig_ref_coverage.get(pos, Counter())
 
 				if uniq_cov:
-					domain_cov[domtype].setdefault("uniq", list()).append(sum(uniq_cov.values()) / len(uniq_cov.values()))
+					domain_cov[domtype]["depth_uniq"].append(sum(uniq_cov.values()) / len(uniq_cov.values()))
+					domain_cov[domtype]["cov_uniq"].append(sum(1 for v in uniq_cov.values() if v) / len(uniq_cov.values()))
 				if ambig_cov:
-					domain_cov[domtype].setdefault("ambig", list()).append(sum(ambig_cov.values()) / len(ambig_cov.values()))
+					domain_cov[domtype]["depth_ambig"].append(sum(ambig_cov.values()) / len(ambig_cov.values()))
+					domain_cov[domtype]["cov_ambig"].append(sum(1 for v in ambig_cov.values() if v) / len(ambig_cov.values()))
 
 
 		with open(self.out_prefix + ".covsum.txt", "wt") as cov_out:
-			print("#domain", "uniq_cov", "combined_cov", sep="\t", file=cov_out)
+			print("#domain", "depth_unique", "depth_combined", "coverage_unique", "coverage_combined", sep="\t", file=cov_out)
 			for domtype, counts in sorted(domain_cov.items()):
-				uniq_counts, ambig_counts = [c for c in counts.get("uniq", list()) if c is not None], [c for c in counts.get("ambig", list()) if c is not None]
-				try:
-					uniq_cov = sum(uniq_counts) / len(uniq_counts)
-				except ZeroDivisionError:
-					uniq_cov = 0
-				print(domtype, "UNIQ", uniq_counts, sum(uniq_counts), len(uniq_counts), "=", uniq_cov)
-				try:
-					ambig_cov = sum(ambig_counts) / len(ambig_counts)
-				except ZeroDivisionError:
-					ambig_cov = 0
-				print(domtype, "AMBIG", ambig_counts, sum(ambig_counts), len(ambig_counts), "=", ambig_cov)
 
-				if ambig_cov < uniq_cov:
-					raise ValueError(f"{domtype}: uniq cov + ambig cov {ambig_cov:.5f} is smaller than uniq cov {uniq_cov:.5f}.")
+				depth_uniq, depth_ambig = [c for c in counts.get("depth_uniq", list()) if c is not None], [c for c in counts.get("depth_ambig", list()) if c is not None]
 
-				print(domtype, f"{uniq_cov:.5f}", f"{ambig_cov:.5f}", sep="\t", file=cov_out)
+				depth_uniq_ = (sum(depth_uniq) / len(depth_uniq)) if depth_uniq else 0
+				print(domtype, "UNIQ", depth_uniq, sum(depth_uniq), len(depth_uniq), "=", depth_uniq_)
+
+				depth_ambig_ = (sum(depth_ambig) / len(depth_ambig)) if depth_ambig else 0
+				print(domtype, "AMBIG", depth_ambig, sum(depth_ambig), len(depth_ambig), "=", depth_ambig_)
+
+				if depth_ambig_ < depth_uniq_:
+					raise ValueError(f"{domtype}: depth_uniq_ + depth_ambig_ {depth_ambig_:.5f} is smaller than uniq depth {depth_uniq_:.5f}.")
+
+				cov_uniq, cov_ambig = [c for c in counts.get("cov_uniq", list()) if c is not None], [c for c in counts.get("cov_ambig", list()) if c is not None]
+
+				cov_uniq_ = (sum(cov_uniq) / len(cov_uniq)) if cov_uniq else 0
+				print(domtype, "UNIQ", cov_uniq, sum(cov_uniq), len(cov_uniq), "=", cov_uniq_)
+
+				cov_ambig_ = (sum(cov_ambig) / len(cov_ambig)) if cov_ambig else 0
+				print(domtype, "AMBIG", cov_ambig, sum(cov_ambig), len(cov_ambig), "=", cov_ambig_)
+
+				if cov_ambig_ < cov_uniq_:
+					raise ValueError(f"{domtype}: cov_uniq_ + cov_ambig_ {cov_ambig_:.5f} is smaller than uniq cov {cov_uniq_:.5f}.")
+
+				# print(domtype, f"{depth_uniq_:.5f}", f"{depth_ambig_:.5f}", sep="\t", file=cov_out)
+				print(domtype, *(f"{val:.5f}" for val in (depth_uniq_, depth_ambig_, cov_uniq_, cov_ambig_)), sep="\t", file=cov_out)
 
 
 
