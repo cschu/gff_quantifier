@@ -94,7 +94,7 @@ def main():
 		out_prefix=args.out_prefix,
 		ambig_mode=args.ambig_mode,
 		reference_type=args.mode,
-		strand_specific=args.strand_specific
+		strand_specific=args.strand_specific,
 		emapper_version=args.emapper_version if args.mode == "gene" else None
 	)
 

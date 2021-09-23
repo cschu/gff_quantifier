@@ -103,7 +103,7 @@ class AmbiguousAlignmentGroup:
 	def resolve(self, counter, bam, distmode="1overN"):
 
 		hits = dict()
-		print(self.qname, self.primary1, self.primary2)
+		# print(self.qname, self.primary1, self.primary2)
 
 		# https://stackoverflow.com/questions/64090762/python-lazy-function-evaluation-in-any-all 
 		# cannot be evaluated with all
