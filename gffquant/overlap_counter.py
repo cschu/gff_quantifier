@@ -550,4 +550,5 @@ class OverlapCounter(dict):
 		if bam:
 			self._dump_seq_counts(bam)
 
-		self.summarise_coverage(bam)
+		if self.db.reference_type == "domain":
+			self.summarise_coverage(bam)
