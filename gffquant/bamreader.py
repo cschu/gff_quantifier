@@ -250,7 +250,6 @@ class BamFile:
 			else:
 				_ = self._file.read(tags_size)
 				tags = dict()
-			# tags = self._file.read(aln_size - total_read) # get the tags
 			self._fpos += tags_size #4 + aln_size
 
 			md_tag = tags.get("MD", "")
