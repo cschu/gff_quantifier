@@ -36,6 +36,10 @@ def main():
 		)
 	)
 	ap.add_argument(
+		"--emapper_version", type=str, default="v2", choices=("v1", "v2"),
+		help="eggnog emapper version: determines annotation columns. (only for gene mode)"
+	)
+	ap.add_argument(
 		"--out_prefix", "-o", type=str, default="gffquant",
 		help="Prefix for output files."
 	)
@@ -91,6 +95,7 @@ def main():
 		ambig_mode=args.ambig_mode,
 		reference_type=args.mode,
 		strand_specific=args.strand_specific
+		emapper_version=args.emapper_version if args.mode == "gene" else None
 	)
 
 	fq.process_bamfile(

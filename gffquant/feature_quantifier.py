@@ -22,7 +22,7 @@ class FeatureQuantifier:
 		self, db=None, db_index=None, out_prefix="gffquant", ambig_mode="unique_only",
 		reference_type="genome", strand_specific=False
 	):
-		self.gff_dbm = GffDatabaseManager(db, reference_type, db_index=db_index)
+		self.gff_dbm = GffDatabaseManager(db, reference_type, db_index=db_index, emapper_version=emapper_version)
 		self.umap_cache = dict()
 		self.ambig_cache = dict()
 		self.do_overlap_detection = reference_type in ("genome", "domain")

@@ -4,10 +4,46 @@ from functools import lru_cache
 
 from intervaltree import IntervalTree
 
+class EmapperFormat:
+	def __init__(self, query_field, fields, categories):
+		self.query_field = query_field
+		self.categories = dict(zip(fields, categories))
+	def get_category(self, index):
+		return self.categories.get(index)
+
+
+EMAPPER_FORMATS = {
+	"v1": EmapperFormat(
+		0,
+		(5, 6, 7, 9, 11),
+		("Gene_Ontology_terms", "KEGG_ko", "BiGG_Reaction", "eggNOG_OGs", "COG_Functional_Category")
+	),
+	"v2": EmapperFormat(
+		0,
+		(6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20),
+		("Gene_Ontology_terms", "EC_number", "KEGG_ko", "KEGG_Pathway", "KEGG_Module", "KEGG_Reaction", "KEGG_rclass", "BRITE", "KEGG_TC", "CAZy", "BiGG_Reaction", "eggNOG_OGs", "COG_Functional_Category")
+	)
+}
+
 
 class GffDatabaseManager:
 
 	def iterate(self):
+		with self.db as db_stream:
+			for line in db_stream:
+				if not line.startswith("#"):
+					line = line.strip().split("\t")
+					categories = list()
+					for i, col in enumerate(line):
+						category = self.emapper_format.get_category(i)
+						if category is not None:
+							features = tuple(feature for feature in col.strip().split(",") if feature)
+							if features:
+								categories.append((category, features))
+					if categories:
+						yield line[self.emapper_format.query_field], (("strand", None), ) + tuple(categories)
+
+	def iterate_old(self):
 		header = None
 		with self.db as db_stream:
 			for line in db_stream:
@@ -30,7 +66,7 @@ class GffDatabaseManager:
 			db_index.setdefault(line[0], list()).append(list(map(int, line[1:3])))
 		return db_index
 
-	def __init__(self, db, reference_type, db_index=None):
+	def __init__(self, db, reference_type, db_index=None, emapper_version="v2"):
 		gz_magic = b"\x1f\x8b\x08"
 		gzipped = open(db, "rb").read(3).startswith(gz_magic)
 		_open = gzip.open if gzipped else open
@@ -49,6 +85,10 @@ class GffDatabaseManager:
 			_open = gzip.open if gzipped else open
 			self.db = _open(db, "rt")
 			self.db_index = None
+
+		self.emapper_format = EMAPPER_FORMATS.get(emapper_version)
+		if not self.emapper_format:
+			raise ValueError(f"Cannot find emapper parse instructions for version {emapper_version}.")
 
 	@lru_cache(maxsize=4096)
 	def _read_data(self, ref_id, include_payload=False):
@@ -96,7 +136,8 @@ class GffDatabaseManager:
 			return start, end
 		overlaps = self._get_tree(ref, cache_data=cache_data)[start:end]
 		covered = [calc_covered_fraction(start, end, interval) for interval in overlaps]
-		print("OVL_DEBUG", ref, start, end, overlaps, covered)
+		# print("OVL_DEBUG", ref, start, end, overlaps, covered)
+
 		return overlaps, covered
 
 	def clear_caches(self):
