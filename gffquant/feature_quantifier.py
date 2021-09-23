@@ -20,9 +20,9 @@ class FeatureQuantifier:
 
 	def __init__(
 		self, db=None, db_index=None, out_prefix="gffquant", ambig_mode="unique_only",
-		do_overlap_detection=True, strand_specific=False
+		do_overlap_detection=True, strand_specific=False, emapper_version=None
 	):
-		self.gff_dbm = GffDatabaseManager(db, db_index=db_index)
+		self.gff_dbm = GffDatabaseManager(db, db_index=db_index, emapper_version=emapper_version)
 		self.umap_cache = dict()
 		self.ambig_cache = dict()
 		self.overlap_counter = OverlapCounter(

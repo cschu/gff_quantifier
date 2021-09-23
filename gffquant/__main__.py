@@ -36,6 +36,10 @@ def main():
 		)
 	)
 	ap.add_argument(
+		"--emapper_version", type=str, default="v2", choices=("v1", "v2"),
+		help="eggnog emapper version: determines annotation columns. (only for gene mode)"
+	)
+	ap.add_argument(
 		"--out_prefix", "-o", type=str, default="gffquant",
 		help="Prefix for output files."
 	)
@@ -82,7 +86,9 @@ def main():
 		out_prefix=args.out_prefix,
 		ambig_mode=args.ambig_mode,
 		do_overlap_detection=args.mode in ("genome", "domain"),
-		strand_specific=args.strand_specific
+		strand_specific=args.strand_specific,
+		emapper_version=args.emapper_version if args.mode == "gene" else None
+
 	)
 
 	fq.process_bamfile(args.bam_file)
