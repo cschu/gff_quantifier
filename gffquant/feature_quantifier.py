@@ -20,7 +20,7 @@ class FeatureQuantifier:
 
 	def __init__(
 		self, db=None, db_index=None, out_prefix="gffquant", ambig_mode="unique_only",
-		reference_type="genome", strand_specific=False
+		reference_type="genome", strand_specific=False, emapper_version=None
 	):
 		self.gff_dbm = GffDatabaseManager(db, reference_type, db_index=db_index, emapper_version=emapper_version)
 		self.umap_cache = dict()
