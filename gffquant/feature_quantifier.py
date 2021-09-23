@@ -20,18 +20,18 @@ class FeatureQuantifier:
 
 	def __init__(
 		self, db=None, db_index=None, out_prefix="gffquant", ambig_mode="unique_only",
-		do_overlap_detection=True, strand_specific=False, emapper_version=None
+		reference_type="genome", strand_specific=False, emapper_version=None
 	):
-		self.gff_dbm = GffDatabaseManager(db, db_index=db_index, emapper_version=emapper_version)
+		self.gff_dbm = GffDatabaseManager(db, reference_type, db_index=db_index, emapper_version=emapper_version)
 		self.umap_cache = dict()
 		self.ambig_cache = dict()
+		self.do_overlap_detection = reference_type in ("genome", "domain")
 		self.overlap_counter = OverlapCounter(
 			out_prefix, self.gff_dbm,
-			do_overlap_detection=do_overlap_detection, strand_specific=strand_specific
+			do_overlap_detection=self.do_overlap_detection, strand_specific=strand_specific
 		)
 		self.out_prefix = out_prefix
 		self.ambig_mode = ambig_mode
-		self.do_overlap_detection = do_overlap_detection
 		self.bamfile = None
 		print("Ambig mode:", self.ambig_mode, flush=True)
 
@@ -49,7 +49,7 @@ class FeatureQuantifier:
 		self.process_cache(rid, ref, unique_cache=False)
 
 	def process_cache(self, rid, ref, unique_cache=True):
-		cache = self.umap_cache if process_unique else self.ambig_cache
+		cache = self.umap_cache if unique_cache else self.ambig_cache
 		for qname, aln in cache.items():
 			n_aln = len(aln)
 			if n_aln == 1:
@@ -65,7 +65,7 @@ class FeatureQuantifier:
 				)
 				continue
 
-			if process_unique:
+			if unique_cache:
 				short_aln = (ref, start, end) if self.do_overlap_detection else None
 				self.overlap_counter.update_unique_counts(rid, aln=short_aln, rev_strand=rev_strand)
 			else:
@@ -81,7 +81,6 @@ class FeatureQuantifier:
 				for ovl, (cstart, cend) in zip(overlaps, coverage):
 					hits[rid].add((ovl.begin, ovl.end, rev_strand, cstart, cend))
 				aln_count, unannotated = 1, 0
-                # self.overlap_counter.update_coverage_intervals(rid, overlaps, coverage, ambig_aln=True)
 			else:
 				aln_count, unannotated = 0, 1
 		else:
@@ -91,7 +90,7 @@ class FeatureQuantifier:
 			hits, aln_count, unannotated, self.bamfile, feat_distmode=self.ambig_mode
 		)
 
-	def process_alignments(self):
+	def process_alignments(self, min_identity=None, min_seqlen=None):
 		"""
 		Reads from a position-sorted bam file are processed in batches according to the reference
 		sequence they were aligned to. This allows a partitioning of the reference annotation
@@ -104,7 +103,11 @@ class FeatureQuantifier:
 
 		bam_stream = self.bamfile.get_alignments(
 			allow_multiple=self.allow_ambiguous_alignments(),
-			allow_unique=True, disallowed_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT)
+			allow_unique=True,
+			disallowed_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
+			min_identity=min_identity,
+			min_seqlen=min_seqlen
+		)
 
 		if self.require_ambig_bookkeeping():
 			ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(
@@ -226,11 +229,17 @@ class FeatureQuantifier:
 
 		return n_align
 
-	def process_bamfile(self, bamfile):
+	def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None):
 		""" processes one position-sorted bamfile """
-		self.bamfile = BamFile(bamfile, large_header=not self.do_overlap_detection)  # this is ugly!
+		self.bamfile = BamFile(
+			bamfile,
+			large_header=not self.do_overlap_detection, # ugly!
+		)
 		# first pass: process uniqs and dump ambigs (if required)
-		aln_count, unannotated_ambig, ambig_dumpfile = self.process_alignments()
+		aln_count, unannotated_ambig, ambig_dumpfile = self.process_alignments(
+			min_identity=min_identity,
+			min_seqlen=min_seqlen
+		)
 		self.gff_dbm.clear_caches()
 
 		if aln_count:
@@ -265,46 +274,4 @@ class FeatureQuantifier:
 		except FileNotFoundError:
 			pass
 
-		print("Finished.", flush=True)
-
-	def process_ovl_group(self, ovl_group):
-		n_ovl = len(ovl_group)
-		if n_ovl == 1:
-			self.overlap_counter.update_unique_counts(
-				f"{ovl_group[0][0]}::{ovl_group[0][8]}", rev_strand=ovl_group[0][5] == "-"
-			)
-		else:
-			if n_ovl == 2 and all(int(ovl[4]) != 0 for ovl in ovl_group):
-				if ovl_group[0][8] != ovl_group[1][8]:
-					self.overlap_counter.update_unique_counts(
-						f"{ovl_group[1][0]}::{ovl_group[1][8]}", rev_strand=ovl_group[1][5] == "-"
-					)
-				self.overlap_counter.update_unique_counts(
-					f"{ovl_group[0][0]}::{ovl_group[0][8]}", rev_strand=ovl_group[0][5] == "-"
-				)
-			else:
-				hits = dict()
-				for ovl in ovl_group:
-					hits.setdefault(f"{ovl[0]}::{ovl[8]}", set()).add((ovl[1], ovl[2], ovl_group[1][5] == "-"))
-				n_aln = sum(len(v) for v in hits.values())
-				self.overlap_counter.update_ambiguous_counts(hits, n_aln, feat_distmode=self.ambig_mode)
-
-	def process_bedfile(self, bedfile):
-		current_group = list()
-		feature_lengths = dict()
-		for ovl in csv.reader(open(bedfile), delimiter="\t"):
-			ref, rstart, rend, rname, mapq, strand, *_, start, end, features, ovl_len = ovl
-			feature_lengths[f"{ref}::{features}"] = int(end) - int(start) + 1
-			rname = rname.replace("/1", "").replace("/2", "")
-			ovl = ref, rstart, rend, rname, mapq, strand, start, end, features, ovl_len
-			if current_group and current_group[0][3] != ovl[3]:
-				self.process_ovl_group(current_group)
-				current_group.clear()
-			current_group.append(ovl)
-		if current_group:
-			self.process_ovl_group(current_group)
-
-		self.overlap_counter.annotate_counts(feature_lengths=feature_lengths, itermode="bedcounts")
-		# self.overlap_counter.unannotated_reads += unannotated_ambig
-		self.overlap_counter.dump_counts()
 		print("Finished.", flush=True)

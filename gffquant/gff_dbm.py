@@ -66,18 +66,26 @@ class GffDatabaseManager:
 			db_index.setdefault(line[0], list()).append(list(map(int, line[1:3])))
 		return db_index
 
-	def __init__(self, db, db_index=None, emapper_version="v2"):
+	def __init__(self, db, reference_type, db_index=None, emapper_version="v2"):
 		gz_magic = b"\x1f\x8b\x08"
 		gzipped = open(db, "rb").read(3).startswith(gz_magic)
+		_open = gzip.open if gzipped else open
+		self.reference_type = reference_type
 		if db_index:
 			if gzipped:
 				raise ValueError(f"Database {db} is gzipped. This doesn't work together with an index. Please unzip and re-index.")
-			_open = open
 			self.db_index = self._read_index(db_index)
+			self.db = _open(db, "rt")
+		elif self.reference_type == "domain": # bed
+			self.db = dict()
+			for line in _open(db, "rt"):
+				line = line.strip().split("\t")
+				self.db.setdefault(line[0], dict()).setdefault((int(line[1]), int(line[2])), list()).append(line[3])
 		else:
 			_open = gzip.open if gzipped else open
+			self.db = _open(db, "rt")
 			self.db_index = None
-		self.db = _open(db, "rt")
+
 		self.emapper_format = EMAPPER_FORMATS.get(emapper_version)
 		if not self.emapper_format:
 			raise ValueError(f"Cannot find emapper parse instructions for version {emapper_version}.")
@@ -102,20 +110,32 @@ class GffDatabaseManager:
 
 	@lru_cache(maxsize=4096)
 	def _get_tree(self, ref, cache_data=False):
+		if self.reference_type == "domain":
+			return IntervalTree.from_tuples(sorted((start, end) for start, end in self.db.get(ref, dict())))
+
 		return IntervalTree.from_tuples(sorted([key[1:] for key in self._read_data(ref, include_payload=cache_data)]))
 
 	def get_data(self, ref, start, end):
+		if self.reference_type == "domain":
+			dom_features = self.db.get(ref, dict()).get((start, end), list())
+			features = (("strand", None), ("ID", ref))
+			features += (("domtype", tuple(dom_features)),)
+			return features if dom_features else dict()
+
 		return self._read_data(ref, include_payload=True).get((ref, start, end), dict())
 
 	def get_overlaps(self, ref, start, end, cache_data=False):
 		def calc_covered_fraction(start, end, interval):
+			if interval.begin <= start <= end <= interval.end:
+				return start, end
+
 			if start < interval.begin:
-				return interval.begin, end
+				return interval.begin, min(end, interval.end)
 			elif interval.end < end:
-				return start, interval.end
+				return max(start, interval.begin), interval.end
 			return start, end
 		overlaps = self._get_tree(ref, cache_data=cache_data)[start:end]
-		covered = [calc_covered_faction(start, end, interval) for interval in overlaps]
+		covered = [calc_covered_fraction(start, end, interval) for interval in overlaps]
 
 		return overlaps, covered
 

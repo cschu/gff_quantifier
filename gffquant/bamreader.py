@@ -3,7 +3,9 @@ import time
 import gzip
 import struct
 import hashlib
+import re
 
+# https://stackoverflow.com/questions/22216076/unicodedecodeerror-utf8-codec-cant-decode-byte-0xa5-in-position-0-invalid-s
 
 class SamFlags:
 	PAIRED = 0x1
@@ -21,7 +23,7 @@ class SamFlags:
 class CigarOps:
 	CIGAR_OPS = "MIDNSHP=X"
 	# MIDNSHP=X
-	# 012345678; 02378 consume reference: 0000 0010 0011 0111 1000	
+	# 012345678; 02378 consume reference: 0000 0010 0011 0111 1000
 	REF_CONSUMERS = {0, 2, 3, 7, 8}
 
 	@staticmethod
@@ -38,13 +40,13 @@ class CigarOps:
 class BamAlignment:
 	TAG_PARAMS = {
 		"A": ("c", 1),
-		"c": ("b", 1), # int8
-		"C": ("B", 1), # uint8
-		"s": ("h", 2), #int16
-		"S": ("H", 2), #uint16
-		"i": ("i", 4), #int32
-		"I": ("I", 4), #uint32
-		"f": ("f", 4), #float
+		"c": ("b", 1),  # int8
+		"C": ("B", 1),  # uint8
+		"s": ("h", 2),  # int16
+		"S": ("H", 2),  # uint16
+		"i": ("i", 4),  # int32
+		"I": ("I", 4),  # uint32
+		"f": ("f", 4),  # float
 	}
 
 	def is_ambiguous(self):
@@ -98,7 +100,7 @@ class BamFile:
 		if large_header:
 			t0 = time.time()
 			print("Screening bam for used reference sequences... ", flush=True, end="")
-			present_refs = set(aln.rid for _, aln in self.get_alignments(parse_tags=False))
+			present_refs = set(aln.rid for _, aln in self.get_alignments(parse_tags=False, reference_screening=True))
 			t1 = time.time()
 			print(" done. ({}s)".format(t1-t0), flush=True)
 			self._file.seek(0)
@@ -168,7 +170,9 @@ class BamFile:
 
 		while bytes_read < size:
 			# print(bytes_read, size)
-			*tag, tag_type = map(bytes.decode, struct.unpack("ccc", self._file.read(3)))
+			tag, tag_type = struct.unpack("2sc", self._file.read(3))
+			# print(tag, tag_type)
+			tag, tag_type = map(bytes.decode, (tag, tag_type))
 			tag = "".join(tag)
 			params = BamAlignment.TAG_PARAMS.get(tag_type)
 			if params is not None:
@@ -177,6 +181,7 @@ class BamFile:
 				if tsize == 1:
 					tags[tag] = tags[tag][0]
 			elif tag_type in ("Z", "H"):
+				tsize = 0 # we're directly updating bytes_read
 				tag_str = list()
 				while bytes_read < size:
 					_byte = self._file.read(1)
@@ -186,12 +191,11 @@ class BamFile:
 						break
 					_byte = _byte[0].decode()
 					if _byte == "\x00":
+						bytes_read += 1
 						break
 					tag_str.append(_byte)
 					bytes_read += 1
-				tags[tag] = "".join(tag_str) #map(bytes.decode, tag_str))
-				# tsize = len(tags[tag]) + 1
-				tize = 0
+				tags[tag] = "".join(tag_str)
 			elif tag_type == "B":
 				tag_type, array_size = struct.unpack("cI", self._file.read(5))
 				params = BamAlignment.TAG_PARAMS.get(tag_type.decode())
@@ -206,7 +210,8 @@ class BamFile:
 
 
 	def get_alignments(
-		self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True, min_identity=None, min_length=None, parse_tags=True
+		self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True,
+		min_identity=None, min_seqlen=None, parse_tags=True, reference_screening=False
 	):
 		aln_count = 1
 		if not allow_multiple and not allow_unique:
@@ -223,20 +228,41 @@ class BamFile:
 				self._file.read(32)
 			)
 
+			# print(*zip(
+			#	"rid pos len_rname mapq _ n_cigarops flag len_seq next_rid next_pos tlen".split(" "), 
+			#	(rid, pos, len_rname, mapq, _, n_cigarops, flag, len_seq, next_rid, next_pos, tlen)
+			# ))
+
 			qname = self._file.read(len_rname)
+			# print('qname', qname)
 			cigar = struct.unpack("I" * n_cigarops, self._file.read(4 * n_cigarops))
+			# print('cigar', cigar)
 			self._file.read((len_seq + 1) // 2) # encoded read sequence
+			# print('seq', _)
 			self._file.read(len_seq) # quals
+			# print('quals', _)
 
 			total_read = 32 + len_rname + 4 * n_cigarops + (len_seq + 1) // 2 + len_seq
 			self._fpos += 4 + total_read
 			tags_size = aln_size - total_read
-			if parse_tags:
+			if parse_tags or not reference_screening:
 				tags = self._parse_tags(tags_size)
 			else:
 				_ = self._file.read(tags_size)
-			# tags = self._file.read(aln_size - total_read) # get the tags
+				tags = dict()
 			self._fpos += tags_size #4 + aln_size
+
+			md_tag = tags.get("MD", "")
+			if md_tag:
+				len_seq = sum((
+					sum(map(lambda x:int(x.group()), re.finditer("[0-9]+", md_tag))),
+					sum(map(lambda x:len(x.group()), re.finditer("[A-Z]+", md_tag)))
+				))
+			else:
+				len_seq = None
+
+			if parse_tags and not len_seq:
+				print(f"Read {qname} does not have length information. Skipping", file=sys.stderr, flush=True)
 
 			flag_check = all([
 				(required_flags is None or (flag & required_flags)),
@@ -248,12 +274,14 @@ class BamFile:
 				(is_unique and allow_unique),
 				(not is_unique and allow_multiple)
 			])
+
 			filter_check = all([
-				(min_length is None or len_seq >= min_length),
+				len_seq,
+				(min_seqlen is None or len_seq >= min_seqlen),
 				(min_identity is None or 1 - (tags.get("NM", 0) / len_seq) >= min_identity)
 			])
 
-			if all((flag_check, atype_check, filter_check)):
+			if reference_screening or all((flag_check, atype_check, filter_check)):
 				yield (
 					aln_count,
 					BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags if tags else None)

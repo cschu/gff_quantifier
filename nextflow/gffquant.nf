@@ -32,6 +32,8 @@ if (!params.db) {
 		params.db = "${params.genome_db}"
 	} else if (params.mode == "genes") {
 		params.db = "${params.genes_db}"
+	} else if (params.mode == "domain") {
+		params.db = "${params.domain_db}"
 	}
 }
 
@@ -72,6 +74,7 @@ process run_gffquant {
 	file("${sample}/${sample}.seqname.dist1.txt")
 	file("${sample}/${sample}.feature_counts.txt")
     file("${sample}/${sample}.gene_counts.txt")
+    file("${sample}/${sample}.covsum.txt")
 	file("logs/${sample}.o")
 	file("logs/${sample}.e")
 	

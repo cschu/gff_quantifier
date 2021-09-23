@@ -47,11 +47,12 @@ class OverlapCounter(dict):
 		self.ambig_coverage = dict()
 
 	def update_coverage_intervals(self, rid, intervals, coverage, ambig_aln=False):
-		for (istart, iend), (cstart, cend) in zip(intervals, coverage):
+		for interval, (cstart, cend) in zip(intervals, coverage):
 			if ambig_aln:
-				self.ambig_coverage.setdefault(rid, list()).append((rid, istart, iend, cstart, cend))
+				self.ambig_coverage.setdefault(rid, list()).append((rid, *interval, cstart, cend))
 			else:
-				self.coverage_intervals.setdefault(rid, dict()).setdefault((istart, iend), Counter())[(cstart, cend)] += 1
+				self.coverage_intervals.setdefault(rid, dict()).setdefault((interval.begin, interval.end), Counter())[(cstart, cend)] += 1
+				# self.coverage_intervals.setdefault(rid, list()).append((rid, *interval, cstart, cend))
 
 	def update_unique_counts(self, rid, aln=None, rev_strand=False):
 		'''
@@ -62,6 +63,8 @@ class OverlapCounter(dict):
 			overlaps, coverage = self.db.get_overlaps(*aln)
 			if overlaps:
 				self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
+				print(overlaps)
+				print(coverage)
 				self.update_coverage_intervals(rid, overlaps, coverage)
 			else:
 				self.unannotated_reads += 1
@@ -130,25 +133,6 @@ class OverlapCounter(dict):
 
 		return total_counts, feature_count_sums
 
-
-	def _iterate_bedcounts(self, bins, feature_lengths, strand_specific):
-		total_counts, feature_count_sums = np.zeros(4), dict()
-
-		for rid in set(self.seqcounts).union(self.ambig_seqcounts):
-			region_length = feature_lengths.get(rid)
-			feature = rid.split("::")[-1]
-
-			if region_length is None:
-				raise ValueError(f"Cannot determine length of reference {rid}.")
-
-			counts = self._compute_genes_count_vector(rid, region_length, strand_specific=strand_specific)
-			total_counts, feature_count_sums = self._distribute_feature_counts(
-				bins, counts, [("feature", (feature,))], total_counts, feature_count_sums
-			)
-
-		return total_counts, feature_count_sums
-
-
 	def _distribute_feature_counts(
 		self, bins, counts, region_annotation, total_counts, feature_count_sums
 	):
@@ -209,7 +193,6 @@ class OverlapCounter(dict):
 		annotation_f = {
 			"counts": self._iterate_counts,
 			"database": self._iterate_database,
-			"bedcounts": self._iterate_bedcounts
 		}.get(itermode)
 
 		if not annotation_f:
@@ -244,7 +227,26 @@ class OverlapCounter(dict):
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
 
-	def update_ambiguous_counts(self, hits, n_aln, unannotated=0, feat_distmode="all1"):
+	def update_ambig_coverage(self, coverage_data, n_aln):
+		pseudocount = 1e-10
+		# this is data from one(!) alignment group
+		# coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
+		rev_strand = False
+		dist1_coverage = Counter()
+		for rid, regions in coverage_data.items():
+			for (start, end, *_), overlaps in regions.items():
+				dist1_coverage[(rid, start, end)] = self.get(rid, Counter()).get((start, end, rev_strand), 0.0)
+		n_uniq = sum(dist1_coverage.values())
+		for rid, regions in coverage_data.items():
+			for (start, end, *_), overlaps in regions.items():
+				for cstart, cend in overlaps:
+					cov_interval = self.ambig_coverage.setdefault(rid, dict()).setdefault((start, end, rev_strand), Counter())
+					cov_interval[(cstart, cend)] += (pseudocount + dist1_coverage[(rid, start, end)] / n_uniq) if n_uniq else (pseudocount + 1 / n_aln)
+
+					# self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
+
+
+	def update_ambiguous_counts(self, hits, n_aln, bam, unannotated=0, feat_distmode="all1"):
 		self.has_ambig_counts = True
 		self.unannotated_reads += unannotated
 		if self.strand_specific and not self.do_overlap_detection:
@@ -252,15 +254,19 @@ class OverlapCounter(dict):
 		else:
 			n_total = sum(self.seqcounts[rid] for rid in hits)
 
+		coverage_data = dict()
+
 		increment = (1 / n_aln) if feat_distmode == "1overN" else 1
 		for rid, regions in hits.items():
 			if self.do_overlap_detection:
 				seen_regions = set()
 				for start, end, cstart, cend, rev_str in regions:
-					if region[:3] not in seen_regions:
-						self.ambig_counts.setdefault(rid, Counter())[(start, end, rev_str)] += increment
-						seen_regions.add(region[:3])
-					self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
+					region = (start, end, rev_str)
+					if region not in seen_regions:
+						self.ambig_counts.setdefault(rid, Counter())[region] += increment
+						seen_regions.add(region)
+					# self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
+					coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
 
 				if n_total and self.seqcounts[rid]:
 					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
@@ -270,7 +276,10 @@ class OverlapCounter(dict):
 				start, end, rev_str, cstart, cend = list(regions)[0]
 				key = (rid, rev_str) if self.strand_specific else rid
 				self.ambig_seqcounts[key] += increment
-				self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
+				# self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
+				coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
+
+			self.update_ambig_coverage(coverage_data, n_aln)
 
 	@staticmethod
 	def calculate_seqcount_scaling_factor(counts, bam):
@@ -430,6 +439,104 @@ class OverlapCounter(dict):
 					gene, _ = bam.get_reference(gene)
 				print(gene, out_row[0], *(f"{c:.5f}" for c in out_row[1:]), flush=True, sep="\t", file=gene_out)
 
+	def summarise_coverage(self, bam):
+		ref_coverage, ambig_ref_coverage = dict(), dict()
+		pos_feature_dict = dict()
+
+		for rid, intervals in self.coverage_intervals.items():
+			ref, reflen = bam.get_reference(rid)
+			print("REF", ref, rid)
+			for (start, end), overlaps in intervals.items():
+				print(start, end, overlaps)
+				features = self.db.db.get(ref, dict()).get((start, end), list())
+				print("FEATURES", features)
+				region = (rid, start, end)
+				print("REGION", region)
+				print("OVERLAPS", overlaps)
+				region_coverage = Counter({p: 0 for p in range(start, end + 1)})
+				ref_coverage.setdefault(region, Counter()).update(region_coverage)
+				print("refcov", region, ref_coverage[region])
+				ambig_ref_coverage.setdefault(region, Counter()).update(region_coverage)
+				pos_feature_dict.setdefault(region, set()).update(features)
+				for (ovl_start, ovl_end), count in overlaps.items():
+					print(ovl_start, ovl_end, count, len(features))
+					count /= len(features)
+					for p in range(ovl_start, ovl_end + 1):
+						ref_coverage[region][p] += count
+						ambig_ref_coverage[region][p] += count
+				print("refcov", region, ref_coverage[region])
+
+		for rid, regions in self.ambig_coverage.items():
+			ref, reflen = bam.get_reference(rid)
+			for (start, end, _), overlaps in regions.items():
+				features = self.db.db.get(ref, dict()).get((start, end), list())
+				region = (rid, start, end)
+				region_coverage = Counter({p: 0 for p in range(start, end + 1)})
+				ambig_ref_coverage.setdefault(region, Counter()).update(region_coverage)
+				pos_feature_dict.setdefault(region, set()).update(features)
+				print("REGION", region)
+				print(overlaps)
+				for (ovl_start, ovl_end), count in overlaps.items():
+					for p in range(ovl_start, ovl_end + 1):
+						ambig_ref_coverage[(rid, start, end)][p] += count / len(features)
+
+
+		print("REF_COV", ref_coverage)
+		print("AMBIG_REF_COV", ambig_ref_coverage)
+		print("POS_FEAT", pos_feature_dict)
+
+		domain_cov = dict()
+		for pos in set(ref_coverage).union(ambig_ref_coverage):
+			features_at_position = pos_feature_dict.get(pos, set())
+			for domtype in pos_feature_dict.get(pos, set()):
+				domain_cov.setdefault(domtype, dict()).update({
+					"depth_uniq": list(),
+					"depth_ambig": list(),
+					"cov_uniq": list(),
+					"cov_ambig": list()
+				})
+
+				uniq_cov = ref_coverage.get(pos, Counter())
+				ambig_cov = ambig_ref_coverage.get(pos, Counter())
+
+				if uniq_cov:
+					domain_cov[domtype]["depth_uniq"].append(sum(uniq_cov.values()) / len(uniq_cov.values()))
+					domain_cov[domtype]["cov_uniq"].append(sum(1 for v in uniq_cov.values() if v) / len(uniq_cov.values()))
+				if ambig_cov:
+					domain_cov[domtype]["depth_ambig"].append(sum(ambig_cov.values()) / len(ambig_cov.values()))
+					domain_cov[domtype]["cov_ambig"].append(sum(1 for v in ambig_cov.values() if v) / len(ambig_cov.values()))
+
+
+		with open(self.out_prefix + ".covsum.txt", "wt") as cov_out:
+			print("#domain", "depth_unique", "depth_combined", "coverage_unique", "coverage_combined", sep="\t", file=cov_out)
+			for domtype, counts in sorted(domain_cov.items()):
+
+				depth_uniq, depth_ambig = [c for c in counts.get("depth_uniq", list()) if c is not None], [c for c in counts.get("depth_ambig", list()) if c is not None]
+
+				depth_uniq_ = (sum(depth_uniq) / len(depth_uniq)) if depth_uniq else 0
+				print(domtype, "UNIQ", depth_uniq, sum(depth_uniq), len(depth_uniq), "=", depth_uniq_)
+
+				depth_ambig_ = (sum(depth_ambig) / len(depth_ambig)) if depth_ambig else 0
+				print(domtype, "AMBIG", depth_ambig, sum(depth_ambig), len(depth_ambig), "=", depth_ambig_)
+
+				if depth_ambig_ < depth_uniq_:
+					raise ValueError(f"{domtype}: depth_uniq_ + depth_ambig_ {depth_ambig_:.5f} is smaller than uniq depth {depth_uniq_:.5f}.")
+
+				cov_uniq, cov_ambig = [c for c in counts.get("cov_uniq", list()) if c is not None], [c for c in counts.get("cov_ambig", list()) if c is not None]
+
+				cov_uniq_ = (sum(cov_uniq) / len(cov_uniq)) if cov_uniq else 0
+				print(domtype, "UNIQ", cov_uniq, sum(cov_uniq), len(cov_uniq), "=", cov_uniq_)
+
+				cov_ambig_ = (sum(cov_ambig) / len(cov_ambig)) if cov_ambig else 0
+				print(domtype, "AMBIG", cov_ambig, sum(cov_ambig), len(cov_ambig), "=", cov_ambig_)
+
+				if cov_ambig_ < cov_uniq_:
+					raise ValueError(f"{domtype}: cov_uniq_ + cov_ambig_ {cov_ambig_:.5f} is smaller than uniq cov {cov_uniq_:.5f}.")
+
+				# print(domtype, f"{depth_uniq_:.5f}", f"{depth_ambig_:.5f}", sep="\t", file=cov_out)
+				print(domtype, *(f"{val:.5f}" for val in (depth_uniq_, depth_ambig_, cov_uniq_, cov_ambig_)), sep="\t", file=cov_out)
+
+
 
 	def dump_counts(self, bam=None):
 		print("Dumping overlap counters...", flush=True)
@@ -442,3 +549,6 @@ class OverlapCounter(dict):
 
 		if bam:
 			self._dump_seq_counts(bam)
+
+		if self.db.reference_type == "domain":
+			self.summarise_coverage(bam)
