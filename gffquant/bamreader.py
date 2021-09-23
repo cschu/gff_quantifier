@@ -100,7 +100,7 @@ class BamFile:
 		if large_header:
 			t0 = time.time()
 			print("Screening bam for used reference sequences... ", flush=True, end="")
-			present_refs = set(aln.rid for _, aln in self.get_alignments())
+			present_refs = set(aln.rid for _, aln in self.get_alignments(parse_tags=False))
 			t1 = time.time()
 			print(" done. ({}s)".format(t1-t0), flush=True)
 			self._file.seek(0)
@@ -211,7 +211,7 @@ class BamFile:
 
 	def get_alignments(
 		self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True,
-		min_identity=None, min_seqlen=None
+		min_identity=None, min_seqlen=None, parse_tags=True
 	):
 		aln_count = 1
 		if not allow_multiple and not allow_unique:
@@ -245,7 +245,11 @@ class BamFile:
 			total_read = 32 + len_rname + 4 * n_cigarops + (len_seq + 1) // 2 + len_seq
 			self._fpos += 4 + total_read
 			tags_size = aln_size - total_read
-			tags = self._parse_tags(tags_size)
+			if parse_tags:
+				tags = self._parse_tags(tags_size)
+			else:
+				_ = self._file.read(tags_size)
+			# tags = self._file.read(aln_size - total_read) # get the tags
 			self._fpos += tags_size #4 + aln_size
 
 			md_tag = tags.get("MD", "")
@@ -277,10 +281,10 @@ class BamFile:
 				(min_identity is None or 1 - (tags.get("NM", 0) / len_seq) >= min_identity)
 			])
 
-			if all([flag_check, atype_check, filter_check]):
+			if all((flag_check, atype_check, filter_check)):
 				yield (
 					aln_count,
-					BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags)
+					BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags if tags else None)
 				)
 			aln_count += 1
 
