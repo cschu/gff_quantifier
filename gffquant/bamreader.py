@@ -100,7 +100,7 @@ class BamFile:
 		if large_header:
 			t0 = time.time()
 			print("Screening bam for used reference sequences... ", flush=True, end="")
-			present_refs = set(aln.rid for _, aln in self.get_alignments(parse_tags=False))
+			present_refs = set(aln.rid for _, aln in self.get_alignments(parse_tags=False, reference_screening=True))
 			t1 = time.time()
 			print(" done. ({}s)".format(t1-t0), flush=True)
 			self._file.seek(0)
@@ -211,7 +211,7 @@ class BamFile:
 
 	def get_alignments(
 		self, required_flags=None, disallowed_flags=None, allow_unique=True, allow_multiple=True,
-		min_identity=None, min_seqlen=None, parse_tags=True
+		min_identity=None, min_seqlen=None, parse_tags=True, reference_screening=False
 	):
 		aln_count = 1
 		if not allow_multiple and not allow_unique:
@@ -245,10 +245,11 @@ class BamFile:
 			total_read = 32 + len_rname + 4 * n_cigarops + (len_seq + 1) // 2 + len_seq
 			self._fpos += 4 + total_read
 			tags_size = aln_size - total_read
-			if parse_tags:
+			if parse_tags or not reference_screening:
 				tags = self._parse_tags(tags_size)
 			else:
 				_ = self._file.read(tags_size)
+				tags = dict()
 			# tags = self._file.read(aln_size - total_read) # get the tags
 			self._fpos += tags_size #4 + aln_size
 
@@ -261,7 +262,7 @@ class BamFile:
 			else:
 				len_seq = None
 
-			if not len_seq:
+			if parse_tags and not len_seq:
 				print(f"Read {qname} does not have length information. Skipping", file=sys.stderr, flush=True)
 
 			flag_check = all([
@@ -281,7 +282,7 @@ class BamFile:
 				(min_identity is None or 1 - (tags.get("NM", 0) / len_seq) >= min_identity)
 			])
 
-			if all((flag_check, atype_check, filter_check)):
+			if reference_screening or all((flag_check, atype_check, filter_check)):
 				yield (
 					aln_count,
 					BamAlignment(qname, flag, rid, pos, mapq, cigar, next_rid, next_pos, tlen, len_seq, tags if tags else None)
