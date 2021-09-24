@@ -50,6 +50,10 @@ if (!params.output_dir) {
 }
 output_dir = "${params.output_dir}/${params.ambig_mode}_${params.mode}"
 
+if (!params.emapper_version) {
+	params.emapper_version = "v2"
+}
+
 suffix_pattern = params.file_pattern.replaceAll(/\*\*/, "")
 
 Channel
@@ -82,7 +86,7 @@ process run_gffquant {
 	"""
 	echo $sample $bamfile
 	mkdir -p logs
-	gffquant ${params.db} ${bamfile} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
+	gffquant ${params.db} ${bamfile} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} --emapper_version ${params.emapper_version} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
 	touch ${sample}/${sample}.seqname.dist1.txt ${sample}/${sample}.seqname.uniq.txt ${sample}/${sample}.feature_counts.txt ${sample}/${sample}.gene_counts.txt
 	"""
 }
