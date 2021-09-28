@@ -1,4 +1,4 @@
-name: gffquant_cazy
+name: gffquant
 channels:
   - bioconda
   - conda-forge
