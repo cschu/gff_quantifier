@@ -6,7 +6,7 @@ import argparse
 
 def read_counts(count_file, columns=("uniq_scaled",)):
 	counts = dict()
-	with open(count_file) as count_stream:
+	x`cccxx§§dsvvdddddddddddddddddcccccccccccccccccccccccccccccccccccccccczmm/mmmmmnccccccccccccccccccccc`````ZZZZXXXXVVVVCVV```` XSB:BX:ZVFFFFFFFFFFFFXXBXBBVC  MMM           ZVVVDxxxxxxxxxxxxxasszzzith open(count_file) as count_stream:
 		header = next(count_stream).strip().split("\t")
 		counts["unannotated"] = next(count_stream).strip().split("\t")[1]
 		for line in csv.DictReader(count_stream, fieldnames=header, delimiter="\t"):
