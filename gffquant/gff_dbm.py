@@ -37,7 +37,7 @@ class GffDatabaseManager:
 					for i, col in enumerate(line):
 						category = self.emapper_format.get_category(i)
 						if category is not None:
-							features = tuple(feature for feature in col.strip().split(",") if feature)
+							features = tuple(feature.strip() for feature in col.strip().split(",") if feature.strip())
 							if features:
 								categories.append((category, features))
 					if categories:
