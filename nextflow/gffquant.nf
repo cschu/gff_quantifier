@@ -1,5 +1,8 @@
 #!/usr/bin/env nextflow
 
+nextflow.enable.dsl=2
+
+
 def helpMessage() {
 	log.info """
 	BLAH!	
@@ -56,37 +59,36 @@ if (!params.emapper_version) {
 
 suffix_pattern = params.file_pattern.replaceAll(/\*\*/, "")
 
-Channel
-	.fromPath(params.input_dir + "/" + params.file_pattern)
-	.map { file -> 
-		def sample = file.name.replaceAll(suffix_pattern, "")
-		sample = sample.replaceAll(/\.$/, "")
-		return tuple(sample, file)
-	}
-	.groupTuple()
-	.set { samples_ch }
 
 process run_gffquant {
 	publishDir "$output_dir", mode: params.publish_mode
 
 	input:
-	set sample, file(bamfile) from samples_ch
+	tuple val(sample), path(bam)
 
 	output:
-	stdout result_run_gffquant
-	file("${sample}/${sample}.seqname.uniq.txt")
-	file("${sample}/${sample}.seqname.dist1.txt")
-	file("${sample}/${sample}.feature_counts.txt")
-    file("${sample}/${sample}.gene_counts.txt")
-    file("${sample}/${sample}.covsum.txt")
-	file("logs/${sample}.o")
-	file("logs/${sample}.e")
+	tuple val(sample), path("${sample}/*.txt"), emit: results
+	tuple val(sample), path("logs/${sample}.*"), emit: logs
 	
 	script:
 	"""
-	echo $sample $bamfile
+	echo $sample $bam
 	mkdir -p logs
-	gffquant ${params.db} ${bamfile} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} --emapper_version ${params.emapper_version} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
-	touch ${sample}/${sample}.seqname.dist1.txt ${sample}/${sample}.seqname.uniq.txt ${sample}/${sample}.feature_counts.txt ${sample}/${sample}.gene_counts.txt
+	gffquant ${params.db} ${bam} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} --emapper_version ${params.emapper_version} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
 	"""
+}
+
+
+workflow {
+
+	bam_ch = Channel
+		.fromPath(params.input_dir + "/" + params.file_pattern)
+		.map { file ->
+			def sample = file.name.replaceAll(suffix_pattern, "")
+			sample = sample.replaceAll(/\.$/, "")
+			return tuple(sample, file)
+		}
+		.groupTuple(sort:true)
+
+	run_gffquant(bam_ch)
 }
