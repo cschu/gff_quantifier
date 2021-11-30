@@ -63,8 +63,6 @@ class OverlapCounter(dict):
 			overlaps, coverage = self.db.get_overlaps(*aln)
 			if overlaps:
 				self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
-				#print(overlaps)
-				#print(coverage)
 				if self.db.reference_type == "domain":
 					self.update_coverage_intervals(rid, overlaps, coverage)
 			else:
@@ -267,7 +265,6 @@ class OverlapCounter(dict):
 						self.ambig_counts.setdefault(rid, Counter())[region] += increment
 						seen_regions.add(region)
 					# self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
-
 					if self.db.reference_type == "domain":
 						coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
 
