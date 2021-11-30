@@ -63,9 +63,8 @@ class OverlapCounter(dict):
 			overlaps, coverage = self.db.get_overlaps(*aln)
 			if overlaps:
 				self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
-				print(overlaps)
-				print(coverage)
-				self.update_coverage_intervals(rid, overlaps, coverage)
+				if self.db.reference_type == "domain":
+					self.update_coverage_intervals(rid, overlaps, coverage)
 			else:
 				self.unannotated_reads += 1
 		if self.strand_specific and not self.do_overlap_detection:
@@ -266,7 +265,8 @@ class OverlapCounter(dict):
 						self.ambig_counts.setdefault(rid, Counter())[region] += increment
 						seen_regions.add(region)
 					# self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
-					coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
+					if self.db.reference_type == "domain":
+						coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
 
 				if n_total and self.seqcounts[rid]:
 					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
@@ -277,9 +277,11 @@ class OverlapCounter(dict):
 				key = (rid, rev_str) if self.strand_specific else rid
 				self.ambig_seqcounts[key] += increment
 				# self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
-				coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
+				if self.db.reference_type == "domain":
+					coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
 
-			self.update_ambig_coverage(coverage_data, n_aln)
+			if self.db.reference_type == "domain":
+				self.update_ambig_coverage(coverage_data, n_aln)
 
 	@staticmethod
 	def calculate_seqcount_scaling_factor(counts, bam):
