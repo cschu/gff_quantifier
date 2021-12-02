@@ -64,6 +64,7 @@ class OverlapCounter(dict):
 			self.unannotated_reads += unaligned
 
 	def update_ambiguous_counts(self, count_stream):
+		count_stream = tuple(count_stream)  # we need to access stream-length before processing individual items. do we, though?
 		self.has_ambig_counts = True
 		strandedness_required = self.strand_specific and not self.do_overlap_detection
 		for counts, aln_count, unaligned in count_stream:

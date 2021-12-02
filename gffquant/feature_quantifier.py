@@ -117,7 +117,7 @@ class FeatureQuantifier:
 			self.process_alignments_sameref(ref, self.umap_cache.empty_cache())
 		)
 		self.overlap_counter.update_ambiguous_counts(
-			tuple(self.process_alignments_sameref(ref, self.ambig_cache.empty_cache()))
+			self.process_alignments_sameref(ref, self.ambig_cache.empty_cache())
 		)
 
 	def process_alignments(self, min_identity=None, min_seqlen=None):
@@ -188,7 +188,7 @@ class FeatureQuantifier:
 					if aln.is_unique():
 						self.overlap_counter.update_unique_counts(hits)
 					else:
-						self.overlap_counter.update_ambiguous_counts(tuple(hits))
+						self.overlap_counter.update_ambiguous_counts(hits)
 
 			self.process_caches(current_ref)
 			t1 = time.time()
