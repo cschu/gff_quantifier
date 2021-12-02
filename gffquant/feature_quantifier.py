@@ -12,27 +12,79 @@ from gffquant.gff_dbm import GffDatabaseManager
 from gffquant.overlap_counter import OverlapCounter
 from gffquant.ambig_aln import AmbiguousAlignmentRecordKeeper, AmbiguousAlignmentGroup
 
-DEBUG = False
+
+class PairedEndAlignmentCache(dict):
+	def __init__(self, ambig_alignments=False):
+		dict.__init__(self)
+		self.ambig_alignments = ambig_alignments
+
+	def empty_cache(self):
+		for qname, alignment in self.items():
+			n_aln = len(alignment)
+
+			if n_aln == 1:
+				# unpaired
+				start, end, flag = alignment[0][1:]
+				rev_strand = SamFlags.is_reverse_strand(flag)
+			elif n_aln == 2:
+				# paired
+				start, end = BamFile.calculate_fragment_borders(*alignment[0][1:-1], *alignment[1][1:-1])
+				rev_strand = None  # TODO: add strand-specific handling by RNAseq protocol
+			else:
+				raise ValueError(f"{n_aln} primary alignments detected for read {qname}.")
+
+			yield alignment[0][0], start, end, rev_strand
+
+		self.clear()
+
+	def process_alignment(self, alignment):
+		# need to keep track of read pairs to avoid dual counts
+
+		start, end, rev_strand = None, None, None
+
+		# check if the mate has already been seen
+		mates = self.setdefault(alignment.qname, list())
+		if mates:
+			if alignment.rnext != mates[0][0]:
+				raise ValueError("Alignment ${alignment.qname} seems to be corrupted: {str(alignment)} {str(mates[0])}.")
+
+			# if mate has been seen, calculate the total fragment size and remove the pair from the cache
+			start, end = BamFile.calculate_fragment_borders(alignment.start, alignment.end, *mates[0][1:-1])
+			del self[alignment.qname]
+		else:
+			# otherwise cache the first encountered mate and advance to the next read
+			mates.append((alignment.rid, alignment.start, alignment.end, alignment.flag))
+
+		return start, end, rev_strand
 
 
 class FeatureQuantifier:
 	TRUE_AMBIG_MODES = ("dist1", "1overN")
 
+	@staticmethod
+	def read_ambiguous_alignments(ambig_in):
+		""" reads the dumped ambig alignments and returns them sorted by group """
+		# using a pandas dataframe/numpy array saves us a lot of memory
+		ambig_aln = pandas.read_csv(ambig_in, sep="\t", header=None)
+		return ambig_aln.sort_values(axis=0, by=0)
+
 	def __init__(
 		self, db=None, db_index=None, out_prefix="gffquant", ambig_mode="unique_only",
-		reference_type="genome", strand_specific=False, emapper_version=None
+		reference_type="genome", strand_specific=False, emapper_version=None, debugmode=False
 	):
 		self.gff_dbm = GffDatabaseManager(db, reference_type, db_index=db_index, emapper_version=emapper_version)
-		self.umap_cache = dict()
-		self.ambig_cache = dict()
+		self.umap_cache = PairedEndAlignmentCache()
+		self.ambig_cache = PairedEndAlignmentCache(ambig_alignments=True)
 		self.do_overlap_detection = reference_type in ("genome", "domain")
 		self.overlap_counter = OverlapCounter(
 			out_prefix, self.gff_dbm,
-			do_overlap_detection=self.do_overlap_detection, strand_specific=strand_specific
+			do_overlap_detection=self.do_overlap_detection, strand_specific=strand_specific,
+			feature_distribution=ambig_mode
 		)
 		self.out_prefix = out_prefix
 		self.ambig_mode = ambig_mode
 		self.bamfile = None
+		self.debugmode = debugmode
 		print("Ambig mode:", self.ambig_mode, flush=True)
 
 	def allow_ambiguous_alignments(self):
@@ -44,50 +96,28 @@ class FeatureQuantifier:
 	def require_ambig_bookkeeping(self):
 		return self.allow_ambiguous_alignments() and not self.treat_ambiguous_as_unique()
 
-	def process_caches(self, rid, ref):
-		self.process_cache(rid, ref)
-		self.process_cache(rid, ref, unique_cache=False)
-
-	def process_cache(self, rid, ref, unique_cache=True):
-		cache = self.umap_cache if unique_cache else self.ambig_cache
-		for qname, aln in cache.items():
-			n_aln = len(aln)
-			if n_aln == 1:
-				start, end, flag = aln[0][1:]
-				rev_strand = SamFlags.is_reverse_strand(flag)
-			elif n_aln == 2:
-				start, end = BamFile.calculate_fragment_borders(*aln[0][1:-1], *aln[1][1:-1])
-				rev_strand = None  # TODO: add strand-specific handling by RNAseq protocol
+	def process_alignments_sameref(self, ref, alignments):
+		for rid, start, end, rev_strand in alignments:
+			if self.do_overlap_detection:
+				overlaps, coverage = self.gff_dbm.get_overlaps(ref, start, end)
+				hits = {
+					(ovl.begin, ovl.end, rev_strand, cstart, cend)
+					for ovl, (cstart, cend) in zip(overlaps, coverage)
+				}
+				aln_count = int(bool(overlaps))
 			else:
-				print(
-					f"WARNING: more than two primary alignments for {qname} ({n_aln}). Ignoring.",
-					file=sys.stderr, flush=True
-				)
-				continue
+				# hits = {(-1, -1, rev_strand, None, None)}
+				hits = {(None, None, rev_strand, None, None)}
+				aln_count = 1
 
-			if unique_cache:
-				short_aln = (ref, start, end) if self.do_overlap_detection else None
-				self.overlap_counter.update_unique_counts(rid, aln=short_aln, rev_strand=rev_strand)
-			else:
-				self._update_ambig_counts(self, rid, ref, aln, rev_strand)
+			yield ({rid: hits}, aln_count, 1 - aln_count)
 
-		cache.clear()
-
-	def _update_ambig_counts(self, rid, ref, aln, rev_strand):
-		hits = {rid: set()}
-		if self.do_overlap_detection:
-			overlaps, coverage = self.gff_dbm.get_overlaps(ref, aln.start, aln.end)
-			if overlaps:
-				for ovl, (cstart, cend) in zip(overlaps, coverage):
-					hits[rid].add((ovl.begin, ovl.end, rev_strand, cstart, cend))
-				aln_count, unannotated = 1, 0
-			else:
-				aln_count, unannotated = 0, 1
-		else:
-			hits[rid].add((-1, -1, rev_strand))
-			aln_count, unannotated = 1, 0
+	def process_caches(self, ref):
+		self.overlap_counter.update_unique_counts(
+			self.process_alignments_sameref(ref, self.umap_cache.empty_cache())
+		)
 		self.overlap_counter.update_ambiguous_counts(
-			hits, aln_count, unannotated, self.bamfile, feat_distmode=self.ambig_mode
+			tuple(self.process_alignments_sameref(ref, self.ambig_cache.empty_cache()))
 		)
 
 	def process_alignments(self, min_identity=None, min_seqlen=None):
@@ -124,7 +154,7 @@ class FeatureQuantifier:
 				if aln.rid != current_rid:
 					# if a new reference sequence is encountered, empty the alignment cache (if needed)
 					if current_rid is not None:
-						self.process_caches(current_rid, current_ref)
+						self.process_caches(current_ref)
 					current_ref, current_rid = self.bamfile.get_reference(aln.rid)[0], aln.rid
 
 					print("{time}\tNew reference: {ref} ({rid}/{n_ref}). {n_aln} alignments processed.".format(
@@ -148,19 +178,19 @@ class FeatureQuantifier:
 						# if a read belongs to a properly-paired (both mates align to the same reference sequence),
 						# unique alignment, then it can only be processed if the mate has already been encountered,
 						# otherwise it is cached
-						start, end, rev_strand = self._process_properly_paired_alignment(aln)
+						start, end, rev_strand = self.umap_cache.process_alignment(aln)
 
 				# at this point only single-end reads, 'improper' and merged pairs should be processed here
 				# ( + ambiguous reads in "all1" mode )
-				# remember: in all1, pair information is not easily to retain for the secondary alignments!
+				# remember: in all1, pair information is not easy to retain for the secondary alignments!
 				if start is not None:
+					hits = self.process_alignments_sameref(current_ref, ((current_rid, start, end, rev_strand),))
 					if aln.is_unique():
-						short_aln = (current_ref, start, end) if self.do_overlap_detection else None
-						self.overlap_counter.update_unique_counts(current_rid, aln=short_aln, rev_strand=rev_strand)
+						self.overlap_counter.update_unique_counts(hits)
 					else:
-						self._update_ambig_counts(current_rid, current_ref, aln, rev_strand)
+						self.overlap_counter.update_ambiguous_counts(tuple(hits))
 
-			self.process_caches(current_rid, current_ref)
+			self.process_caches(current_ref)
 			t1 = time.time()
 
 			print("Processed {n_align} alignments in {n_seconds:.3f}s.".format(
@@ -174,43 +204,10 @@ class FeatureQuantifier:
 
 		return aln_count, 0, None
 
-	def _process_properly_paired_alignment(self, aln):
-		# need to keep track of read pairs to avoid dual counts
-		# check if the mate has already been seen
-		cache = self.umap_cache if aln.is_unique() else self.ambig_cache
-		mates = cache.setdefault(aln.qname, list())
-		# TODO this requires some extra magic for strand-specific paired-end RNAseq
-		start, end, rev_strand = None, None, None
-		if mates:
-			# if it has, calculate the total fragment size and remove the pair from the cache
-			if aln.rnext != mates[0][0]:
-				print(
-					f"WARNING: alignment {aln.qname} seems to be corrupted: {str(aln)} {str(mates[0])}",
-					flush=True, file=sys.stderr
-				)
-				# continue # i don't think this ever happens
-			else:
-				# for a proper pair, calculate the coordinates of the whole fragment
-				# TODO could use a length cutoff here
-				# (treat mates that align too far apart as individual alignments)
-				start, end = BamFile.calculate_fragment_borders(aln.start, aln.end, *mates[0][1:-1])
-				rev_strand = None
-				del cache[aln.qname]
-		else:
-			# otherwise cache the first encountered mate and advance to the next read
-			mates.append((aln.rid, aln.start, aln.end, aln.flag))
-
-		return start, end, rev_strand
-
-	@staticmethod
-	def _read_ambiguous_alignments(ambig_in):
-		""" reads the dumped ambig alignments and returns them sorted by group """
-		# using a pandas dataframe/numpy array saves us a lot of memory
-		ambig_aln = pandas.read_csv(ambig_in, sep="\t", header=None)
-		return ambig_aln.sort_values(axis=0, by=0)
 
 	def _process_ambiguous_aln_groups(self, ambig_aln):
 		""" iterates over name-sorted (grouped) alignments and processes groups individually """
+		print("Processing ambiguous alignments...")
 		n_align, current_group = 0, None
 		# losing some speed due to the row-iterations here
 		# but ok for now
@@ -218,16 +215,18 @@ class FeatureQuantifier:
 			if current_group is None or current_group.qname != aln[0]:
 				if current_group:
 					n_align += current_group.n_align()
-					current_group.resolve(self.overlap_counter, self.bamfile, distmode=self.ambig_mode)
+					self.overlap_counter.update_ambiguous_counts(current_group.resolve())
 				current_group = AmbiguousAlignmentGroup(aln)
 			else:
 				current_group.add_alignment(aln)
 
 		if current_group is not None:
 			n_align += current_group.n_align()
-			current_group.resolve(self.overlap_counter, self.bamfile, distmode=self.ambig_mode)
+			self.overlap_counter.update_ambiguous_counts(current_group.resolve())
 
+		print(f"Processed {n_align} secondary alignments.")
 		return n_align
+
 
 	def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None):
 		""" processes one position-sorted bamfile """
@@ -248,7 +247,7 @@ class FeatureQuantifier:
 				if os.path.isfile(ambig_dumpfile) and os.stat(ambig_dumpfile).st_size > 0:
 					t0 = time.time()
 
-					ambig_aln = FeatureQuantifier._read_ambiguous_alignments(ambig_dumpfile)
+					ambig_aln = FeatureQuantifier.read_ambiguous_alignments(ambig_dumpfile)
 					n_align = self._process_ambiguous_aln_groups(ambig_aln)
 
 					t1 = time.time()
@@ -269,7 +268,7 @@ class FeatureQuantifier:
 			self.overlap_counter.dump_counts(bam=self.bamfile)
 
 		try:
-			if not DEBUG:
+			if not self.debugmode:
 				os.remove(ambig_dumpfile)
 		except FileNotFoundError:
 			pass

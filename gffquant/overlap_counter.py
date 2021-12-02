@@ -30,7 +30,7 @@ class OverlapCounter(dict):
 		normalised = counts / feature_len
 		scaled = normalised * scaling_factor
 		return counts, normalised, scaled
-	def __init__(self, out_prefix, db, do_overlap_detection=True, strand_specific=False):
+	def __init__(self, out_prefix, db, do_overlap_detection=True, strand_specific=False, feature_distribution="1overN"):
 		self.out_prefix = out_prefix
 		self.db = db
 		self.seqcounts = Counter()
@@ -45,32 +45,74 @@ class OverlapCounter(dict):
 		self.gene_counts = dict()
 		self.coverage_intervals = dict()
 		self.ambig_coverage = dict()
+		self.feature_distribution = feature_distribution
 
-	def update_coverage_intervals(self, rid, intervals, coverage, ambig_aln=False):
-		for interval, (cstart, cend) in zip(intervals, coverage):
-			if ambig_aln:
-				self.ambig_coverage.setdefault(rid, list()).append((rid, *interval, cstart, cend))
-			else:
-				self.coverage_intervals.setdefault(rid, dict()).setdefault((interval.begin, interval.end), Counter())[(cstart, cend)] += 1
-				# self.coverage_intervals.setdefault(rid, list()).append((rid, *interval, cstart, cend))
+	def update_unique_counts(self, count_stream):
+		for counts, aln_count, unaligned in count_stream:
+			for rid, hits in counts.items():
+				for ostart, oend, rev_strand, cstart, cend in hits:
+					if ostart is not None:
+						self.setdefault(rid, Counter())[(ostart, oend, rev_strand)] += 1
 
-	def update_unique_counts(self, rid, aln=None, rev_strand=False):
-		'''
-		Generates a hit list from the overlaps resulting from an intervaltree query,
-		adds the number of alternative alignments and stores the results for each reference sequence.
-		'''
-		if aln:
-			overlaps, coverage = self.db.get_overlaps(*aln)
-			if overlaps:
-				self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
-				if self.db.reference_type == "domain":
-					self.update_coverage_intervals(rid, overlaps, coverage)
+						if self.db.reference_type == "domain":
+							self.coverage_intervals.setdefault(rid, dict()).setdefault((ostart, oend), Counter())[(cstart, cend)] += 1
+						# self.ambig_coverage.setdefault(rid, list()).append((rid, *interval, cstart, cend))
+
+					seqcount_key = (rid, rev_strand) if self.strand_specific and not self.do_overlap_detection else rid
+					self.seqcounts[seqcount_key] += aln_count  # this overcounts reads when they overlap multiple features
+
+			self.unannotated_reads += unaligned
+
+	def update_ambiguous_counts(self, count_stream):
+		self.has_ambig_counts = True
+		strandedness_required = self.strand_specific and not self.do_overlap_detection
+		for counts, aln_count, unaligned in count_stream:
+			coverage = {}
+			increment = (1 / aln_count) if self.feature_distribution == "1overN" else 1  # 1overN = lavern.
+			if strandedness_required:
+				n_total = sum(self.seqcounts[(rid, True)] + self.seqcounts[(rid, False)] for rid in counts)
 			else:
-				self.unannotated_reads += 1
-		if self.strand_specific and not self.do_overlap_detection:
-			self.seqcounts[(rid, rev_strand)] += 1
-		else:
-			self.seqcounts[rid] += 1
+				n_total = sum(self.seqcounts[rid] for rid in counts)
+
+			for rid, hits in counts.items():
+				for ostart, oend, rev_strand, cstart, cend in hits:
+					if ostart is not None:
+						self.ambig_counts.setdefault(rid, Counter())[(ostart, oend, rev_strand)] += increment
+
+						if self.db.reference_type == "domain":
+							coverage.setdefault(rid, dict()).setdefault((ostart, oend), list()).append((cstart, cend))
+
+					seqcount_key = (rid, rev_strand) if self.strand_specific and not self.do_overlap_detection else rid
+					if n_total and self.seqcounts[seqcount_key]:
+						seq_increment = self.seqcounts[seqcount_key] / n_total * aln_count
+					else:
+						seq_increment = 1 / aln_count
+
+					self.ambig_seqcounts[seqcount_key] += seq_increment
+
+			self.unannotated_reads += unaligned
+
+			if self.db.reference_type == "domain":
+				self.update_ambig_coverage(coverage, aln_count)
+
+
+	def update_ambig_coverage(self, coverage_data, n_aln):
+		pseudocount = 1e-10
+		# this is data from one(!) alignment group
+		# coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
+		rev_strand = False
+		dist1_coverage = Counter()
+		for rid, regions in coverage_data.items():
+			for (start, end, *_), overlaps in regions.items():
+				dist1_coverage[(rid, start, end)] = self.get(rid, Counter()).get((start, end, rev_strand), 0.0)
+		n_uniq = sum(dist1_coverage.values())
+		for rid, regions in coverage_data.items():
+			for (start, end, *_), overlaps in regions.items():
+				for cstart, cend in overlaps:
+					cov_interval = self.ambig_coverage.setdefault(rid, dict()).setdefault((start, end, rev_strand), Counter())
+					increment = (pseudocount + dist1_coverage[(rid, start, end)] / n_uniq) if n_uniq else (pseudocount + 1 / n_aln)
+					cov_interval[(cstart, cend)] += increment
+
 
 	def _compute_count_vector(self, bins, rid, aln, strand, strand_specific):
 		# calculate the count vector for the current region
@@ -226,62 +268,6 @@ class OverlapCounter(dict):
 		print("Processed counts in {n_seconds}s.".format(n_seconds=t1-t0), flush=True)
 
 
-	def update_ambig_coverage(self, coverage_data, n_aln):
-		pseudocount = 1e-10
-		# this is data from one(!) alignment group
-		# coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
-		rev_strand = False
-		dist1_coverage = Counter()
-		for rid, regions in coverage_data.items():
-			for (start, end, *_), overlaps in regions.items():
-				dist1_coverage[(rid, start, end)] = self.get(rid, Counter()).get((start, end, rev_strand), 0.0)
-		n_uniq = sum(dist1_coverage.values())
-		for rid, regions in coverage_data.items():
-			for (start, end, *_), overlaps in regions.items():
-				for cstart, cend in overlaps:
-					cov_interval = self.ambig_coverage.setdefault(rid, dict()).setdefault((start, end, rev_strand), Counter())
-					cov_interval[(cstart, cend)] += (pseudocount + dist1_coverage[(rid, start, end)] / n_uniq) if n_uniq else (pseudocount + 1 / n_aln)
-
-					# self.setdefault(rid, Counter()).update((ovl.begin, ovl.end, rev_strand) for ovl in overlaps)
-
-
-	def update_ambiguous_counts(self, hits, n_aln, bam, unannotated=0, feat_distmode="all1"):
-		self.has_ambig_counts = True
-		self.unannotated_reads += unannotated
-		if self.strand_specific and not self.do_overlap_detection:
-			n_total = sum(self.seqcounts[(rid, True)] + self.seqcounts[(rid, False)] for rid in hits)
-		else:
-			n_total = sum(self.seqcounts[rid] for rid in hits)
-
-		coverage_data = dict()
-
-		increment = (1 / n_aln) if feat_distmode == "1overN" else 1
-		for rid, regions in hits.items():
-			if self.do_overlap_detection:
-				seen_regions = set()
-				for start, end, cstart, cend, rev_str in regions:
-					region = (start, end, rev_str)
-					if region not in seen_regions:
-						self.ambig_counts.setdefault(rid, Counter())[region] += increment
-						seen_regions.add(region)
-					# self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
-					if self.db.reference_type == "domain":
-						coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
-
-				if n_total and self.seqcounts[rid]:
-					self.ambig_seqcounts[rid] += self.seqcounts[rid] / n_total * len(hits)
-				else:
-					self.ambig_seqcounts[rid] += 1 / len(hits)
-			else:
-				start, end, rev_str, cstart, cend = list(regions)[0]
-				key = (rid, rev_str) if self.strand_specific else rid
-				self.ambig_seqcounts[key] += increment
-				# self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
-				if self.db.reference_type == "domain":
-					coverage_data.setdefault(rid, dict()).setdefault((start, end), list()).append((cstart, cend))
-
-			if self.db.reference_type == "domain":
-				self.update_ambig_coverage(coverage_data, n_aln)
 
 	@staticmethod
 	def calculate_seqcount_scaling_factor(counts, bam):

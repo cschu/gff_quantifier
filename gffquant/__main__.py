@@ -67,6 +67,7 @@ def main():
 	)
 
 	ap.add_argument("--version", "-v", action="version", version="%(prog)s " + __version__)
+	ap.add_argument("--debug", action="store_true")
 
 
 	args = ap.parse_args()
@@ -95,7 +96,8 @@ def main():
 		ambig_mode=args.ambig_mode,
 		reference_type=args.mode,
 		strand_specific=args.strand_specific,
-		emapper_version=args.emapper_version if args.mode in ("gene", "genes") else None
+		emapper_version=args.emapper_version if args.mode in ("gene", "genes") else None,
+		debugmode=args.debug
 	)
 
 	fq.process_bamfile(

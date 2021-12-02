@@ -100,9 +100,9 @@ class AmbiguousAlignmentGroup:
 	def n_align(self):
 		return len(self.uniq_alignments.union((self.primary1, self.primary2)).difference({None}))
 
-	def resolve(self, counter, bam, distmode="1overN"):
+	def resolve(self):
 
-		hits = dict()
+		hits = {}
 		# print(self.qname, self.primary1, self.primary2)
 
 		# https://stackoverflow.com/questions/64090762/python-lazy-function-evaluation-in-any-all 
@@ -112,8 +112,6 @@ class AmbiguousAlignmentGroup:
 
 		alignments = set([self.primary1, self.primary2]).union(self.secondaries).difference({None})
 		for rid, start, end, cstart, cend, flag in alignments:
-			hits.setdefault(rid, set()).add((start, end, cstart, cend, SamFlags.is_reverse_strand(flag)))
+			hits.setdefault(rid, set()).add((start, end, SamFlags.is_reverse_strand(flag), cstart, cend))
 
-		counter.update_ambiguous_counts(
-			hits, self.n_align(), self.unannotated, feat_distmode=distmode
-		)
+		return ((hits, self.n_align(), self.unannotated),)
