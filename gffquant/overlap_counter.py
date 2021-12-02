@@ -56,7 +56,6 @@ class OverlapCounter(dict):
 
 						if self.db.reference_type == "domain":
 							self.coverage_intervals.setdefault(rid, dict()).setdefault((ostart, oend), Counter())[(cstart, cend)] += 1
-						# self.ambig_coverage.setdefault(rid, list()).append((rid, *interval, cstart, cend))
 
 					seqcount_key = (rid, rev_strand) if self.strand_specific and not self.do_overlap_detection else rid
 					self.seqcounts[seqcount_key] += aln_count  # this overcounts reads when they overlap multiple features
@@ -69,7 +68,7 @@ class OverlapCounter(dict):
 		strandedness_required = self.strand_specific and not self.do_overlap_detection
 		for counts, aln_count, unaligned in count_stream:
 			coverage = {}
-			increment = (1 / aln_count) if self.feature_distribution == "1overN" else 1  # 1overN = lavern.
+			increment = (1 / aln_count) if self.feature_distribution == "1overN" else 1  # 1overN = lavern. Maya <3
 			if strandedness_required:
 				n_total = sum(self.seqcounts[(rid, True)] + self.seqcounts[(rid, False)] for rid in counts)
 			else:

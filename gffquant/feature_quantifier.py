@@ -224,7 +224,6 @@ class FeatureQuantifier:
 			n_align += current_group.n_align()
 			self.overlap_counter.update_ambiguous_counts(current_group.resolve())
 
-		print(f"Processed {n_align} secondary alignments.")
 		return n_align
 
 
