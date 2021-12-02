@@ -87,7 +87,7 @@ class GffDatabaseManager:
 			self.db_index = None
 
 		self.emapper_format = EMAPPER_FORMATS.get(emapper_version)
-		if not self.emapper_format:
+		if self.reference_type in ("gene", "genes") and not self.emapper_format:
 			raise ValueError(f"Cannot find emapper parse instructions for version {emapper_version}.")
 
 	@lru_cache(maxsize=4096)
