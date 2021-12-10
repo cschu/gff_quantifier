@@ -48,17 +48,24 @@ class OverlapCounter(dict):
 		self.feature_distribution = feature_distribution
 
 	def update_unique_counts(self, count_stream):
+		strandedness_required = self.strand_specific and not self.do_overlap_detection
 		for counts, aln_count, unaligned in count_stream:
 			for rid, hits in counts.items():
+				strands = set()
 				for ostart, oend, rev_strand, cstart, cend in hits:
 					if ostart is not None:
 						self.setdefault(rid, Counter())[(ostart, oend, rev_strand)] += 1
 
 						if self.db.reference_type == "domain":
 							self.coverage_intervals.setdefault(rid, dict()).setdefault((ostart, oend), Counter())[(cstart, cend)] += 1
+					strands.add(rev_strand)
 
-					seqcount_key = (rid, rev_strand) if self.strand_specific and not self.do_overlap_detection else rid
-					self.seqcounts[seqcount_key] += aln_count  # this overcounts reads when they overlap multiple features
+				if strandedness_required:
+					for strand in strands:
+						seqcount_key = (rid, rev_strand)
+						self.seqcounts[seqcount_key] += 1  # aln_count  # this overcounts reads when they overlap multiple features
+				else:
+					self.seqcounts[rid] += 1
 
 			self.unannotated_reads += unaligned
 
