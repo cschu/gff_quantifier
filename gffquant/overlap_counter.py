@@ -66,34 +66,68 @@ class OverlapCounter(dict):
 		count_stream = tuple(count_stream)  # we need to access stream-length before processing individual items. do we, though?
 		self.has_ambig_counts = True
 		strandedness_required = self.strand_specific and not self.do_overlap_detection
+
 		for counts, aln_count, unaligned in count_stream:
 			coverage = {}
+			self.unannotated_reads += unaligned
 			increment = (1 / aln_count) if self.feature_distribution == "1overN" else 1  # 1overN = lavern. Maya <3
 			if strandedness_required:
 				n_total = sum(self.seqcounts[(rid, True)] + self.seqcounts[(rid, False)] for rid in counts)
 			else:
 				n_total = sum(self.seqcounts[rid] for rid in counts)
 
+			# gene mode counts come as                 hits = {(None, None, rev_strand, None, None)}
+			# ovl mode counts come as hits = {(ostart, oend, rev_strand, cstart, cend)}
 			for rid, hits in counts.items():
+				regions, strands = {}, set()
 				for ostart, oend, rev_strand, cstart, cend in hits:
-					if ostart is not None:
-						self.ambig_counts.setdefault(rid, Counter())[(ostart, oend, rev_strand)] += increment
+					if self.do_overlap_detection:  # ostart is None or ostart == -1:
+						regions.setdefault((ostart, oend, rev_strand), set()).add((cstart, cend))
+					strands.add(rev_strand)
 
-						if self.db.reference_type == "domain":
+				# pull in the overlap data
+				for region, covered in regions.items():
+					self.ambig_counts.setdefault(rid, Counter())[region] += increment
+
+					ostart, oend, rev_strand = region
+
+					# coverage requires an overlap-mode
+					# (coordinates are not collected in gene mode), memory issue!
+					if self.db.reference_type == "domain":
+						for cstart, cend in covered:
 							coverage.setdefault(rid, dict()).setdefault((ostart, oend), list()).append((cstart, cend))
 
-					seqcount_key = (rid, rev_strand) if self.strand_specific and not self.do_overlap_detection else rid
+				if strandedness_required:
+					for strand in strands:
+						seqcount_key = (rid, strand)
+						if n_total and self.seqcounts[seqcount_key]:
+							seq_increment = self.seqcounts[seqcount_key] / n_total * aln_count
+						else:
+							seq_increment = 1 / aln_count
+						self.ambig_seqcounts[seqcount_key] += seq_increment
+
+				else:
+					seqcount_key = rid
+					if n_total and self.seqcounts[seqcount_key]:
+						seq_increment = self.seqcounts[seqcount_key] / n_total * aln_count
+					else:
+						seq_increment = 1 / aln_count
+					self.ambig_seqcounts[seqcount_key] += seq_increment
+
+				"""
+				# seqcounts via strands
+				# in gene mode feature counts are derived from seqcounts
+				for strand in strands:
+					seqcount_key = (rid, strand) if self.strand_specific else rid
 					if n_total and self.seqcounts[seqcount_key]:
 						seq_increment = self.seqcounts[seqcount_key] / n_total * aln_count
 					else:
 						seq_increment = 1 / aln_count
 
 					self.ambig_seqcounts[seqcount_key] += seq_increment
+				"""
 
-			self.unannotated_reads += unaligned
-
-			if self.db.reference_type == "domain":
-				self.update_ambig_coverage(coverage, aln_count)
+			self.update_ambig_coverage(coverage, aln_count)
 
 
 	def update_ambig_coverage(self, coverage_data, n_aln):
@@ -272,7 +306,12 @@ class OverlapCounter(dict):
 	@staticmethod
 	def calculate_seqcount_scaling_factor(counts, bam):
 		raw_total = sum(counts.values())
-		normed_total = sum(count / bam.get_reference(rid)[1] for rid, count in counts.items())
+		normed_total = sum(
+			count / bam.get_reference(
+				rid[0] if isinstance(rid, tuple) else rid
+			)[1]
+			for rid, count in counts.items()
+		)
 		return raw_total / normed_total
 	@staticmethod
 	def calculate_feature_scaling_factor(counts, include_ambig=False):
@@ -347,7 +386,7 @@ class OverlapCounter(dict):
 						f_counts, scaling_factor=scaling_factor, ambig_scaling_factor=ambig_scaling_factor
 					)
 					print(
-						category, feature, *(f"{c:.f}" for c in out_row),
+						category, feature, *(f"{c:.5f}" for c in out_row),
 						flush=True, sep="\t", file=feat_out
 					)
 
@@ -370,7 +409,7 @@ class OverlapCounter(dict):
 			if sum(self.seqcounts.values()):
 				seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
 				for rid, count in self.seqcounts.items():
-					seq_id, seq_len = bam.get_reference(rid)
+					seq_id, seq_len = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
 					norm, scaled = OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)[1:]
 					print(
 						rid, seq_id, seq_len, count, f"{norm:.5f}", f"{scaled:.5f}",
@@ -383,7 +422,7 @@ class OverlapCounter(dict):
 				self.seqcounts.update(self.ambig_seqcounts)
 				seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
 				for rid, count in self.seqcounts.items():
-					seq_id, seq_len = bam.get_reference(rid)
+					seq_id, seq_len = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
 					raw, norm, scaled = OverlapCounter.normalise_counts(count, seq_len, seqcount_scaling_factor)
 					print(
 						rid, seq_id, seq_len, f"{raw:.5f}", f"{norm:.5f}", f"{scaled:.5f}",
