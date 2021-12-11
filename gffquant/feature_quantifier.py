@@ -9,54 +9,11 @@ import pandas
 
 from gffquant.bamreader import BamFile, SamFlags
 from gffquant.gff_dbm import GffDatabaseManager
-from gffquant.overlap_counter import OverlapCounter
-from gffquant.ambig_aln import AmbiguousAlignmentRecordKeeper, AmbiguousAlignmentGroup
+# from gffquant.overlap_counter import OverlapCounter
+from gffquant.alignment import AmbiguousAlignmentRecordKeeper, AmbiguousAlignmentGroup, PairedEndAlignmentCache
 
-
-class PairedEndAlignmentCache(dict):
-	def __init__(self, ambig_alignments=False):
-		dict.__init__(self)
-		self.ambig_alignments = ambig_alignments
-
-	def empty_cache(self):
-		for qname, alignment in self.items():
-			n_aln = len(alignment)
-
-			if n_aln == 1:
-				# unpaired
-				start, end, flag = alignment[0][1:]
-				rev_strand = SamFlags.is_reverse_strand(flag)
-			elif n_aln == 2:
-				# paired
-				start, end = BamFile.calculate_fragment_borders(*alignment[0][1:-1], *alignment[1][1:-1])
-				rev_strand = None  # TODO: add strand-specific handling by RNAseq protocol
-			else:
-				raise ValueError(f"{n_aln} primary alignments detected for read {qname}.")
-
-			yield alignment[0][0], start, end, rev_strand
-
-		self.clear()
-
-	def process_alignment(self, alignment):
-		# need to keep track of read pairs to avoid dual counts
-
-		start, end, rev_strand = None, None, None
-
-		# check if the mate has already been seen
-		mates = self.setdefault(alignment.qname, list())
-		if mates:
-			if alignment.rnext != mates[0][0]:
-				raise ValueError("Alignment ${alignment.qname} seems to be corrupted: {str(alignment)} {str(mates[0])}.")
-
-			# if mate has been seen, calculate the total fragment size and remove the pair from the cache
-			start, end = BamFile.calculate_fragment_borders(alignment.start, alignment.end, *mates[0][1:-1])
-			del self[alignment.qname]
-		else:
-			# otherwise cache the first encountered mate and advance to the next read
-			mates.append((alignment.rid, alignment.start, alignment.end, alignment.flag))
-
-		return start, end, rev_strand
-
+from gffquant.counters import CountManager
+ 
 
 class FeatureQuantifier:
 	TRUE_AMBIG_MODES = ("dist1", "1overN")
@@ -76,10 +33,15 @@ class FeatureQuantifier:
 		self.umap_cache = PairedEndAlignmentCache()
 		self.ambig_cache = PairedEndAlignmentCache(ambig_alignments=True)
 		self.do_overlap_detection = reference_type in ("genome", "domain")
-		self.overlap_counter = OverlapCounter(
-			out_prefix, self.gff_dbm,
-			do_overlap_detection=self.do_overlap_detection, strand_specific=strand_specific,
-			feature_distribution=ambig_mode
+		#self.overlap_counter = OverlapCounter(
+		#	out_prefix, self.gff_dbm,
+		#	do_overlap_detection=self.do_overlap_detection, strand_specific=strand_specific,
+		#	feature_distribution=ambig_mode
+		#)
+		self.count_manager = CountManager(
+			distribution_mode=ambig_mode,
+			region_counts = reference_type in ("genome", "domain"),
+			strandedness_required=strand_specific and reference_type not in ("genome", "domain")
 		)
 		self.out_prefix = out_prefix
 		self.ambig_mode = ambig_mode
@@ -113,10 +75,10 @@ class FeatureQuantifier:
 			yield ({rid: hits}, aln_count, 1 - aln_count)
 
 	def process_caches(self, ref):
-		self.overlap_counter.update_unique_counts(
+		self.count_manager.update_unique_counts(
 			self.process_alignments_sameref(ref, self.umap_cache.empty_cache())
 		)
-		self.overlap_counter.update_ambiguous_counts(
+		self.count_manager.update_ambiguous_counts(
 			self.process_alignments_sameref(ref, self.ambig_cache.empty_cache())
 		)
 
@@ -186,9 +148,9 @@ class FeatureQuantifier:
 				if start is not None:
 					hits = self.process_alignments_sameref(current_ref, ((current_rid, start, end, rev_strand),))
 					if aln.is_unique():
-						self.overlap_counter.update_unique_counts(hits)
+						self.count_manager.update_unique_counts(hits)
 					else:
-						self.overlap_counter.update_ambiguous_counts(hits)
+						self.count_manager.update_ambiguous_counts(hits)
 
 			self.process_caches(current_ref)
 			t1 = time.time()
@@ -215,14 +177,14 @@ class FeatureQuantifier:
 			if current_group is None or current_group.qname != aln[0]:
 				if current_group:
 					n_align += current_group.n_align()
-					self.overlap_counter.update_ambiguous_counts(current_group.resolve())
+					self.count_manager.update_ambiguous_counts(current_group.resolve())
 				current_group = AmbiguousAlignmentGroup(aln)
 			else:
 				current_group.add_alignment(aln)
 
 		if current_group is not None:
 			n_align += current_group.n_align()
-			self.overlap_counter.update_ambiguous_counts(current_group.resolve())
+			self.count_manager.update_ambiguous_counts(current_group.resolve())
 
 		return n_align
 
@@ -257,14 +219,16 @@ class FeatureQuantifier:
 						"Warning: ambig-mode chosen, "
 						"but bamfile does not contain secondary alignments."
 					)
-					self.overlap_counter.has_ambig_counts = True  # we expect ambig cols in the outfile!
+					#self.overlap_counter.has_ambig_counts = True  # we expect ambig cols in the outfile!
 
-			self.overlap_counter.annotate_counts(
-				bamfile=self.bamfile,
-				itermode="counts" if self.do_overlap_detection else "database"
-			)
-			self.overlap_counter.unannotated_reads += unannotated_ambig
-			self.overlap_counter.dump_counts(bam=self.bamfile)
+			self.count_manager.dump_counters(self.out_prefix)
+			# to be implemented
+			#self.overlap_counter.annotate_counts(
+			#	bamfile=self.bamfile,
+			#	itermode="counts" if self.do_overlap_detection else "database"
+			#)
+			#self.overlap_counter.unannotated_reads += unannotated_ambig
+			#self.overlap_counter.dump_counts(bam=self.bamfile)
 
 		try:
 			if not self.debugmode:
