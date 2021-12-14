@@ -106,19 +106,19 @@ class OverlapCounter(dict):
 
 				if strandedness_required:
 					for strand in strands:
-						seqcount_key = (rid, strand)
-						if n_total and self.seqcounts[seqcount_key]:
-							seq_increment = self.seqcounts[seqcount_key] / n_total * aln_count
-						else:
-							seq_increment = 1 / aln_count
-						self.ambig_seqcounts[seqcount_key] += seq_increment
+						#seqcount_key = (rid, strand)
+						#if n_total and self.seqcounts[seqcount_key]:
+						#	seq_increment = self.seqcounts[seqcount_key] / n_total
+						#else:
+						#	seq_increment = 1 / aln_count
+						self.ambig_seqcounts[seqcount_key] += increment
 
 				else:
 					seqcount_key = rid
 					if n_total and self.seqcounts[seqcount_key]:
-						seq_increment = self.seqcounts[seqcount_key] / n_total * aln_count
+						seq_increment = self.seqcounts[seqcount_key] / n_total * len(regions)
 					else:
-						seq_increment = 1 / aln_count
+						seq_increment = 1 / len(regions)
 					self.ambig_seqcounts[seqcount_key] += seq_increment
 
 				"""
