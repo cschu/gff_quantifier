@@ -61,7 +61,7 @@ class CountManager:
 	def dump_raw_counters(self, prefix):
 		if self.uniq_seqcounts is not None:
 			self.uniq_seqcounts.dump(prefix)
-		if self.ambig_seqcounts: is not None:
+		if self.ambig_seqcounts is not None:
 			self.ambig_seqcounts.dump(prefix)
 		if self.uniq_regioncounts is not None:
 			self.uniq_regioncounts.dump(prefix)
