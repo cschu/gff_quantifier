@@ -471,7 +471,7 @@ class OverlapCounter(dict):
 				print("refcov", region, ref_coverage[region])
 
 		for rid, regions in self.ambig_coverage.items():
-			ref, reflen = bam.get_reference(rid)
+			ref, _ = bam.get_reference(rid)
 			for (start, end, _), overlaps in regions.items():
 				features = self.db.db.get(ref, dict()).get((start, end), list())
 				region = (rid, start, end)
