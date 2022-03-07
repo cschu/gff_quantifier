@@ -65,6 +65,7 @@ process run_gffquant {
 
 	input:
 	tuple val(sample), path(bam)
+	path(db)
 
 	output:
 	tuple val(sample), path("${sample}/*.txt"), emit: results
@@ -75,7 +76,7 @@ process run_gffquant {
 	"""
 	echo $sample $bam
 	mkdir -p logs/
-	gffquant ${params.db} ${bam} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${emapper_version} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
+	gffquant ${db} ${bam} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${emapper_version} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
 	"""
 }
 
@@ -91,5 +92,5 @@ workflow {
 		}
 		.groupTuple(sort:true)
 
-	run_gffquant(bam_ch)
+	run_gffquant(params.db, bam_ch)
 }
