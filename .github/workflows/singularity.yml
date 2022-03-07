@@ -44,6 +44,7 @@ jobs:
               echo "srecipe=${{ matrix.changed_file }}" >> $GITHUB_ENV
             else
               echo "srecipe=Singularity" >> $GITHUB_ENV
+            fi
           fi
 
       - name: Set up Go 1.13
