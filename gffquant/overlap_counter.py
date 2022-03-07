@@ -373,12 +373,12 @@ class OverlapCounter(dict):
 
 		if self.strand_specific and not self.do_overlap_detection:
 			_seqcounts = Counter()
-			for (rid, rev_strand), count in self.seqcounts.items():
+			for (rid, _), count in self.seqcounts.items():
 				_seqcounts[rid] += count
 			self.seqcounts = _seqcounts
 			if self.has_ambig_counts:
 				_seqcounts = Counter()
-				for (rid, rev_strand), count in self.ambig_seqcounts.items():
+				for (rid, _), count in self.ambig_seqcounts.items():
 					_seqcounts[rid] += count
 				self.ambig_seqcounts = _seqcounts
 
