@@ -40,7 +40,10 @@ jobs:
           # Continue if we have a changed Singularity recipe
           if [[ "${{ matrix.changed_file }}" = *Singularity* ]]; then
             echo "keepgoing=true" >> $GITHUB_ENV
-          fi          
+          fi
+          if [[ "${{ matrix.changed_file }}" = *.py]]; then
+            echo "keepgoing=true" >> $GITHUB_ENV
+          fi      
 
       - name: Set up Go 1.13
         if: ${{ env.keepgoing == 'true' }}
