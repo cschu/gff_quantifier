@@ -53,9 +53,9 @@ if (!params.output_dir) {
 }
 output_dir = "${params.output_dir}/${params.ambig_mode}_${params.mode}"
 
-//if (!params.emapper_version) {
-//	params.emapper_version = "v2"
-//}
+if (!params.emapper_version) {
+	params.emapper_version = "v2"
+}
 
 suffix_pattern = params.file_pattern.replaceAll(/\*\*/, "")
 
