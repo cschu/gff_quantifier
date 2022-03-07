@@ -354,18 +354,17 @@ class OverlapCounter(dict):
 		return header
 
 	def _dump_feature_counts(self):
-		with open(f"{self.out_prefix}.feature_counts.txt", "w") as feat_out:
-			print("subfeature", *self.get_header(), sep="\t", file=feat_out, flush=True)
-			print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
-			for ftype, counts in sorted(self.featcounts.items()):
-				print(f"#{ftype}", file=feat_out, flush=True)
+		for ftype, counts in sorted(self.featcounts.items()):
+			with open(f"{self.out_prefix}.{ftype}.txt", "w") as feat_out:
+				print("feature", *self.get_header(), sep="\t", file=feat_out, flush=True)
+				print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
 				scaling_factor, ambig_scaling_factor = self.feature_scaling_factors[ftype]
 				for subf, sf_counts in sorted(counts.items()):
 					out_row = self._compile_output_row(
 						sf_counts, scaling_factor=scaling_factor, ambig_scaling_factor=ambig_scaling_factor
 					)
 					print(
-						subf, out_row[0], *(f"{c:.5f}" for c in out_row[1:]),
+						subf, *(f"{c:.5f}" for c in out_row),
 						flush=True, sep="\t", file=feat_out
 					)
 
