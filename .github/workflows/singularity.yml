@@ -40,6 +40,10 @@ jobs:
           # Continue if we have a changed Singularity recipe
           if [[ "${{ matrix.changed_file }}" = *Singularity* || "${{ matrix.changed_file }}" = *.py ]]; then
             echo "keepgoing=true" >> $GITHUB_ENV
+            if [[ "${{ matrix.changed_file }}" = *Singularity* ]]; then
+              echo "srecipe=${{ matrix.changed_file }}" >> $GITHUB_ENV
+            else
+              echo "srecipe=Singularity" >> $GITHUB_ENV
           fi
 
       - name: Set up Go 1.13
@@ -86,11 +90,11 @@ jobs:
       - name: Build Container
         if: ${{ env.keepgoing == 'true' }}
         env:
-          recipe: ${{ matrix.changed_file }}
+          recipe: ${{ env.srecipe }}
         run: |
          ls 
-         if [ -f "${{ matrix.changed_file }}" ]; then
-            sudo -E singularity build container.sif ${{ matrix.changed_file }}
+         if [ -f "${{ env.srecipe }}" ]; then
+            sudo -E singularity build container.sif ${{ env.srecipe }}
             tag=$(echo "${recipe/Singularity\./}")
             if [ "$tag" == "Singularity" ]; then
                 tag=latest
@@ -99,7 +103,7 @@ jobs:
             echo "Tag is $tag."
             echo "tag=$tag" >> $GITHUB_ENV
          else
-           echo "${{ matrix.changed_file }} is not found."
+           echo "${{ env.srecipe }} is not found."
            echo "Present working directory: $PWD"
            ls
          fi
