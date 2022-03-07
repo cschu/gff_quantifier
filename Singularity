@@ -32,12 +32,12 @@ export PATH=$PATH:/opt/software/miniconda3/bin:/opt/software/mOTUs
   bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/software/miniconda3
   rm -f Miniconda3-latest-Linux-x86_64.sh
 
-  # /opt/software/miniconda3/bin/conda install -y -c conda-forge -c bioconda 'samtools>=1.13' bwa kraken2 fastqc multiqc bbmap seqtk
+  # /opt/software/miniconda3/bin/conda install -y -c conda-forge -c bioconda 'samtools>=1.13' bwa kraken2 fastqc multiqc bbmap seqtk
   wget https://github.com/cschu/gff_quantifier/archive/refs/tags/v.1.2.3.tar.gz
   tar xvzf v.1.2.3.tar.gz 
   cd gff_quantifier-v.1.2.3
-  python setup.py bdist_wheel
-  pip install --force-reinstall dist/*whl
+  /opt/software/miniconda3/bin/python setup.py bdist_wheel
+  /opt/software/miniconda3/bin/pip install --force-reinstall dist/*whl
   cd ..
   rm -rf gff_quantifier-v.1.2.3 v.1.2.3.tar.gz
 
