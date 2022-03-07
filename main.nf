@@ -92,5 +92,5 @@ workflow {
 		}
 		.groupTuple(sort:true)
 
-	run_gffquant(params.db, bam_ch)
+	run_gffquant(bam_ch, params.db)
 }
