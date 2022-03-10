@@ -61,7 +61,7 @@ suffix_pattern = params.file_pattern.replaceAll(/\*\*/, "")
 
 
 process run_gffquant {
-	publishDir "$output_dir", mode: params.publish_mode
+	publishDir "${output_dir}", mode: params.publish_mode
 
 	input:
 	tuple val(sample), path(bam)
@@ -80,6 +80,22 @@ process run_gffquant {
 	"""
 }
 
+process collate_feature_counts {
+	publishDir "${output_dir}", mode: params.publish_mode
+
+	input:
+	path(count_tables)
+
+	output:
+	path("collated/*.txt"), emit: collated, optional: true
+
+	script:
+	"""
+	mkdir -p collated/
+	cp *.txt collated/
+	"""
+}
+
 
 workflow {
 
@@ -93,4 +109,21 @@ workflow {
 		.groupTuple(sort:true)
 
 	run_gffquant(bam_ch, params.db)
+
+	feature_count_ch = run_gffquant.out.results.collect()
+		.filter { !it.name.endsWith("gene_counts.txt") }
+		.filter { !it.name.endsWith("seqname.uniq.txt") }
+		.filter { !it.name.endsWith("seqname.dist1.txt") }
+		.map { sample, file -> 
+			def category = file.name.replaceAll(/\.txt$/, "")
+				.replaceAll(/.+\./, "")
+			return tuple(category, file)
+		}
+		.groupTuple(sort:true)
+
+	feature_count_ch.view()
+	
+	//collate_feature_counts(feature_count_ch)
+
+
 }
