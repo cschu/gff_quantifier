@@ -49,7 +49,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 			"console_scripts": [
 				"gffquant=gffquant.__main__:main",
 				"gffindex=gffquant.gff_indexer:main",
-				"collate_counts=gffquant.bin.collate_counts_2:main",
+				"collate_counts=gffquant.bin.collate_counts:main",
 				"split_table=gffquant.bin.split_table:main"
 			],
 		},
