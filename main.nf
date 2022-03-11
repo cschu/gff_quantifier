@@ -92,7 +92,7 @@ process collate_feature_counts {
 	script:
 	"""
 	mkdir -p collated/
-	cat *.txt collated/${sample}.collated.txt
+	cat *.txt > collated/${sample}.collated.txt
 	"""
 }
 
