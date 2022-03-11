@@ -110,7 +110,7 @@ workflow {
 
 	run_gffquant(bam_ch, params.db)
 
-	feature_count_ch = run_gffquant.out.results.collect()
+	feature_count_ch = run_gffquant.out.results //.collect()
 		.map { sample, files -> return files }
 		.flatten()
 		.filter { !it.endsWith("gene_counts.txt") }
