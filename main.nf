@@ -117,7 +117,7 @@ workflow {
 		.filter { !it.endsWith("seqname.uniq.txt") }
 		.filter { !it.endsWith("seqname.dist1.txt") }
 		.map { file -> 
-			def category = file.name.replaceAll(/\.txt$/, "")
+			def category = file.replaceAll(/\.txt$/, "")
 				.replaceAll(/.+\./, "")
 			return tuple(category, file)
 		}
