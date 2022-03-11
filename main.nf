@@ -92,6 +92,7 @@ process collate_feature_counts {
 	script:
 	"""
 	mkdir -p collated/
+	collate_counts . -o collated/collated
 	cat *.txt > collated/${sample}.collated.txt
 	"""
 }
@@ -123,7 +124,7 @@ workflow {
 		}
 		.groupTuple(sort:true)
 
-	feature_count_ch.view()
+	//feature_count_ch.view()
 	
 	collate_feature_counts(feature_count_ch)
 
