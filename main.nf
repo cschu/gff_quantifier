@@ -116,7 +116,7 @@ workflow {
 		.filter { !it.endsWith("gene_counts.txt") }
 		.filter { !it.endsWith("seqname.uniq.txt") }
 		.filter { !it.endsWith("seqname.dist1.txt") }
-		.map { sample, file -> 
+		.map { file -> 
 			def category = file.name.replaceAll(/\.txt$/, "")
 				.replaceAll(/.+\./, "")
 			return tuple(category, file)
