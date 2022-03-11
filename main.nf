@@ -84,7 +84,7 @@ process collate_feature_counts {
 	publishDir "${output_dir}", mode: params.publish_mode
 
 	input:
-	path(count_tables)
+	tuple val(sample), path(count_tables)
 
 	output:
 	path("collated/*.txt"), emit: collated, optional: true
@@ -92,7 +92,7 @@ process collate_feature_counts {
 	script:
 	"""
 	mkdir -p collated/
-	cp *.txt collated/
+	cat *.txt collated/${sample}.collated.txt
 	"""
 }
 
@@ -125,7 +125,7 @@ workflow {
 
 	feature_count_ch.view()
 	
-	//collate_feature_counts(feature_count_ch)
+	collate_feature_counts(feature_count_ch)
 
 
 }
