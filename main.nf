@@ -111,9 +111,9 @@ workflow {
 	run_gffquant(bam_ch, params.db)
 
 	feature_count_ch = run_gffquant.out.results.collect()
-		.filter { !it.name.endsWith("gene_counts.txt") }
-		.filter { !it.name.endsWith("seqname.uniq.txt") }
-		.filter { !it.name.endsWith("seqname.dist1.txt") }
+		.filter { !it[1].name.endsWith("gene_counts.txt") }
+		.filter { !it[1].name.endsWith("seqname.uniq.txt") }
+		.filter { !it[1].name.endsWith("seqname.dist1.txt") }
 		.map { sample, file -> 
 			def category = file.name.replaceAll(/\.txt$/, "")
 				.replaceAll(/.+\./, "")
