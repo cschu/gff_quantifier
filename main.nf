@@ -92,8 +92,8 @@ process collate_feature_counts {
 	script:
 	"""
 	mkdir -p collated/
-	collate_counts . -o collated/collated
-	cat *.txt > collated/${sample}.collated.txt
+	collate_counts . -o collated/collated -c uniq_scaled
+	collate_counts . -o collated/collated -c combined_scaled
 	"""
 }
 
