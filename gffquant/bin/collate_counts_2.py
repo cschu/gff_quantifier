@@ -41,17 +41,17 @@ class FeatureCountCollator:
 
     def _collate_category(self, category, files):
         with open(f"{self.prefix}.{category}.{self.column}.txt", "wt") as table_out:
-            merged_tab = None
+            index = set()
+            for _, fn in files:
+                with open(fn) as _in:
+                    index.update(row.strip().split("\t")[0] for row in _in if row.strip())
+            merged_tab = pd.DataFrame(index=['unannotated'] + sorted(index.difference({'feature', 'unannotated'})))
             for sample, fn in files:
                 src_tab = pd.read_csv(fn, sep="\t", index_col=0)
-                if merged_tab is None:
-                    merged_tab = pd.DataFrame(index=src_tab.index)
-
                 merged_tab = merged_tab.merge(src_tab[self.column], left_index=True, right_index=True, how="outer")
-
                 merged_tab.rename(columns={self.column: sample}, inplace=True)
                 merged_tab[sample]["unannotated"] = src_tab["uniq_raw"]["unannotated"]
-            merged_tab.to_csv(table_out, sep="\t", na_rep="NA")
+            merged_tab.to_csv(table_out, sep="\t", na_rep="NA", index_label="feature")
 
 
 def main():
