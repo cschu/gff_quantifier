@@ -1,3 +1,4 @@
+import gzip
 import time
 from collections import Counter
 
@@ -355,7 +356,7 @@ class OverlapCounter(dict):
 
 	def _dump_feature_counts(self):
 		for ftype, counts in sorted(self.featcounts.items()):
-			with open(f"{self.out_prefix}.{ftype}.txt", "w") as feat_out:
+			with gzip.open(f"{self.out_prefix}.{ftype}.txt.gz", "wt") as feat_out:
 				print("feature", *self.get_header(), sep="\t", file=feat_out, flush=True)
 				print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
 				scaling_factor, ambig_scaling_factor = self.feature_scaling_factors[ftype]
@@ -382,7 +383,7 @@ class OverlapCounter(dict):
 					_seqcounts[rid] += count
 				self.ambig_seqcounts = _seqcounts
 
-		with open(f"{self.out_prefix}.seqname.uniq.txt", "w") as seq_out:
+		with gzip.open(f"{self.out_prefix}.seqname.uniq.txt.gz", "wt") as seq_out:
 			print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
 			if sum(self.seqcounts.values()):
 				seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
@@ -395,7 +396,7 @@ class OverlapCounter(dict):
 					)
 
 		if self.ambig_seqcounts:
-			with open(f"{self.out_prefix}.seqname.dist1.txt", "w") as seq_out:
+			with gzip.open(f"{self.out_prefix}.seqname.dist1.txt.gz", "wt") as seq_out:
 				print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
 				self.seqcounts.update(self.ambig_seqcounts)
 				seqcount_scaling_factor = OverlapCounter.calculate_seqcount_scaling_factor(self.seqcounts, bam)
@@ -408,7 +409,7 @@ class OverlapCounter(dict):
 					)
 
 	def _dump_gene_counts(self, bam=None):
-		with open(f"{self.out_prefix}.gene_counts.txt", "w") as gene_out:
+		with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
 			print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
 			if self.do_overlap_detection:
 				gene_counts = self.gene_counts
@@ -511,7 +512,7 @@ class OverlapCounter(dict):
 					domain_cov[domtype]["cov_ambig"].append(sum(1 for v in ambig_cov.values() if v) / len(ambig_cov.values()))
 
 
-		with open(self.out_prefix + ".covsum.txt", "wt") as cov_out:
+		with gzip.open(self.out_prefix + ".covsum.txt.gz", "wt") as cov_out:
 			print("#domain", "depth_unique", "depth_combined", "coverage_unique", "coverage_combined", sep="\t", file=cov_out)
 			for domtype, counts in sorted(domain_cov.items()):
 
