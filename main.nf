@@ -68,9 +68,8 @@ process run_gffquant {
 	path(db)
 
 	output:
-	tuple val(sample), path("${sample}/*.txt"), emit: results
-	// tuple val(sample), path("logs/${sample}.*"), emit: logs
-	
+	tuple val(sample), path("${sample}/*.txt.gz"), emit: results
+
 	script:
 	def emapper_version = (params.emapper_version) ? "--emapper_version ${params.emapper_version}" : ""
 	"""
