@@ -1,3 +1,7 @@
+# pylint: disable=C0103,C0301
+
+""" module docstring """
+
 import sys
 import argparse
 import os
@@ -7,105 +11,143 @@ import textwrap
 from gffquant.feature_quantifier import FeatureQuantifier
 from . import __version__
 
+
 def main():
-	ap = argparse.ArgumentParser(prog="gffquant", formatter_class=argparse.RawTextHelpFormatter)
-	ap.add_argument(
-		"annotation_db", type=str,
-		help=textwrap.dedent("""\
+    ap = argparse.ArgumentParser(
+        prog="gffquant", formatter_class=argparse.RawTextHelpFormatter
+    )
+    ap.add_argument(
+        "annotation_db",
+        type=str,
+        help=textwrap.dedent(
+            """\
 			Path to a text file containing the reference annotation.
 			The required type of file is determined by the --mode argument (gff3 or tsv)."""
-		)
-	)
-	ap.add_argument(
-		"bam_file", type=str,
-		help=textwrap.dedent("""\
+        ),
+    )
+    ap.add_argument(
+        "bam_file",
+        type=str,
+        help=textwrap.dedent(
+            """\
 			Path to a position-sorted bam file. Ambiguous alignments need to be flagged as secondary
 			alignments with the same read id as their primary alignment.
 			(e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0."""
-		)
-	)
-	ap.add_argument(
-		"--mode", "-m", type=str, default="genome", choices=("genome", "genes", "gene", "domain"),
-		help=textwrap.dedent("""\
+        ),
+    )
+    ap.add_argument(
+        "--mode",
+        "-m",
+        type=str,
+        default="genome",
+        choices=("genome", "genes", "gene", "domain"),
+        help=textwrap.dedent(
+            """\
 			Run mode:"
 			 - 'genome' counts reads aligned against contigs, which are annotated with a gff3 file.
 				The gff3 needs to have been indexed with gffindex prior to the run.
 			 - 'gene' counts reads aligned against gene sequences, which are annotated with a tab-separated file.
 			 - 'genes' is an alias for the 'gene' mode
 			 - 'domain' counts reads against domain annotations within gene sequences, which are annotated with a bed4 file."""
-		)
-	)
-	ap.add_argument(
-		"--emapper_version", type=str, default="v2", choices=("v1", "v2"),
-		help="eggnog emapper version: determines annotation columns. (only for gene mode)"
-	)
-	ap.add_argument(
-		"--out_prefix", "-o", type=str, default="gffquant",
-		help="Prefix for output files."
-	)
-	ap.add_argument(
-		"--ambig_mode", type=str, choices=("unique_only", "all1", "primary_only", "1overN"), default="unique_only",
-		help=textwrap.dedent("""\
+        ),
+    )
+    ap.add_argument(
+        "--emapper_version",
+        type=str,
+        default="v2",
+        choices=("v1", "v2"),
+        help="eggnog emapper version: determines annotation columns. (only for gene mode)",
+    )
+    ap.add_argument(
+        "--out_prefix",
+        "-o",
+        type=str,
+        default="gffquant",
+        help="Prefix for output files.",
+    )
+
+    ap.add_argument(
+        "--ambig_mode",
+        type=str,
+        choices=("unique_only", "all1", "primary_only", "1overN"),
+        default="unique_only",
+        help=textwrap.dedent(
+            """\
 			Setting how ambiguous alignments should be treated. This setting mimics NGLess' behaviour.
 			- 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). This is the default setting.
 			- 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to.)
 			- 'primary_only' takes the unique alignments and the primary and alignment of each ambiguous read group.
 			- '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to."""
-		)
-	)
-	ap.add_argument(
-		"--strand_specific", action="store_true",
-		help="Perform strand-specific counting for RNAseq reads. " \
-			 "This flag is currently ignored for paired-end data."
-	)
+        ),
+    )
 
-	ap.add_argument(
-		"--min_identity", type=float, default=0.97, help="Minimum sequence identity [n_match/length] for an alignment to be considered."
-	)
-	ap.add_argument(
-		"--min_seqlen", type=int, default=45, help="Minimum read length [bp] for an alignment to be considered."
-	)
+    ap.add_argument(
+        "--strand_specific",
+        action="store_true",
+        help="Perform strand-specific counting for RNAseq reads. "
+        "This flag is currently ignored for paired-end data.",
+    )
 
-	ap.add_argument("--version", "-v", action="version", version="%(prog)s " + __version__)
-	ap.add_argument("--debug", action="store_true")
+    ap.add_argument(
+        "--min_identity",
+        type=float,
+        default=0.97,
+        help="Minimum sequence identity [n_match/length] for an alignment to be considered.",
+    )
 
+    ap.add_argument(
+        "--min_seqlen",
+        type=int,
+        default=45,
+        help="Minimum read length [bp] for an alignment to be considered.",
+    )
 
-	args = ap.parse_args()
+    ap.add_argument(
+        "--version", "-v", action="version", version="%(prog)s " + __version__
+    )
+    ap.add_argument("--debug", action="store_true")
 
-	print("Version:", __version__)
-	print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
+    args = ap.parse_args()
 
-	if not os.path.exists(args.bam_file):
-		raise ValueError("bam file does not exist", args.bam_file)
-	if not os.path.exists(args.annotation_db):
-		raise ValueError("annotation database does not exist", args.annotation_db)
+    print("Version:", __version__)
+    print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
 
-	db_index = None
-	if args.mode == "genome":
-		db_index = args.annotation_db + ".index"
-		if not os.path.exists(db_index):
-			raise ValueError(f"gff index '{db_index}' does not exist (please generate index with `gffindex {args.annotation_db}`)")
+    if not os.path.exists(args.bam_file):
+        raise ValueError("bam file does not exist", args.bam_file)
+    if not os.path.exists(args.annotation_db):
+        raise ValueError("annotation database does not exist", args.annotation_db)
 
-	if os.path.dirname(args.out_prefix):
-		pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(exist_ok=True, parents=True)
+    db_index = None
+    if args.mode == "genome":
+        db_index = args.annotation_db + ".index"
+        if not os.path.exists(db_index):
+            raise ValueError(
+                f"gff index '{db_index}' does not exist "
+                f"(please generate index with `gffindex {args.annotation_db}`)"
+            )
 
-	fq = FeatureQuantifier(
-		db=args.annotation_db,
-		db_index=db_index,
-		out_prefix=args.out_prefix,
-		ambig_mode=args.ambig_mode,
-		reference_type=args.mode,
-		strand_specific=args.strand_specific,
-		emapper_version=args.emapper_version if args.mode in ("gene", "genes") else None,
-		debugmode=args.debug
-	)
+    if os.path.dirname(args.out_prefix):
+        pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(
+            exist_ok=True, parents=True
+        )
 
-	fq.process_bamfile(
-		args.bam_file,
-		min_identity=args.min_identity,
-		min_seqlen=args.min_seqlen
-	)
+    fq = FeatureQuantifier(
+        db=args.annotation_db,
+        db_index=db_index,
+        out_prefix=args.out_prefix,
+        ambig_mode=args.ambig_mode,
+        reference_type=args.mode,
+        strand_specific=args.strand_specific,
+        emapper_version=args.emapper_version
+        if args.mode in ("gene", "genes")
+        else None,
+        debugmode=args.debug,
+    )
+
+    fq.process_bamfile(
+        args.bam_file, min_identity=args.min_identity, min_seqlen=args.min_seqlen
+    )
 
 
 if __name__ == "__main__":
-	main()
+    main()

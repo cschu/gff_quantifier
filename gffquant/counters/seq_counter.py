@@ -1,90 +1,69 @@
+# pylint: disable=W0223
+
+""" module docstring """
+
 from .alignment_counter import AlignmentCounter
 
+
 class UniqueSeqCounter(AlignmentCounter):
-	def __init__(
-		self,
-		strandedness_required=False
-	):
-		AlignmentCounter.__init__(self)
-		self.strandedness_required = strandedness_required
+    def __init__(self, strand_specific=False):
+        AlignmentCounter.__init__(self, strand_specific=strand_specific)
 
-	def get_counts(self, seq_ids):
-		if self.strandedness_required:
-			return sum(
-				self[(seq_id, strand)]
-				for seq_id in seq_ids
-				for strand in (True, False)
-			)
-		return sum(self[seq_id] for seq_id in seq_ids)
+    def get_counts(self, seq_ids):
+        """
+        Given a list of sequence ids, return the total number of reads that mapped to each of those
+        sequences
 
-	def update_counts(self, count_stream):
-		increment = 1
-		for counts, aln_count, unaligned in count_stream:
-			for rid, hits in counts.items():
-				updates = []
-				if self.strandedness_required:
-					strands = {
-						strand
-						for _, _, strand, _, _ in hits					
-					}
-					updates += (((rid, strand), increment) for strand in strands)
-					
-				else:
-					updates.append((rid, increment))
+        :param seq_ids: a list of sequence ids to count
+        :return: A list of counts for each sequence ID.
+        """
+        if self.strand_specific:
+            return sum(
+                self[(seq_id, strand)] for seq_id in seq_ids for strand in (True, False)
+            )
+        return sum(self[seq_id] for seq_id in seq_ids)
 
-				self.update(updates)
+    def update_counts(self, count_stream, increment=1):
+        for counts, aln_count, unaligned in count_stream:
 
-			yield counts, aln_count, unaligned
+            for rid, hits in counts.items():
+
+                if self.strand_specific:
+                    strands = tuple(int(strand) for _, _, strand, _, _ in hits)
+
+                    self[(rid, True)] += sum(strands) * increment
+                    self[(rid, False)] += (len(hits) - sum(strands)) * increment
+
+                else:
+                    self[rid] += len(hits) * increment
+
+            yield counts, aln_count, unaligned
 
 
 class AmbiguousSeqCounter(AlignmentCounter):
-	def __init__(
-		self,
-		strandedness_required=False,
-		distribution_mode="1overN"
-	):
-		AlignmentCounter.__init__(self, distribution_mode=distribution_mode)
-		self.strandedness_required = strandedness_required
+    def __init__(self, strand_specific=False, distribution_mode="1overN"):
+        AlignmentCounter.__init__(
+            self, distribution_mode=distribution_mode, strand_specific=strand_specific
+        )
 
-	def update_counts(self, count_stream, uniq_counts=None):
-		if not uniq_counts:
-			raise ValueError("No unique counts supplied.")
-		
-		def get_increment(uniq_counts, n, n_aln, distribution_mode):
-			"""
-			currently:
-			use dist1 for seq count distribution if there are relevant unique counts
-			"""
-			if distribution_mode == "all1":
-				return 1
-			return uniq_counts / n * n_aln if uniq_counts and n else 1 / n_aln
-	
-		for counts, aln_count, unaligned in count_stream:
-			n_total = uniq_counts.get_counts(counts.keys())
+    def update_counts(self, count_stream):
+        def get_increment(n_aln, distribution_mode):
+            return 1 / n_aln if distribution_mode == "1overN" else 1
 
-			for rid, hits in counts.items():
-				updates = []
-				if self.strandedness_required:
-					strands = {
-						strand
-						for _, _, strand, _, _ in hits					
-					}
-					updates += (
-						(
-							(rid, strand),
-							get_increment(
-								uniq_counts[(rid, strand)], 
-								n_total, aln_count, self.distribution_mode)
-						)
-						for strand in strands
-					)
-				else:
-					updates.append(
-						(rid, get_increment(
-							uniq_counts[rid], n_total, aln_count,
-							self.distribution_mode))
-					)
+        for counts, aln_count, unaligned in count_stream:
 
-				self.update(updates)
+            increment = get_increment(aln_count, self.distribution_mode)
 
-			yield counts, aln_count, unaligned
+            for rid, hits in counts.items():
+
+                if self.strand_specific:
+                    strands = tuple(int(strand) for _, _, strand, _, _ in hits)
+
+                    self[(rid, True)] += sum(strands) * increment
+                    self[(rid, False)] += (len(hits) - sum(strands)) * increment
+
+                else:
+                    self[rid] += len(hits) * increment
+                    print(f"RID:{rid} = {self[rid]} NHITS:{len(hits)}")
+
+            yield counts, aln_count, unaligned
