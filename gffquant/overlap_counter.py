@@ -1,5 +1,6 @@
 # pylint: skip-file
 
+import gzip
 import time
 from collections import Counter
 
@@ -442,40 +443,18 @@ class OverlapCounter(dict):
         return header
 
     def _dump_feature_counts(self):
-        with open(f"{self.out_prefix}.feature_counts.txt", "w") as feat_out:
-            print(
-                "category",
-                "feature",
-                *self.get_header(),
-                sep="\t",
-                file=feat_out,
-                flush=True,
-            )
-            print(
-                "unannotated",
-                "",
-                self.unannotated_reads,
-                sep="\t",
-                file=feat_out,
-                flush=True,
-            )
-            for category, counts in sorted(self.featcounts.items()):
-                scaling_factor, ambig_scaling_factor = self.feature_scaling_factors[
-                    category
-                ]
-                for feature, f_counts in sorted(counts.items()):
+        for ftype, counts in sorted(self.featcounts.items()):
+            with gzip.open(f"{self.out_prefix}.{ftype}.txt.gz", "wt") as feat_out:
+                print("feature", *self.get_header(), sep="\t", file=feat_out, flush=True)
+                print("unannotated", self.unannotated_reads, sep="\t", file=feat_out, flush=True)
+                scaling_factor, ambig_scaling_factor = self.feature_scaling_factors[ftype]
+                for subf, sf_counts in sorted(counts.items()):
                     out_row = self._compile_output_row(
-                        f_counts,
-                        scaling_factor=scaling_factor,
-                        ambig_scaling_factor=ambig_scaling_factor,
+                        sf_counts, scaling_factor=scaling_factor, ambig_scaling_factor=ambig_scaling_factor
                     )
                     print(
-                        category,
-                        feature,
-                        *(f"{c:.5f}" for c in out_row),
-                        flush=True,
-                        sep="\t",
-                        file=feat_out,
+                        subf, *(f"{c:.5f}" for c in out_row),
+                        flush=True, sep="\t", file=feat_out
                     )
 
     def _dump_seq_counts(self, bam):
@@ -487,16 +466,16 @@ class OverlapCounter(dict):
 
         if self.strand_specific and not self.do_overlap_detection:
             _seqcounts = Counter()
-            for (rid, rev_strand), count in self.seqcounts.items():
+            for (rid, _), count in self.seqcounts.items():
                 _seqcounts[rid] += count
             self.seqcounts = _seqcounts
             if self.has_ambig_counts:
                 _seqcounts = Counter()
-                for (rid, rev_strand), count in self.ambig_seqcounts.items():
+                for (rid, _), count in self.ambig_seqcounts.items():
                     _seqcounts[rid] += count
                 self.ambig_seqcounts = _seqcounts
 
-        with open(f"{self.out_prefix}.seqname.uniq.txt", "w") as seq_out:
+        with gzip.open(f"{self.out_prefix}.seqname.uniq.txt.gz", "wt") as seq_out:
             print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
             if sum(self.seqcounts.values()):
                 seqcount_scaling_factor = (
@@ -524,7 +503,7 @@ class OverlapCounter(dict):
                     )
 
         if self.ambig_seqcounts:
-            with open(f"{self.out_prefix}.seqname.dist1.txt", "w") as seq_out:
+            with gzip.open(f"{self.out_prefix}.seqname.dist1.txt.gz", "wt") as seq_out:
                 print(*SEQ_COUNT_HEADER, sep="\t", flush=True, file=seq_out)
                 self.seqcounts.update(self.ambig_seqcounts)
                 seqcount_scaling_factor = (
@@ -552,7 +531,7 @@ class OverlapCounter(dict):
                     )
 
     def _dump_gene_counts(self, bam=None):
-        with open(f"{self.out_prefix}.gene_counts.txt", "w") as gene_out:
+        with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
             if self.do_overlap_detection:
                 gene_counts = self.gene_counts
@@ -601,7 +580,7 @@ class OverlapCounter(dict):
         pos_feature_dict = dict()
 
         for rid, intervals in self.coverage_intervals.items():
-            ref, reflen = bam.get_reference(rid)
+            ref, _ = bam.get_reference(rid)
             print("REF", ref, rid)
             for (start, end), overlaps in intervals.items():
                 print(start, end, overlaps)
@@ -674,7 +653,7 @@ class OverlapCounter(dict):
                         sum(1 for v in ambig_cov.values() if v) / len(ambig_cov.values())
                     )
 
-        with open(self.out_prefix + ".covsum.txt", "wt") as cov_out:
+        with gzip.open(self.out_prefix + ".covsum.txt.gz", "wt") as cov_out:
             print(
                 "#domain",
                 "depth_unique",
