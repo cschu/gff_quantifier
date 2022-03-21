@@ -2,6 +2,8 @@
 
 """ module docstring """
 
+import gzip
+
 
 class CountDumper:
     COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
@@ -59,30 +61,16 @@ class CountDumper:
             if self.has_ambig_counts:
                 row += tuple(counts[p:p + 2])
                 row += (row[-1] * ambig_scaling_factor,)
-        return row
+        return row + [scaling_factor, ambig_scaling_factor]
 
     def dump_feature_counts(self, unannotated_reads, featcounts):
-        with open(f"{self.out_prefix}.feature_counts.txt", "w") as feat_out:
-            print(
-                "category",
-                "feature",
-                *self.get_header(),
-                sep="\t",
-                file=feat_out,
-                flush=True,
-            )
-            print(
-                "unannotated",
-                "",
-                unannotated_reads,
-                sep="\t",
-                file=feat_out,
-                flush=True,
-            )
-            for category, counts in sorted(featcounts.items()):
-                scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
-                    category
-                ]
+        for category, counts in sorted(featcounts.items()):
+            scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
+                category
+            ]
+            with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
+                print("feature", *self.get_header(), sep="\t", file=feat_out)
+                print("unannotated", unannotated_reads, sep="\t", file=feat_out)
                 for feature, f_counts in sorted(counts.items()):
                     out_row = self.compile_output_row(
                         f_counts,
@@ -90,10 +78,23 @@ class CountDumper:
                         ambig_scaling_factor=ambig_scaling_factor,
                     )
                     print(
-                        category,
                         feature,
                         *(f"{c:.5f}" for c in out_row),
                         flush=True,
                         sep="\t",
                         file=feat_out,
                     )
+
+    def dump_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
+        print("SCALING_FACTORS", uniq_scaling_factor, ambig_scaling_factor)
+        with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
+            print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
+
+            for gene, g_counts in sorted(gene_counts.items()):
+                print(gene, g_counts)
+                out_row = self.compile_output_row(
+                    g_counts,
+                    scaling_factor=uniq_scaling_factor,
+                    ambig_scaling_factor=ambig_scaling_factor
+                )
+                print(gene, *(f"{c:.5f}" for c in out_row), flush=True, sep="\t", file=gene_out)
