@@ -4,7 +4,6 @@
 """ module docstring """
 
 from dataclasses import dataclass
-from itertools import chain
 
 from gffquant.bamreader import SamFlags
 
@@ -148,13 +147,13 @@ class AmbiguousAlignmentGroup:
                 print(hits, len(mate_alignments), ucounts)
                 yield hits, len(mate_alignments), ucounts
 
-        #hits = {}
-        #for aln in chain(*self.alignments):
+        # hits = {}
+        # for aln in chain(*self.alignments):
         #    hits.setdefault(aln.rid, set()).add(
         #        (aln.start, aln.end, aln.flag, aln.cstart, aln.cend)
         #    )
 
-        #return ((hits, self.n_align(), self.unannotated),)
+        # return ((hits, self.n_align(), self.unannotated),)
 
 
 class AmbiguousAlignmentGroup2:
