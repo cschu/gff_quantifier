@@ -231,8 +231,8 @@ class FeatureQuantifier:
                             mate_start = None
 
                         # if there was a mate cached, then both mates have been dealt with
-                        # hence, signal that the read does not need to be processed further
-                        # for overlap/merge later on, the mate_start will be not None
+                        # hence, signal that the read does not need to be processed further
+                        # for overlap/merge later on, the mate_start will be not None
                         start = mate_start
 
                 # at this point only single-end reads, 'improper' and merged pairs
@@ -340,6 +340,12 @@ class FeatureQuantifier:
             count_dumper.dump_feature_counts(
                 self.count_manager.get_unannotated_reads() + unannotated_ambig,
                 count_annotator,
+            )
+
+            count_dumper.dump_gene_counts(
+                count_annotator.gene_counts,
+                count_annotator.scaling_factors["total_uniq"],
+                count_annotator.scaling_factors["total_ambi"]
             )
 
             # count_annotator.dump_counts(bamfile, unannotated_ambig, self.out_prefix)
