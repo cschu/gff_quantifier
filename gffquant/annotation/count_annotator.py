@@ -1,49 +1,77 @@
 # pylint: disable=C0103
 
-""" module docstring """
-
 import numpy as np
 
 
+""" This module contains code for transforming gene counts to feature counts. """
+
+
 class CountAnnotator(dict):
+    """ CountAnnotator is the parent class for the two different count annotators. """
+
     def __init__(self, strand_specific):
+        """
+        input:
+        - strand_specific: true | false
+        """
         dict.__init__(self)
         self.strand_specific = strand_specific
         self.bins = 12 if strand_specific else 4
 
+        # [uniq_raw, uniq_normed, combined_raw, combined_normed]
         self.total_counts = np.zeros(4)
+        # holds total_counts-like vectors for feature-wise scaling factor calculation
         self.feature_count_sums = {}
         self.scaling_factors = {}
         self.gene_counts = {}
 
     def distribute_feature_counts(self, counts, region_annotation):
+        """
+        Distributes the counts for a region/gene among the annotated functional
+        categories/features
+
+        input:
+        - counts: [uniq_raw, uniq_normed, combined_raw, combined_normed]
+        - region_annotation: functional categories/features
+        """
+
+        # add region-counts once for gene/region scaling factor calculation
+        self.total_counts += counts[:4]
+
         for category, category_counts in region_annotation:
+            # add category-counts once for category scaling factor calculation
             total_fcounts = self.feature_count_sums.setdefault(category, np.zeros(4))
+            total_fcounts += counts[:4]
+            print("DFC:", category, self.total_counts, total_fcounts)
 
             for feature in category_counts:
                 self.add_counts(category, feature, counts)
                 print("DFC:", category, feature, counts)
 
-            self.total_counts += counts[:4]
-            total_fcounts += counts[:4]
-            print("DFC:", category, self.total_counts, total_fcounts)
-
     def add_counts(self, category, feature, counts):
+        """ Increments feature counts by input count vector """
         fcounts = self.setdefault(category, {}).setdefault(feature, np.zeros(self.bins))
         fcounts += counts
 
     def calculate_scaling_factors(self, default_scaling_factor=0):
+        """ Calculates all scaling factors.
+        scaling_factor = uniq_counts / normed_counts
+        input:
+        - default_scaling_factor: if normed counts do not exist, return this instead
+        """
+
+        def calc_scaling_factor(raw, normed, default=0):
+            return (raw / normed) if normed else default
+
+        print("TOTAL COUNTS:", self.total_counts)
         total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_counts
 
-        self.scaling_factors["total_uniq"] = (
-            (total_uniq / total_uniq_normed)
-            if total_uniq_normed
-            else default_scaling_factor
+        self.scaling_factors["total_uniq"] = calc_scaling_factor(
+            total_uniq, total_uniq_normed, default_scaling_factor
         )
-        self.scaling_factors["total_ambi"] = (
-            (total_ambi / total_ambi_normed)
-            if total_ambi_normed
-            else default_scaling_factor
+
+        self.scaling_factors["total_ambi"] = calc_scaling_factor(
+            total_ambi, total_uniq_normed, default_scaling_factor
         )
 
         fc_items = self.feature_count_sums.items()
@@ -55,13 +83,14 @@ class CountAnnotator(dict):
         ) in fc_items:
 
             self.scaling_factors[category] = (
-                (total_uniq / total_uniq_normed)
-                if total_uniq_normed
-                else default_scaling_factor,
-                (total_ambi / total_ambi_normed)
-                if total_ambi_normed
-                else default_scaling_factor,
+                calc_scaling_factor(
+                    total_uniq, total_uniq_normed, default_scaling_factor
+                ),
+                calc_scaling_factor(
+                    total_ambi, total_ambi_normed, default_scaling_factor
+                )
             )
+
             print(
                 "SCALING FACTOR", category, total_uniq, total_uniq_normed,
                 total_ambi, total_ambi_normed, self.scaling_factors[category]
@@ -73,6 +102,9 @@ class CountAnnotator(dict):
         # UNSTRANDED = {uniq,ambig} x {raw,normalised}
         # STRANDED = UNSTRANDED x {all,sense/plus,antisense/minus}
         counts = np.zeros(self.bins)
+
+        # not sure if this is still needed
+        # use_region_counts = isinstance(self, CtCountAnnotator)
 
         uniq_counts, ambig_counts = count_manager.get_counts(
             rid, region_counts=False, strand_specific=self.strand_specific
@@ -108,10 +140,19 @@ class CountAnnotator(dict):
 
 
 class CtCountAnnotator(CountAnnotator):
+    """ CountAnnotator subclass for contig/region-based counting. """
+
     def __init__(self, strand_specific):
         CountAnnotator.__init__(self, strand_specific)
 
     def annotate(self, bam, db, count_manager):
+        """
+        Annotate a set of region counts via db-lookup.
+        input:
+        - bam: bamr.BamFile to use as lookup table for reference names
+        - db: GffDatabaseManager holding functional annotation database
+        - count_manager: count_data
+        """
         for rid in set(count_manager.uniq_regioncounts).union(
             count_manager.ambig_regioncounts
         ):
@@ -135,6 +176,8 @@ class CtCountAnnotator(CountAnnotator):
                     antisense_region=antisense_region,
                 )
 
+                # this is [2:] as the gene id comes in the feature string as described
+                # above! (region key != gene id!!)
                 self.distribute_feature_counts(counts, region_annotation[2:])
 
                 gcounts = self.gene_counts.setdefault(
@@ -146,11 +189,19 @@ class CtCountAnnotator(CountAnnotator):
 
 
 class DbCountAnnotator(CountAnnotator):
+    """ CountAnnotator subclass for gene-based counting. """
+
     def __init__(self, strand_specific):
         CountAnnotator.__init__(self, strand_specific)
 
     def annotate(self, bam, db, count_manager):
-
+        """
+        Annotate a set of gene counts via db-iteration.
+        input:
+        - bam: bamr.BamFile to use as reverse lookup table for reference ids
+        - db: GffDatabaseManager holding functional annotation database
+        - count_manager: count_data
+        """
         for ref, region_annotation in db.iterate():
             rid = bam.revlookup_reference(ref)
             if rid is not None:
