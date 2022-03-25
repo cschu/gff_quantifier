@@ -290,11 +290,12 @@ class FeatureQuantifier:
 
         return n_align
 
-    def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None):
+    def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None, buffer_size=10000000):
         """processes one position-sorted bamfile"""
         self.bamfile = BamFile(
             bamfile,
             large_header=not self.do_overlap_detection,  # ugly!
+            buffer_size=buffer_size
         )
         # first pass: process uniqs and dump ambigs (if required)
         aln_count, unannotated_ambig, ambig_dumpfile = self.process_alignments(
