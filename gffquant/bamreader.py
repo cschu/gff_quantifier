@@ -45,7 +45,11 @@ class CigarOps:
 
     @staticmethod
     def calculate_coordinates(start, cigar):
-        return start + sum(oplen for oplen, op in cigar if op in CigarOps.REF_CONSUMERS)
+        return start + CigarOps.calculate_seqlength(cigar)
+
+    @staticmethod
+    def calculate_seqlength(cigar):
+        return sum(oplen for oplen, op in cigar if op in CigarOps.REF_CONSUMERS)
 
 
 class BamAlignment:
@@ -95,7 +99,7 @@ class BamAlignment:
         self.qname = qname
         self.flag = flag
         self.rid = rid
-        self.cigar = CigarOps.parse_cigar(cigar)
+        self.cigar = cigar
         self.start = pos
         self.end = CigarOps.calculate_coordinates(self.start, self.cigar)
         self.mapq = mapq
@@ -340,6 +344,7 @@ class BamFile:
 
             qname = self._file.read(len_rname)
             cigar = struct.unpack("I" * n_cigarops, self._file.read(4 * n_cigarops))
+            cigar = CigarOps.parse_cigar(cigar)
 
             if len_seq:
                 self._file.read((len_seq + 1) // 2)  # encoded read sequence
@@ -352,20 +357,23 @@ class BamFile:
             if parse_tags or not reference_screening:
                 tags = BamFile._parse_tags(tag_data)
 
-            md_tag = tags.get("MD", "")
-            if md_tag:
-                len_seq = sum(
-                    (
-                        sum(
-                            map(lambda x: int(x.group()), re.finditer("[0-9]+", md_tag))
-                        ),
-                        sum(
-                            map(lambda x: len(x.group()), re.finditer("[A-Z]+", md_tag))
-                        ),
+            len_seq = CigarOps.calculate_seqlength(cigar)
+
+            if not len_seq:
+                md_tag = tags.get("MD")
+                if md_tag:
+                    len_seq = sum(
+                        (
+                            sum(
+                                map(lambda x: int(x.group()), re.finditer("[0-9]+", md_tag))
+                            ),
+                            sum(
+                                map(lambda x: len(x.group()), re.finditer("[A-Z]+", md_tag))
+                            ),
+                        )
                     )
-                )
-            else:
-                len_seq = None
+                else:
+                    len_seq = None
 
             if parse_tags and not len_seq:
                 print(
