@@ -3,6 +3,8 @@
 
 """ module docstring """
 
+import gzip
+
 from dataclasses import dataclass
 
 from gffquant.bamreader import SamFlags
@@ -54,9 +56,9 @@ class AmbiguousAlignmentRecordKeeper:
         self.annotated = set()
         self.unannotated = set()
         self.readids = {}
-        self.dumpfile = prefix + ".ambig_tmp.txt"
+        self.dumpfile = prefix + ".ambig_tmp.txt.gz"
         # pylint: disable=R1732
-        self.ambig_dump = open(self.dumpfile, "wt")
+        self.ambig_dump = gzip.open(self.dumpfile, "wt")
         self.db = db
         self.do_overlap_detection = do_overlap_detection
 
