@@ -10,6 +10,7 @@ import struct
 import hashlib
 import re
 
+
 # https://stackoverflow.com/questions/22216076/unicodedecodeerror-utf8-codec-cant-decode-byte-0xa5-in-position-0-invalid-s
 
 
@@ -117,12 +118,74 @@ class BamAlignment:
         )
 
 
-class BamFile:
-    def __init__(self, fn, large_header=False):
-        self._references = []
+class BamBuffer:
+    def __init__(self, fn, size=1000000):
         self._file = gzip.open(fn, "rb")
+        self._buffer_size = size
+        self._buffer = None
         self._fpos = 0
-        self._data_block_start = 0
+        self._bp = 0
+        self._fill()
+
+        self._data_block_start = None
+
+    def _fill(self):
+        self._buffer = self._file.read(self._buffer_size)
+        self._bp = 0
+
+    def is_exhausted(self):
+        return not bool(self._file) and self.is_empty()
+
+    def is_empty(self):
+        return self.bytes_in_buffer() == 0
+
+    def bytes_in_buffer(self):
+        return len(self._buffer) - self._bp
+
+    def set_data_block_start(self):
+        if self._data_block_start is None:
+            self._data_block_start = self._fpos
+        elif self._data_block_start != self._fpos:
+            raise ValueError(
+                f"Data block start was already set to {self._data_block_start}."
+                f"self._fpos={self._fpos}"
+            )
+
+    def skip(self, size):
+        _ = self.read(size, skip=True)
+
+    def rewind(self, full=False):
+        if full:
+            self._file.seek(0)
+            self._fpos = 0
+        else:
+            self._fpos = self._data_block_start
+            self._file.seek(self._data_block_start)
+        self._fill()
+
+    def read(self, nbytes, skip=False):
+        extra_bytes_required = nbytes - self.bytes_in_buffer()
+        _bytes = None
+        if extra_bytes_required > 0:
+            if skip:
+                self._file.seek(extra_bytes_required, 1)
+                self._fill()
+            else:
+                _bytes = self._buffer[self._bp:]  # take the remaining bytes from buffer
+                _bytes += self._file.read(extra_bytes_required)  # obtain required bytes
+                self._fill()  # refill the buffer
+        else:
+            _bytes = self._buffer[self._bp:self._bp + nbytes]
+            self._bp += nbytes
+
+        self._fpos += nbytes
+        return _bytes
+
+
+class BamFile:
+    def __init__(self, fn, large_header=False, buffer_size=1000000):
+        self._references = []
+        self._file = BamBuffer(fn, size=buffer_size)
         # data structures to deal with large headers
         self._refmap = {}
         self._reverse_references = {}
@@ -139,7 +202,8 @@ class BamFile:
             )
             t1 = time.time()
             print(f" done. ({t1-t0}s)", flush=True)
-            self._file.seek(0)
+
+            self._file.rewind(full=True)
             self._refmap = {rid: i for i, rid in enumerate(sorted(present_refs))}
             self._read_header(keep_refs=present_refs)
             self._reverse_references = {
@@ -151,13 +215,14 @@ class BamFile:
 
     def _read_references(self, keep_refs=None):
         n_ref = struct.unpack("I", self._file.read(4))[0]
+
         for i in range(n_ref):
             len_rname = struct.unpack("I", self._file.read(4))[0]
             rname = self._file.read(len_rname)[:-1]
             len_ref = struct.unpack("I", self._file.read(4))[0]
-            self._fpos += 8 + len_rname
             if keep_refs is None or i in keep_refs:
                 yield rname, len_ref
+
         return []
 
     def _read_header(self, keep_refs=None):
@@ -173,10 +238,11 @@ class BamFile:
         if len_header:
             # since we're quite close to the start, we don't lose much by seeking in bgzip'd file
             # obviously, if the header is to be retained, need to handle differently
-            self._file.seek(len_header, 1)
-        self._fpos = 12 + len_header
+            # self._file.seek(len_header, 1)
+            self._file.skip(len_header)
+
         self._references = list(self._read_references(keep_refs=keep_refs))
-        self._data_block_start = self._fpos
+        self._file.set_data_block_start()
 
     def get_reference(self, rid):
         rid_index = self._refmap.get(rid, rid)
@@ -189,64 +255,49 @@ class BamFile:
     def get_refdata(self):
         return {rid: self.get_reference(rid) for rid in self._refmap}
 
-    def get_position(self):
-        return self._fpos
-
-    def rewind(self):
-        self._fpos = self._data_block_start
-        self._file.seek(self._data_block_start)
-
-    def seek(self, pos):
-        if pos < self._data_block_start:
-            raise ValueError(
-                f"Position {pos} seeks back into the header (data_start={self._data_block_start})."
-            )
-        self._file.seek(pos)
-        self._fpos = pos
-
-    def _parse_tags(self, size):
+    @staticmethod
+    def _parse_tags(tagdata):
         tags = {}
-        bytes_read = 0
-
-        while bytes_read < size:
-            # print(bytes_read, size)
-            tag, tag_type = struct.unpack("2sc", self._file.read(3))
-            # print(tag, tag_type)
+        p, n = 0, len(tagdata)
+        while p < n:
+            tag, tag_type = struct.unpack("2sc", tagdata[p:p + 3])
+            p += 3
             tag, tag_type = map(bytes.decode, (tag, tag_type))
             tag = "".join(tag)
             params = BamAlignment.TAG_PARAMS.get(tag_type)
             if params is not None:
                 fmt, tsize = params
-                tags[tag] = struct.unpack(fmt, self._file.read(tsize))
+                tags[tag] = struct.unpack(fmt, tagdata[p:p + tsize])
+                p += tsize
                 if tsize == 1:
                     tags[tag] = tags[tag][0]
-            elif tag_type in ("Z", "H"):
-                tsize = 0  # we're directly updating bytes_read
-                tag_str = []
-                while bytes_read < size:
-                    _byte = self._file.read(1)
-                    try:
-                        _byte = struct.unpack("c", _byte)
-                    except TypeError:
-                        break
-                    _byte = _byte[0].decode()
-                    if _byte == "\x00":
-                        bytes_read += 1
-                        break
-                    tag_str.append(_byte)
-                    bytes_read += 1
-                tags[tag] = "".join(tag_str)
             elif tag_type == "B":
-                tag_type, array_size = struct.unpack("cI", self._file.read(5))
+                tag_type, array_size = struct.unpack("cI", tagdata[p:p + 5])
+                p += 5
                 params = BamAlignment.TAG_PARAMS.get(tag_type.decode())
                 tsize = array_size * params[1]
                 tags[tag] = struct.unpack(
-                    f"{array_size}{params[0]}", self._file.read(tsize)
+                    f"{array_size}{params[0]}", tagdata[p:p + tsize]
                 )
-                tsize += 5
+                p += tsize
+            elif tag_type in "ZH":
+                tag_str, i = [], 0
+                for i, _ in enumerate(tagdata[p:]):
+                    _byte = tagdata[p + i:p + i + 1]
+                    try:
+                        _byte = struct.unpack("c", _byte)
+                    except TypeError as e:
+                        print(f"TypeError: {e}", _byte)
+                        break
+                    _byte = _byte[0].decode()
+                    if _byte == "\x00":
+                        p += 1
+                        break
+                    tag_str.append(_byte)
+                tags[tag] = "".join(tag_str)
+                p += i
             else:
                 raise ValueError(f"Cannot work with tag type {tag}:{tag_type}")
-            bytes_read += tsize + 3
 
         return tags
 
@@ -265,7 +316,7 @@ class BamFile:
         if not allow_multiple and not allow_unique:
             raise ValueError("Either allow_multiple or allow_unique needs to be True.")
 
-        while True:
+        while not self._file.is_exhausted():
             try:
                 aln_size = struct.unpack("I", self._file.read(4))[0]
             except struct.error:
@@ -288,23 +339,18 @@ class BamFile:
             ) = unpacked
 
             qname = self._file.read(len_rname)
-            # print('qname', qname)
             cigar = struct.unpack("I" * n_cigarops, self._file.read(4 * n_cigarops))
-            # print('cigar', cigar)
-            self._file.read((len_seq + 1) // 2)  # encoded read sequence
-            # print('seq', _)
-            self._file.read(len_seq)  # quals
-            # print('quals', _)
+
+            if len_seq:
+                self._file.read((len_seq + 1) // 2)  # encoded read sequence
+                self._file.read(len_seq)  # quals
 
             total_read = 32 + len_rname + 4 * n_cigarops + (len_seq + 1) // 2 + len_seq
-            self._fpos += 4 + total_read
             tags_size = aln_size - total_read
+            tag_data = self._file.read(tags_size)
+            tags = {}
             if parse_tags or not reference_screening:
-                tags = self._parse_tags(tags_size)
-            else:
-                _ = self._file.read(tags_size)
-                tags = {}
-            self._fpos += tags_size  # 4 + aln_size
+                tags = BamFile._parse_tags(tag_data)
 
             md_tag = tags.get("MD", "")
             if md_tag:
@@ -380,6 +426,10 @@ class BamFile:
 
 
 if __name__ == "__main__":
-    bam = BamFile(sys.argv[1])
-    for aln in bam.get_alignments():
-        print(aln)
+    # bam = BamFile(sys.argv[1])
+    # for aln in bam.get_alignments():
+    #    print(aln)
+
+    bam = BamFile("/Users/cschu/gqdebug/testcase.bam", buffer_size=100, large_header=True)
+
+    L = list(bam.get_alignments())
