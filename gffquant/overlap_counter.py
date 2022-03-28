@@ -288,8 +288,8 @@ class OverlapCounter(dict):
     def _iterate_counts(self, bins, bam, strand_specific):
         total_counts, feature_count_sums = np.zeros(4), dict()
 
-        for rid in set(self.keys()).union(self.ambig_counts):
-            ref = bam.get_reference(rid)[0]
+        for rid in set(self.keys()).union(self.ambig_counts): 
+            ref = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)[0]
             regions = set(self.get(rid, set())).union(self.ambig_counts.get(rid, set()))
             for start, end, rev_strand in regions:
                 # region_annotation is a tuple of key-value pairs:
@@ -545,7 +545,7 @@ class OverlapCounter(dict):
                 gene_counts = {
                     gene_id: self._compute_genes_count_vector(
                         gene_id,
-                        bam.get_reference(gene_id)[1],
+                        bam.get_reference(gene_id[0] if isinstance(gene_id, tuple) else gene_id)[1],
                         strand_specific=self.strand_specific,
                     )
                     for gene_id in gene_ids
@@ -562,10 +562,8 @@ class OverlapCounter(dict):
                     scaling_factor=scaling_factor,
                     ambig_scaling_factor=ambig_scaling_factor,
                 )
-                if isinstance(gene, tuple):
-                    gene = gene[0]
                 if not self.do_overlap_detection:
-                    gene, _ = bam.get_reference(gene)
+                    gene, _ = bam.get_reference(gene[0] if isinstance(gene, tuple) else gene)
                 print(
                     gene,
                     out_row[0],
@@ -580,7 +578,7 @@ class OverlapCounter(dict):
         pos_feature_dict = dict()
 
         for rid, intervals in self.coverage_intervals.items():
-            ref, _ = bam.get_reference(rid)
+            ref, _ = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
             print("REF", ref, rid)
             for (start, end), overlaps in intervals.items():
                 print(start, end, overlaps)
@@ -603,7 +601,7 @@ class OverlapCounter(dict):
                 print("refcov", region, ref_coverage[region])
 
         for rid, regions in self.ambig_coverage.items():
-            ref, reflen = bam.get_reference(rid)
+            ref, reflen = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
             for (start, end, _), overlaps in regions.items():
                 features = self.db.db.get(ref, dict()).get((start, end), list())
                 region = (rid, start, end)
