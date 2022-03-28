@@ -5,6 +5,7 @@
 
 import gzip
 
+from collections import Counter
 from dataclasses import dataclass
 
 from gffquant.bamreader import SamFlags
@@ -61,12 +62,24 @@ class AmbiguousAlignmentRecordKeeper:
         self.ambig_dump = gzip.open(self.dumpfile, "wt")
         self.db = db
         self.do_overlap_detection = do_overlap_detection
+        self.aln_counter = Counter()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.ambig_dump.close()
+
+    def register_alignment(self, aln):
+        # aln_data = self.aln_counter.setdefault()
+        # qname_id = self.readids.setdefault(aln.qname, len(self.readids))
+        self.aln_counter[(aln.qname, aln.is_second())] += 1
+
+    def get_ambig_alignment_count(self, aln):
+        return self.aln_counter.get((aln.qname, aln.is_second()), 1)
+
+    def clear(self):
+        self.aln_counter.clear()
 
     def process_alignment(self, ref, aln, aln_count):
         """

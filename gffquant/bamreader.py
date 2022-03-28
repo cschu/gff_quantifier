@@ -3,6 +3,7 @@
 
 """ module docstring """
 
+import contextlib
 import sys
 import time
 import gzip
@@ -81,6 +82,12 @@ class BamAlignment:
 
     def is_paired(self):
         return bool(self.flag & SamFlags.PAIRED)
+
+    def is_first(self):
+        return self.flag & SamFlags.FIRST_IN_PAIR == SamFlags.FIRST_IN_PAIR
+
+    def is_second(self):
+        return self.flag & SamFlags.SECOND_IN_PAIR == SamFlags.SECOND_IN_PAIR
 
     def __init__(
         self,
@@ -187,7 +194,7 @@ class BamBuffer:
 
 
 class BamFile:
-    def __init__(self, fn, large_header=False, buffer_size=1000000):
+    def __init__(self, fn, large_header=False, buffer_size=1000000, ambig_bookkeeper=None):
         self._references = []
         self._file = BamBuffer(fn, size=buffer_size)
         # data structures to deal with large headers
@@ -195,15 +202,23 @@ class BamFile:
         self._reverse_references = {}
 
         self._read_header(keep_refs=set() if large_header else None)
-        if large_header:
+        do_ambig_bookkeeping = not isinstance(ambig_bookkeeper, contextlib.nullcontext)
+
+        if large_header or do_ambig_bookkeeping:
             t0 = time.time()
             print("Screening bam for used reference sequences... ", flush=True, end="")
-            present_refs = set(
-                aln.rid
-                for _, aln in self.get_alignments(
-                    parse_tags=False, reference_screening=True
-                )
-            )
+            present_refs = set()
+            for _, aln in self.get_alignments(parse_tags=False, reference_screening=True):
+                present_refs.add(aln.rid)
+                if do_ambig_bookkeeping and aln.is_ambiguous():
+                    ambig_bookkeeper.register_alignment(aln)
+
+            # present_refs = set(
+            #     aln.rid
+            #     for _, aln in self.get_alignments(
+            #         parse_tags=False, reference_screening=True
+            #     )
+            # )
             t1 = time.time()
             print(f" done. ({t1-t0}s)", flush=True)
 
