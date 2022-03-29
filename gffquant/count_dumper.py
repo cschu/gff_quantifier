@@ -61,13 +61,14 @@ class CountDumper:
             if self.has_ambig_counts:
                 row += tuple(counts[p:p + 2])
                 row += (row[-1] * ambig_scaling_factor,)
-        return row + [scaling_factor, ambig_scaling_factor]
+        return row  # + [scaling_factor, ambig_scaling_factor]
 
     def dump_feature_counts(self, unannotated_reads, featcounts):
         for category, counts in sorted(featcounts.items()):
             scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
                 category
             ]
+            print(f"SCALING FACTORS", category, scaling_factor, ambig_scaling_factor)
             with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
                 print("feature", *self.get_header(), sep="\t", file=feat_out)
                 print("unannotated", unannotated_reads, sep="\t", file=feat_out)
