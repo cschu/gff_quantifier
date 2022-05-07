@@ -51,28 +51,51 @@ EMAPPER_FORMATS = {
     ),
 }
 
+"""
+	def iterate_chunks(self, bufsize=4e6):
+		header = None
+		with self.db as db_stream:
+			tail = ""
+			while True:
+				chunk = "".join((tail, db_stream.read(int(bufsize))))
+				if not chunk:
+					break
+				chunk = chunk.split("\n")
+				chunk, tail = chunk[:-1], chunk[-1]
+				for line in chunk:
+					if line.startswith("#"):
+						header = line.strip("#").split("\t")
+					else:
+						yield self._get_features(header, line.split("\t"))"""
 
 class GffDatabaseManager:
     def iterate(self):
         with self.db as db_stream:
-            for line in db_stream:
-                if not line.startswith("#"):
-                    line = line.strip().split("\t")
-                    categories = []
-                    for i, col in enumerate(line):
-                        category = self.emapper_format.get_category(i)
-                        if category is not None:
-                            features = tuple(
-                                feature.strip()
-                                for feature in col.strip().split(",")
-                                if feature.strip()
-                            )
-                            if features:
-                                categories.append((category, features))
-                    if categories:
-                        yield line[self.emapper_format.query_field], (
-                            ("strand", None),
-                        ) + tuple(categories)
+            tail = ""
+            while True:
+                chunk = "".join((tail, db_stream.read(self.bufsize).decode()))
+                if not chunk:
+                    break
+                chunk = chunk.split("\n")
+                chunk, tail = chunk[:-1], chunk[-1]
+                for line in chunk:
+                    if line[0] != "#":
+                        line = line.strip().split("\t")
+                        categories = []
+                        for i, col in enumerate(line):
+                            category = self.emapper_format.get_category(i)
+                            if category is not None:
+                                features = tuple(
+                                    feature.strip()
+                                    for feature in col.strip().split(",")
+                                    if feature.strip()
+                                )
+                                if features:
+                                    categories.append((category, features))
+                        if categories:
+                            yield line[self.emapper_format.query_field], (
+                                ("strand", None),
+                            ) + tuple(categories)
 
     def _read_index(self, f):
         self.db_index = {}
@@ -81,13 +104,14 @@ class GffDatabaseManager:
                 line = line.strip().split("\t")
                 self.db_index.setdefault(line[0], []).append(list(map(int, line[1:3])))
 
-    def __init__(self, db, reference_type, db_index=None, emapper_version="v2"):
+    def __init__(self, db, reference_type, db_index=None, emapper_version="v2", bufsize=4000000):
         gz_magic = b"\x1f\x8b\x08"
         # pylint: disable=R1732,W0511
         gzipped = open(db, "rb").read(3).startswith(gz_magic)
         # TODO: can dbm be written as contextmanager?
         _open = gzip.open if gzipped else open
         self.reference_type = reference_type
+        self.bufsize = bufsize
         if db_index:
             if gzipped:
                 raise ValueError(
@@ -105,7 +129,7 @@ class GffDatabaseManager:
                 ).append(line[3])
         else:
             _open = gzip.open if gzipped else open
-            self.db = _open(db, "rt")
+            self.db = _open(db, "rb")
             self.db_index = None
 
         self.emapper_format = EMAPPER_FORMATS.get(emapper_version)
