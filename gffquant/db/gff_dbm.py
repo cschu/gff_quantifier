@@ -69,11 +69,11 @@ EMAPPER_FORMATS = {
 						yield self._get_features(header, line.split("\t"))"""
 
 class GffDatabaseManager:
-    def iterate(self):
+    def iterate(self, bufsize=4000000):
         with self.db as db_stream:
             tail = ""
             while True:
-                chunk = "".join((tail, db_stream.read(self.bufsize).decode()))
+                chunk = "".join((tail, db_stream.read(bufsize).decode()))
                 if not chunk:
                     break
                 chunk = chunk.split("\n")
@@ -104,14 +104,14 @@ class GffDatabaseManager:
                 line = line.strip().split("\t")
                 self.db_index.setdefault(line[0], []).append(list(map(int, line[1:3])))
 
-    def __init__(self, db, reference_type, db_index=None, emapper_version="v2", bufsize=4000000):
+    def __init__(self, db, reference_type, db_index=None, emapper_version="v2"):
         gz_magic = b"\x1f\x8b\x08"
         # pylint: disable=R1732,W0511
         gzipped = open(db, "rb").read(3).startswith(gz_magic)
         # TODO: can dbm be written as contextmanager?
         _open = gzip.open if gzipped else open
         self.reference_type = reference_type
-        self.bufsize = bufsize
+        # self.bufsize = bufsize
         if db_index:
             if gzipped:
                 raise ValueError(
