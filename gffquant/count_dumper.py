@@ -63,16 +63,18 @@ class CountDumper:
                 row += (row[-1] * ambig_scaling_factor,)
         return row  # + [scaling_factor, ambig_scaling_factor]
 
-    def dump_feature_counts(self, unannotated_reads, featcounts):
-        for category, counts in sorted(featcounts.items()):
+    def dump_feature_counts(self, db, unannotated_reads, featcounts):
+        for category_id, counts in sorted(featcounts.items()):
             scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
-                category
+                category_id
             ]
+            category = db.query_category(category_id).name
             print(f"SCALING FACTORS", category, scaling_factor, ambig_scaling_factor)
             with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
                 print("feature", *self.get_header(), sep="\t", file=feat_out)
                 print("unannotated", unannotated_reads, sep="\t", file=feat_out)
-                for feature, f_counts in sorted(counts.items()):
+                for feature_id, f_counts in sorted(counts.items()):
+                    feature = db.query_feature(feature_id).name
                     out_row = self.compile_output_row(
                         f_counts,
                         scaling_factor=scaling_factor,

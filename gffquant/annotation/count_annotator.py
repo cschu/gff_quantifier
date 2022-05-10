@@ -42,11 +42,11 @@ class CountAnnotator(dict):
             # add category-counts once for category scaling factor calculation
             total_fcounts = self.feature_count_sums.setdefault(category, np.zeros(4))
             total_fcounts += counts[:4]
-            print("DFC:", category, self.total_counts, total_fcounts)
+            # print("DFC:", category, self.total_counts, total_fcounts)
 
             for feature in category_counts:
                 self.add_counts(category, feature, counts)
-                print("DFC:", category, feature, counts)
+                # print("DFC:", category, feature, counts)
 
     def add_counts(self, category, feature, counts):
         """ Increments feature counts by input count vector """
@@ -202,14 +202,30 @@ class DbCountAnnotator(CountAnnotator):
         - db: GffDatabaseManager holding functional annotation database
         - count_manager: count_data
         """
-        for ref, region_annotation in db.iterate():
-            rid = bam.revlookup_reference(ref)
-            if rid is not None:
-                _, region_length = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
+
+        for rid in set(count_manager.uniq_seqcounts).union(
+            count_manager.ambig_seqcounts
+        ):
+            ref, region_length = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
+            region_annotation = db.query_sequence(ref)
+            if region_annotation is not None:
                 counts = self.compute_count_vector(count_manager, rid, region_length)
-                self.distribute_feature_counts(counts, region_annotation[1:])
+                self.distribute_feature_counts(counts, region_annotation)
 
                 gcounts = self.gene_counts.setdefault(ref, np.zeros(self.bins))
                 gcounts += counts
+
+
+        # for ref, region_annotation in db.iterate():
+        #     rid = bam.revlookup_reference(ref)
+        #     if rid is not None:
+        #         _, region_length = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
+        #         counts = self.compute_count_vector(count_manager, rid, region_length)
+        #         self.distribute_feature_counts(counts, region_annotation[1:])
+
+        #         gcounts = self.gene_counts.setdefault(ref, np.zeros(self.bins))
+        #         gcounts += counts
+        
+
 
         self.calculate_scaling_factors()

@@ -70,6 +70,7 @@ def main():
 
 	n = 0	
 	for n, (ref, region_annotation) in enumerate(gffdbm.iterate(), start=1):
+		print(region_annotation)
 		for category, features in region_annotation[1:]:
 			cat_d.setdefault(category, set()).update(features)
 
@@ -112,10 +113,10 @@ def main():
 
 		# print(ref, encoded, sep="\t")
 
-		strand, gene_id = region_annotation[0]
+		_, strand = region_annotation[0]
 		db_sequence = db.AnnotatedSequence(
-			seqid=ref if gene_id is None else gene_id,
-			contig=ref if gene_id is not None else None,
+			seqid=ref,
+			contig=None,
 			strand=int(strand == "+") if strand is not None else None,
 			annotation_str=encoded
 		)

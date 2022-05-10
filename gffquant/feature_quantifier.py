@@ -11,7 +11,8 @@ import contextlib
 import pandas
 
 from gffquant.bamreader import BamFile, SamFlags
-from gffquant.gff_dbm import GffDatabaseManager
+from gffquant.db.gff_dbm import GffDatabaseManager
+from gffquant.db.annotation_db import AnnotationDatabaseManager
 from gffquant.alignment import (
     AmbiguousAlignmentRecordKeeper,
     AmbiguousAlignmentGroup,
@@ -44,9 +45,10 @@ class FeatureQuantifier:
         emapper_version=None,
         debugmode=False,
     ):
-        self.gff_dbm = GffDatabaseManager(
-            db, reference_type, db_index=db_index, emapper_version=emapper_version
-        )
+        #self.gff_dbm = GffDatabaseManager(
+        #    db, reference_type, db_index=db_index, emapper_version=emapper_version
+        #)
+        self.adm = AnnotationDatabaseManager(db)
         self.umap_cache = PairedEndAlignmentCache()
         self.ambig_cache = PairedEndAlignmentCache(ambig_alignments=True)
         self.do_overlap_detection = reference_type in ("genome", "domain")
@@ -108,7 +110,7 @@ class FeatureQuantifier:
 
         for rid, start, end, rev_strand in alignments:
             if self.do_overlap_detection:
-                overlaps, coverage = self.gff_dbm.get_overlaps(ref, start, end)
+                overlaps, coverage = self.adm.get_overlaps(ref, start, end)
                 hits = {
                     (ovl.begin, ovl.end, rev_strand, cstart, cend)
                     for ovl, (cstart, cend) in zip(overlaps, coverage)
@@ -306,7 +308,7 @@ class FeatureQuantifier:
         if self.require_ambig_bookkeeping():
             ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(
                 self.out_prefix,
-                self.gff_dbm,
+                self.adm,
                 do_overlap_detection=self.do_overlap_detection,
             )
         else:
@@ -333,7 +335,7 @@ class FeatureQuantifier:
             # aln_count, unannotated_ambig, ambig_dumpfile = self.process_alignments(
             #     min_identity=min_identity, min_seqlen=min_seqlen
             # )
-            self.gff_dbm.clear_caches()
+            # self.gff_dbm.clear_caches()
             ambig_bookkeeper.clear()
 
             if aln_count:
@@ -364,7 +366,7 @@ class FeatureQuantifier:
 
                 ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
                 count_annotator = ca_ctr(self.strand_specific)
-                count_annotator.annotate(self.bamfile, self.gff_dbm, self.count_manager)
+                count_annotator.annotate(self.bamfile, self.adm, self.count_manager)
 
                 count_dumper = CountDumper(
                     self.out_prefix,
@@ -372,6 +374,7 @@ class FeatureQuantifier:
                     strand_specific=self.strand_specific,
                 )
                 count_dumper.dump_feature_counts(
+                    self.adm,
                     self.count_manager.get_unannotated_reads() + unannotated_ambig,
                     count_annotator,
                 )
