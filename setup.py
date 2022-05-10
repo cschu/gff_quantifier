@@ -43,14 +43,16 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 		install_requires=[
 			"intervaltree",
 			"numpy",
-			"pandas"
+			"pandas",
+			"sqlalchemy"
 		],
 		entry_points={
 			"console_scripts": [
 				"gffquant=gffquant.__main__:main",
 				"gffindex=gffquant.gff_indexer:main",
 				"collate_counts=gffquant.bin.collate_counts:main",
-				"split_table=gffquant.bin.split_table:main"
+				"split_table=gffquant.bin.split_table:main",
+				"build_database=gffquant.bin.build_database:main",
 			],
 		},
 		package_data={},
