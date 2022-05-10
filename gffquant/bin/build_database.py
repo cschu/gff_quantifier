@@ -1,6 +1,15 @@
 import argparse
 import csv
 import gzip
+import logging
+
+
+logging.basicConfig(
+    # filename=filename_log,
+    # filemode='w',
+    level=logging.INFO,
+    format='[%(asctime)s] %(message)s'
+)
 
 #from sqlalchemy import create_engine
 #from sqlalchemy.orm import scoped_session, sessionmaker
@@ -54,10 +63,66 @@ def main():
 	if args.initialise_db:
 		initialise_db(engine)
 
-	_open, mode = (gzip.open, "rt") if args.input_data.endswith(".gz") else (open, "rt")
+	cat_d = {}
 
+	logging.info("First pass: gathering category and feature information.")
 	gffdbm = GffDatabaseManager(args.input_data, "genes", emapper_version=args.emapper_version)
 
+	n = 0	
+	for n, (ref, region_annotation) in enumerate(gffdbm.iterate(), start=1):
+		for category, features in region_annotation[1:]:
+			cat_d.setdefault(category, set()).update(features)
+
+	logging.info(f"    Parsed {n} entries.")
+	
+	logging.info("Building code map and dumping category and feature encodings.")
+	code_map = {}
+	feature_offset = 0
+	for category, features in sorted(cat_d.items()):
+		code_map[category] = {
+			"key": len(code_map),
+			"features": {
+				feature: (i + feature_offset) for i, feature in enumerate(sorted(features))
+			}
+		}
+		feature_offset += len(features)
+
+		db_category = db.Category(id=code_map[category]["key"], name=category)
+		db_session.add(db_category)
+		db_session.commit()
+		
+		for feature, fid in code_map[category]["features"].items():
+			db_feature = db.Feature(id=fid, name=feature, category=db_category)
+			db_session.add(db_feature)
+		
+		db_session.commit()
+
+	
+	logging.info("Second pass: Encoding sequence annotations")
+	gffdbm = GffDatabaseManager(args.input_data, "genes", emapper_version=args.emapper_version)
+	for i, (ref, region_annotation) in enumerate(gffdbm.iterate(), start=1):
+		if i % 10000 == 0:
+			logging.info(f"Processed {i} entries. ({i/n * 100:.03f}%)")
+		encoded = []
+		for category, features in region_annotation[1:]:
+			enc_category = code_map[category]['key']
+			enc_features = sorted(code_map[category]['features'][feature] for feature in features)
+			encoded.append((enc_category, ",".join(map(str, enc_features))))
+		encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
+
+		# print(ref, encoded, sep="\t")
+
+		strand, gene_id = region_annotation[0]
+		db_sequence = db.AnnotatedSequence(
+			seqid=ref if gene_id is None else gene_id,
+			contig=ref if gene_id is not None else None,
+			strand=int(strand == "+") if strand is not None else None,
+			annotation_str=encoded
+		)
+		db_session.add(db_sequence)
+		db_session.commit()
+
+	return None
 	for ref, region_annotation in gffdbm.iterate():
 		# yield line[self.emapper_format.query_field], (
         #                        ("strand", None),
@@ -90,7 +155,7 @@ def main():
 				db_session.add(db_annotation)
 				db_session.commit()
 
-			print(category, features)
+			# print(category, features)
 
 
 		# sequence = db.Sequence(seqid=row["query_name"], contig=row["query_name"])
