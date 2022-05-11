@@ -208,6 +208,7 @@ class DbCountAnnotator(CountAnnotator):
         ):
             ref, region_length = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
             region_annotation = db.query_sequence(ref)
+            print("RID", rid, ref, region_annotation)
             if region_annotation is not None:
                 counts = self.compute_count_vector(count_manager, rid, region_length)
                 self.distribute_feature_counts(counts, region_annotation)
