@@ -261,12 +261,12 @@ class FeatureQuantifier:
                 )
 
             self.process_caches(current_ref)
-            t1 = time.time()
 
-            print(f"Processed {aln_count} alignments in {t1 - t0:.3f}s.", flush=True)
+        if aln_count == 0:
+            print("Warning: bam file does not contain any alignments.")
 
-            if aln_count == 0:
-                print("Warning: bam file does not contain any alignments.")
+        t1 = time.time()
+        print(f"Processed {aln_count} alignments in {t1 - t0:.3f}s.", flush=True)
 
         # if self.require_ambig_bookkeeping():
         #    return (
