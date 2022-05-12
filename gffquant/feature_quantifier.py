@@ -187,13 +187,13 @@ class FeatureQuantifier:
                     aln.rid,
                 )
 
-                print(
-                    f"{datetime.now().strftime('%m/%d/%Y,%H:%M:%S')}",
-                    f"New reference: {current_ref} ({aln.rid}/{self.bamfile.n_references()})."
-                    f"{aln_count} alignments processed.",
-                    file=sys.stderr,
-                    flush=True,
-                )
+                # print(
+                #     f"{datetime.now().strftime('%m/%d/%Y,%H:%M:%S')}",
+                #     f"New reference: {current_ref} ({aln.rid}/{self.bamfile.n_references()})."
+                #     f"{aln_count} alignments processed.",
+                #     file=sys.stderr,
+                #     flush=True,
+                # )
 
             if aln.is_ambiguous() and self.require_ambig_bookkeeping():
                 # if ambiguous alignments are not treated as individual alignments
