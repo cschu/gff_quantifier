@@ -11,34 +11,34 @@ logging.basicConfig(
     format='[%(asctime)s] %(message)s'
 )
 
-#from sqlalchemy import create_engine
-#from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 
 
-# from ..db.models.meta import Base
-from gffquant.db import get_database, initialise_db
+from ..db.models.meta import Base
+from gffquant.db import initialise_db
 
 from gffquant.db.models import db
 
 from gffquant.db.gff_dbm import GffDatabaseManager
 
 
-# # def get_database(db_path):
-# # 	engine = create_engine(f"sqlite:///{db_path}")
+def get_database(db_path):
+	engine = create_engine(f"sqlite:///{db_path}")
 
-# # 	db_session = scoped_session(
-# # 		sessionmaker(
-# # 			autocommit=False,
-# # 			autoflush=False,
-# # 			enable_baked_queries=True,
-# # 			bind=engine
-# # 		)
-# # 	)
+	db_session = scoped_session(
+		sessionmaker(
+			autocommit=False,
+			autoflush=False,
+			enable_baked_queries=True,
+			bind=engine
+		)
+	)
 
-# # 	Base.query = db_session.query_property()
+	Base.query = db_session.query_property()
 
-# # 	return engine, db_session
+	return engine, db_session
 
 # # def initialise_db(engine):
 # 	Base.metadata.create_all(bind=engine)
