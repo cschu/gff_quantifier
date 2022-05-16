@@ -51,22 +51,6 @@ EMAPPER_FORMATS = {
     ),
 }
 
-"""
-	def iterate_chunks(self, bufsize=4e6):
-		header = None
-		with self.db as db_stream:
-			tail = ""
-			while True:
-				chunk = "".join((tail, db_stream.read(int(bufsize))))
-				if not chunk:
-					break
-				chunk = chunk.split("\n")
-				chunk, tail = chunk[:-1], chunk[-1]
-				for line in chunk:
-					if line.startswith("#"):
-						header = line.strip("#").split("\t")
-					else:
-						yield self._get_features(header, line.split("\t"))"""
 
 class GffDatabaseManager:
     def iterate(self, bufsize=4000000):
@@ -111,7 +95,6 @@ class GffDatabaseManager:
         # TODO: can dbm be written as contextmanager?
         _open = gzip.open if gzipped else open
         self.reference_type = reference_type
-        # self.bufsize = bufsize
         if db_index:
             if gzipped:
                 raise ValueError(

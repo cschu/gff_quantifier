@@ -2,25 +2,24 @@
 
 """ module docstring """
 
-# import os
 import time
-import sys
-from datetime import datetime
 import contextlib
+import logging
 
 import pandas
 
 from gffquant.bamreader import BamFile, SamFlags
-from gffquant.db.gff_dbm import GffDatabaseManager
 from gffquant.db.annotation_db import AnnotationDatabaseManager
 from gffquant.alignment import (
     AmbiguousAlignmentRecordKeeper,
-    AmbiguousAlignmentGroup,
     PairedEndAlignmentCache,
 )
 from gffquant.counters import CountManager
 from gffquant.annotation import DbCountAnnotator, CtCountAnnotator
 from gffquant.count_dumper import CountDumper
+
+
+logger = logging.getLogger(__name__)
 
 
 class FeatureQuantifier:
@@ -42,12 +41,8 @@ class FeatureQuantifier:
         ambig_mode="unique_only",
         reference_type="genome",
         strand_specific=False,
-        emapper_version=None,
         debugmode=False,
     ):
-        #self.gff_dbm = GffDatabaseManager(
-        #    db, reference_type, db_index=db_index, emapper_version=emapper_version
-        #)
         self.adm = AnnotationDatabaseManager(db)
         self.umap_cache = PairedEndAlignmentCache()
         self.ambig_cache = PairedEndAlignmentCache(ambig_alignments=True)
@@ -62,7 +57,6 @@ class FeatureQuantifier:
         self.bamfile = None
         self.debugmode = debugmode
         self.strand_specific = strand_specific
-        print("Ambig mode:", self.ambig_mode, flush=True)
 
     def allow_ambiguous_alignments(self):
         """All distribution modes support ambiguous alignments,
@@ -163,16 +157,6 @@ class FeatureQuantifier:
             min_seqlen=min_seqlen,
         )
 
-        # if self.require_ambig_bookkeeping():
-        #     ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(
-        #         self.out_prefix,
-        #         self.gff_dbm,
-        #         do_overlap_detection=self.do_overlap_detection,
-        #     )
-        # else:
-        #     ambig_bookkeeper = contextlib.nullcontext()
-
-        # with ambig_bookkeeper:
         aln_count = 0
         for aln_count, aln in bam_stream:
             start, end, rev_strand = aln.start, aln.end, aln.is_reverse()
@@ -186,14 +170,6 @@ class FeatureQuantifier:
                     self.bamfile.get_reference(aln.rid)[0],
                     aln.rid,
                 )
-
-                # print(
-                #     f"{datetime.now().strftime('%m/%d/%Y,%H:%M:%S')}",
-                #     f"New reference: {current_ref} ({aln.rid}/{self.bamfile.n_references()})."
-                #     f"{aln_count} alignments processed.",
-                #     file=sys.stderr,
-                #     flush=True,
-                # )
 
             if aln.is_ambiguous() and self.require_ambig_bookkeeping():
                 # if ambiguous alignments are not treated as individual alignments
@@ -268,39 +244,7 @@ class FeatureQuantifier:
         t1 = time.time()
         print(f"Processed {aln_count} alignments in {t1 - t0:.3f}s.", flush=True)
 
-        # if self.require_ambig_bookkeeping():
-        #    return (
-        #        aln_count,
-        #        ambig_bookkeeper.n_unannotated(),
-        #        ambig_bookkeeper.dumpfile,
-        #    )
-
         return aln_count, 0, None
-
-    def _process_ambiguous_aln_groups(self, ambig_aln):
-        """iterates over name-sorted (grouped) alignments and processes groups individually"""
-        print("Processing ambiguous alignments...")
-        n_align, current_group = 0, None
-        # losing some speed due to the row-iterations here
-        # but ok for now
-        for aln in ambig_aln.itertuples(index=False, name=None):
-            if current_group is None or current_group.qname != aln[0]:
-                if current_group:
-                    n_align += current_group.n_align()
-                    self.count_manager.update_counts(
-                        current_group.resolve(), ambiguous_counts=True
-                    )
-                current_group = AmbiguousAlignmentGroup(aln)
-            else:
-                current_group.add_alignment(aln)
-
-        if current_group is not None:
-            n_align += current_group.n_align()
-            self.count_manager.update_counts(
-                current_group.resolve(), ambiguous_counts=True
-            )
-
-        return n_align
 
     def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None, buffer_size=10000000):
         """processes one position-sorted bamfile"""
@@ -326,42 +270,10 @@ class FeatureQuantifier:
                 ambig_bookkeeper, min_identity=min_identity, min_seqlen=min_seqlen
             )
 
-            # self.bamfile = BamFile(
-            #     bamfile,
-            #     large_header=not self.do_overlap_detection,  # ugly!
-            #     buffer_size=buffer_size
-            # )
-            # # first pass: process uniqs and dump ambigs (if required)
-            # aln_count, unannotated_ambig, ambig_dumpfile = self.process_alignments(
-            #     min_identity=min_identity, min_seqlen=min_seqlen
-            # )
-            # self.gff_dbm.clear_caches()
             ambig_bookkeeper.clear()
 
             if aln_count:
                 # second pass: process ambiguous alignment groups
-                # if ambig_dumpfile:
-                #     if (
-                #         os.path.isfile(ambig_dumpfile) and os.stat(ambig_dumpfile).st_size > 0
-                #     ):
-                #         t0 = time.time()
-
-                #         ambig_aln = FeatureQuantifier.read_ambiguous_alignments(
-                #             ambig_dumpfile
-                #         )
-                #         n_align = self._process_ambiguous_aln_groups(ambig_aln)
-
-                #         t1 = time.time()
-                #         print(
-                #             f"Processed {n_align} secondary alignments in {t1 - t0:.3f}s.",
-                #             flush=True,
-                #         )
-                #     else:
-                #         print(
-                #             "Warning: ambig-mode chosen, "
-                #             "but bamfile does not contain secondary alignments."
-                #         )
-
                 self.count_manager.dump_raw_counters(self.out_prefix, self.bamfile)
 
                 ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
@@ -384,21 +296,5 @@ class FeatureQuantifier:
                     count_annotator.scaling_factors["total_uniq"],
                     count_annotator.scaling_factors["total_ambi"]
                 )
-
-                # count_annotator.dump_counts(bamfile, unannotated_ambig, self.out_prefix)
-
-                # to be implemented
-                # self.overlap_counter.annotate_counts(
-                # 	bamfile=self.bamfile,
-                # 	itermode="counts" if self.do_overlap_detection else "database"
-                # )
-                # self.overlap_counter.unannotated_reads += unannotated_ambig
-                # self.overlap_counter.dump_counts(bam=self.bamfile)
-
-        # try:
-        #     if not self.debugmode:
-        #         os.remove(ambig_dumpfile)
-        # except FileNotFoundError:
-        #     pass
 
         print("Finished.", flush=True)

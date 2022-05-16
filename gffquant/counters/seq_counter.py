@@ -64,6 +64,5 @@ class AmbiguousSeqCounter(AlignmentCounter):
 
                 else:
                     self[rid] += len(hits) * increment
-                    # print(f"RID:{rid} = {self[rid]} NHITS:{len(hits)}")
 
             yield counts, aln_count, unaligned

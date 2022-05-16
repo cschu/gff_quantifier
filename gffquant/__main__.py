@@ -2,6 +2,7 @@
 
 """ module docstring """
 
+import logging
 import os
 import pathlib
 import sys
@@ -11,9 +12,12 @@ from . import __version__
 from .handle_args import handle_args
 
 
-def main():
+logger = logging.getLogger(__name__)
 
-    args = handle_args()
+
+def main(args):
+
+    args = handle_args(args)
 
     print("Version:", __version__)
     print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
@@ -56,4 +60,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

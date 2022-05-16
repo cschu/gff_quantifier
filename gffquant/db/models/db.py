@@ -1,7 +1,5 @@
-from ast import For
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Date, ForeignKey, DateTime, Boolean, null, Table
+from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 
 from .meta import Base
 

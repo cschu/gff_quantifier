@@ -69,7 +69,7 @@ class CountDumper:
                 category_id
             ]
             category = db.query_category(category_id).name
-            print(f"SCALING FACTORS", category, scaling_factor, ambig_scaling_factor)
+            print("SCALING FACTORS", category, scaling_factor, ambig_scaling_factor)
             with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
                 print("feature", *self.get_header(), sep="\t", file=feat_out)
                 print("unannotated", unannotated_reads, sep="\t", file=feat_out)

@@ -1,5 +1,4 @@
 import argparse
-import csv
 import gzip
 import json
 import logging
@@ -14,10 +13,10 @@ from gffquant.db.gff_dbm import GffDatabaseManager
 
 
 logging.basicConfig(
-    # filename=filename_log,
-    # filemode='w',
-    level=logging.INFO,
-    format='[%(asctime)s] %(message)s'
+	# filename=filename_log,
+	# filemode='w',
+	level=logging.INFO,
+	format='[%(asctime)s] %(message)s'
 )
 
 
@@ -54,18 +53,17 @@ def gather_category_and_feature_data(args, db_session=None):
 	logging.info("First pass: gathering category and feature information.")
 	gffdbm = GffDatabaseManager(args.input_data, "genes", emapper_version=args.emapper_version)
 
-	n = 0	
+	n = 0
 	for n, (_, region_annotation) in enumerate(gffdbm.iterate(bufsize=4000000000), start=1):
 		for category, features in region_annotation[1:]:
 			cat_d.setdefault(category, set()).update(features)
 
 	logging.info(f"    Parsed {n} entries.")
-	
+
 	logging.info("Building code map and dumping category and feature encodings.")
 	code_map = {}
 	feature_offset = 0
 
-	# with gzip.open(args.db_path + ".category.map.gz", "wt") as cat_out, gzip.open(args.db_path + ".feature.map.gz", "wt") as feat_out:
 	with gzip.open(args.db_path + ".code_map.json.gz", "wt") as _map_out:
 		for category, features in sorted(cat_d.items()):
 			code_map[category] = {
@@ -75,17 +73,17 @@ def gather_category_and_feature_data(args, db_session=None):
 				}
 			}
 			feature_offset += len(features)
-	
+
 			if db_session is not None:
 				db_category = db.Category(id=code_map[category]["key"], name=category)
 				db_session.add(db_category)
 				db_session.commit()
-			
+
 			for feature, fid in code_map[category]["features"].items():
 				if db_session is not None:
 					db_feature = db.Feature(id=fid, name=feature, category=db_category)
 					db_session.add(db_feature)
-			
+
 			if db_session is not None:
 				db_session.commit()
 
@@ -124,8 +122,6 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
 	db_session.commit()
 
 
-
-
 def main():
 	ap = argparse.ArgumentParser()
 	ap.add_argument("db_path", type=str)
@@ -135,11 +131,11 @@ def main():
 	ap.add_argument("--nseqs", type=int)
 	ap.add_argument("--extract_map_only", action="store_true")
 	ap.add_argument(
-        "--emapper_version",
-        type=str,
-        default="v2",
-        choices=("v1", "v2"),
-    )
+		"--emapper_version",
+		type=str,
+		default="v2",
+		choices=("v1", "v2"),
+	)
 	args = ap.parse_args()
 
 	engine, db_session = get_database(args.db_path) if not args.extract_map_only else (None, None)
@@ -158,6 +154,7 @@ def main():
 		return
 
 	process_annotations(args.input_data, db_session, code_map, nseqs, args.emapper_version)
+
 
 if __name__ == "__main__":
 	main()
