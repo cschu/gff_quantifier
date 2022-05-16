@@ -36,7 +36,6 @@ class FeatureQuantifier:
     def __init__(
         self,
         db=None,
-        db_index=None,
         out_prefix="gffquant",
         ambig_mode="unique_only",
         reference_type="genome",

@@ -1,9 +1,8 @@
 # pylint: disable=C0103
 
-import numpy as np
-
-
 """ This module contains code for transforming gene counts to feature counts. """
+
+import numpy as np
 
 
 class CountAnnotator(dict):

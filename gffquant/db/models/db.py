@@ -1,3 +1,7 @@
+# pylint: disable=R0903
+
+""" module docstring """
+
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 
@@ -5,33 +9,33 @@ from .meta import Base
 
 
 class AnnotatedSequence(Base):
-	__tablename__ = "annotatedsequence"
+    __tablename__ = "annotatedsequence"
 
-	id = Column(Integer, primary_key=True)
-	seqid = Column(String, index=True)
-	contig = Column(String)
-	start = Column(Integer)
-	end = Column(Integer)
-	strand = Column(Integer)
+    id = Column(Integer, primary_key=True)
+    seqid = Column(String, index=True)
+    contig = Column(String)
+    start = Column(Integer)
+    end = Column(Integer)
+    strand = Column(Integer)
 
-	annotation_str = Column(String)
+    annotation_str = Column(String)
 
 
 class Category(Base):
-	__tablename__ = "category"
+    __tablename__ = "category"
 
-	id = Column(Integer, primary_key=True)
-	name = Column(String)
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
 
-	features = relationship("Feature", back_populates="category")
+    features = relationship("Feature", back_populates="category")
 
 
 class Feature(Base):
-	__tablename__ = "feature"
+    __tablename__ = "feature"
 
-	id = Column(Integer, primary_key=True)
-	name = Column(String)
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
 
-	category_id = Column(Integer, ForeignKey("category.id"))
+    category_id = Column(Integer, ForeignKey("category.id"))
 
-	category = relationship("Category", back_populates="features")
+    category = relationship("Category", back_populates="features")

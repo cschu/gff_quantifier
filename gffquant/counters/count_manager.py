@@ -14,6 +14,7 @@ class CountManager:
     PLUS_STRAND, MINUS_STRAND = False, True
 
     def __init__(
+        # pylint: disable=W0613
         self, distribution_mode="1overN", region_counts=True, strand_specific=False
     ):
         self.distribution_mode = distribution_mode
