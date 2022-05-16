@@ -1,3 +1,5 @@
+## This is the v1 legacy branch (v.1.5).
+
 ### Prerequisites
 - Python3.7+ (we need to be able to rely on dictionary item order preservation!)
 
