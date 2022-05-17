@@ -2,7 +2,6 @@
 
 """ module docstring """
 
-import os
 import time
 import sys
 from datetime import datetime
@@ -114,12 +113,13 @@ class FeatureQuantifier:
                     for ovl, (cstart, cend) in zip(overlaps, coverage)
                 }
                 # if the alignment overlaps multiple features, each one gets a count
-                aln_count = int(bool(overlaps))
+                aln_count = int(bool(overlaps)) * aln_count
+
             else:
                 hits = {(None, None, rev_strand, None, None)}
-                aln_count = 1
+                # aln_count = 1 / aln_count
 
-            yield ({rid: hits}, aln_count, 1 - aln_count)
+            yield ({rid: hits}, aln_count, 0 if aln_count else 1)
 
     def process_caches(self, ref, aln_count=1):
         """Update the count managers and clear the alignment caches. This is usually done,
@@ -139,7 +139,7 @@ class FeatureQuantifier:
             ambiguous_counts=True
         )
 
-    def process_alignments(self, min_identity=None, min_seqlen=None):
+    def process_alignments(self, ambig_bookkeeper, min_identity=None, min_seqlen=None):
         # pylint: disable=R0914
         """
         Reads from a position-sorted bam file are processed in batches according to the reference
@@ -160,93 +160,102 @@ class FeatureQuantifier:
             min_seqlen=min_seqlen,
         )
 
-        if self.require_ambig_bookkeeping():
-            ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(
-                self.out_prefix,
-                self.gff_dbm,
-                do_overlap_detection=self.do_overlap_detection,
-            )
-        else:
-            ambig_bookkeeper = contextlib.nullcontext()
+        # if self.require_ambig_bookkeeping():
+        #     ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(
+        #         self.out_prefix,
+        #         self.gff_dbm,
+        #         do_overlap_detection=self.do_overlap_detection,
+        #     )
+        # else:
+        #     ambig_bookkeeper = contextlib.nullcontext()
 
-        with ambig_bookkeeper:
-            aln_count = 0
-            for aln_count, aln in bam_stream:
-                start, end, rev_strand = aln.start, aln.end, aln.is_reverse()
+        # with ambig_bookkeeper:
+        aln_count = 0
+        for aln_count, aln in bam_stream:
+            start, end, rev_strand = aln.start, aln.end, aln.is_reverse()
 
-                if aln.rid != current_rid:
-                    # if a new reference sequence is encountered,
-                    # empty the alignment cache (if needed)
-                    if current_rid is not None:
-                        self.process_caches(current_ref)
-                    current_ref, current_rid = (
-                        self.bamfile.get_reference(aln.rid)[0],
-                        aln.rid,
-                    )
+            if aln.rid != current_rid:
+                # if a new reference sequence is encountered,
+                # empty the alignment cache (if needed)
+                if current_rid is not None:
+                    self.process_caches(current_ref)
+                current_ref, current_rid = (
+                    self.bamfile.get_reference(aln.rid)[0],
+                    aln.rid,
+                )
 
-                    print(
-                        f"{datetime.now().strftime('%m/%d/%Y,%H:%M:%S')}",
-                        f"New reference: {current_ref} ({aln.rid}/{self.bamfile.n_references()})."
-                        f"{aln_count} alignments processed.",
-                        file=sys.stderr,
-                        flush=True,
-                    )
+                print(
+                    f"{datetime.now().strftime('%m/%d/%Y,%H:%M:%S')}",
+                    f"New reference: {current_ref} ({aln.rid}/{self.bamfile.n_references()})."
+                    f"{aln_count} alignments processed.",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
-                if aln.is_ambiguous() and self.require_ambig_bookkeeping():
-                    # if ambiguous alignments are not treated as individual alignments
-                    # (dist1 or 1overN mode)
-                    # then the alignment processing is deferred to the bookkeeper
-                    ambig_bookkeeper.process_alignment(current_ref, aln, aln_count)
-                    start, end, rev_strand = None, None, None
-                else:
-                    pair_aligned = all(
-                        [
-                            aln.is_paired(),
-                            aln.rid == aln.rnext,
-                            not aln.flag & SamFlags.MATE_UNMAPPED,
-                        ]
-                    )
-                    process_pair = aln.is_unique() or (
-                        self.ambig_mode == "primary_only" and aln.is_primary()
-                    )
-                    if process_pair and pair_aligned:
-                        # if a read belongs to a properly-paired unique alignment
-                        # (both mates align to the same reference sequence),
-                        # then it can only be processed if the mate
-                        # has already been encountered, otherwise it is cached
-                        mate = self.umap_cache.process_alignment(aln)
-                        mate_start, mate_end, mate_rev_strand = mate
-                        if mate_start is not None:
-                            hits = self.process_alignments_sameref(
-                                current_ref,
-                                (
-                                    (current_rid, start, end, rev_strand),
-                                    (current_rid, mate_start, mate_end, mate_rev_strand)
-                                )
+            if aln.is_ambiguous() and self.require_ambig_bookkeeping():
+                # if ambiguous alignments are not treated as individual alignments
+                # (dist1 or 1overN mode)
+                # then the alignment processing is deferred to the bookkeeper
+                ambig_count = ambig_bookkeeper.get_ambig_alignment_count(aln)
+                # ambig_bookkeeper.process_alignment(current_ref, aln, aln_count)
+                # start, end, rev_strand = None, None, None
+                hits = self.process_alignments_sameref(
+                    current_ref, ((current_rid, start, end, rev_strand),), aln_count=ambig_count
+                )
+                self.count_manager.update_counts(
+                    hits, ambiguous_counts=True
+                )
+                start = None
+
+            else:
+                pair_aligned = all(
+                    [
+                        aln.is_paired(),
+                        aln.rid == aln.rnext,
+                        not aln.flag & SamFlags.MATE_UNMAPPED,
+                    ]
+                )
+                process_pair = aln.is_unique() or (
+                    self.ambig_mode == "primary_only" and aln.is_primary()
+                )
+                if process_pair and pair_aligned:
+                    # if a read belongs to a properly-paired unique alignment
+                    # (both mates align to the same reference sequence),
+                    # then it can only be processed if the mate
+                    # has already been encountered, otherwise it is cached
+                    mate = self.umap_cache.process_alignment(aln)
+                    mate_start, mate_end, mate_rev_strand = mate
+                    if mate_start is not None:
+                        hits = self.process_alignments_sameref(
+                            current_ref,
+                            (
+                                (current_rid, start, end, rev_strand),
+                                (current_rid, mate_start, mate_end, mate_rev_strand)
                             )
-                            self.count_manager.update_counts(
-                                hits, ambiguous_counts=False
-                            )
+                        )
+                        self.count_manager.update_counts(
+                            hits, ambiguous_counts=False
+                        )
 
-                            mate_start = None
+                        mate_start = None
 
-                        # if there was a mate cached, then both mates have been dealt with
-                        # hence, signal that the read does not need to be processed further
-                        # for overlap/merge later on, the mate_start will be not None
-                        start = mate_start
+                    # if there was a mate cached, then both mates have been dealt with
+                    # hence, signal that the read does not need to be processed further
+                    # for overlap/merge later on, the mate_start will be not None
+                    start = mate_start
 
-                # at this point only single-end reads, 'improper' and merged pairs
-                # should be processed here
-                # ( + ambiguous reads in "all1" mode )
-                # remember:
-                # in all1, pair information is not easy to retain for the secondary alignments!
-                if start is not None:
-                    hits = self.process_alignments_sameref(
-                        current_ref, ((current_rid, start, end, rev_strand),)
-                    )
-                    self.count_manager.update_counts(
-                        hits, ambiguous_counts=not aln.is_unique()
-                    )
+            # at this point only single-end reads, 'improper' and merged pairs
+            # should be processed here
+            # ( + ambiguous reads in "all1" mode )
+            # remember:
+            # in all1, pair information is not easy to retain for the secondary alignments!
+            if start is not None:
+                hits = self.process_alignments_sameref(
+                    current_ref, ((current_rid, start, end, rev_strand),)
+                )
+                self.count_manager.update_counts(
+                    hits, ambiguous_counts=not aln.is_unique()
+                )
 
             self.process_caches(current_ref)
             t1 = time.time()
@@ -255,13 +264,6 @@ class FeatureQuantifier:
 
             if aln_count == 0:
                 print("Warning: bam file does not contain any alignments.")
-
-        if self.require_ambig_bookkeeping():
-            return (
-                aln_count,
-                ambig_bookkeeper.n_unannotated(),
-                ambig_bookkeeper.dumpfile,
-            )
 
         return aln_count, 0, None
 
@@ -292,77 +294,101 @@ class FeatureQuantifier:
 
     def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None, buffer_size=10000000):
         """processes one position-sorted bamfile"""
-        self.bamfile = BamFile(
-            bamfile,
-            large_header=not self.do_overlap_detection,  # ugly!
-            buffer_size=buffer_size
-        )
-        # first pass: process uniqs and dump ambigs (if required)
-        aln_count, unannotated_ambig, ambig_dumpfile = self.process_alignments(
-            min_identity=min_identity, min_seqlen=min_seqlen
-        )
-        self.gff_dbm.clear_caches()
 
-        if aln_count:
-            # second pass: process ambiguous alignment groups
-            if ambig_dumpfile:
-                if (
-                    os.path.isfile(ambig_dumpfile) and os.stat(ambig_dumpfile).st_size > 0
-                ):
-                    t0 = time.time()
-
-                    ambig_aln = FeatureQuantifier.read_ambiguous_alignments(
-                        ambig_dumpfile
-                    )
-                    n_align = self._process_ambiguous_aln_groups(ambig_aln)
-
-                    t1 = time.time()
-                    print(
-                        f"Processed {n_align} secondary alignments in {t1 - t0:.3f}s.",
-                        flush=True,
-                    )
-                else:
-                    print(
-                        "Warning: ambig-mode chosen, "
-                        "but bamfile does not contain secondary alignments."
-                    )
-
-            self.count_manager.dump_raw_counters(self.out_prefix, self.bamfile)
-
-            ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
-            count_annotator = ca_ctr(self.strand_specific)
-            count_annotator.annotate(self.bamfile, self.gff_dbm, self.count_manager)
-
-            count_dumper = CountDumper(
+        if self.require_ambig_bookkeeping():
+            ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(
                 self.out_prefix,
-                has_ambig_counts=self.count_manager.has_ambig_counts(),
-                strand_specific=self.strand_specific,
+                self.gff_dbm,
+                do_overlap_detection=self.do_overlap_detection,
             )
-            count_dumper.dump_feature_counts(
-                self.count_manager.get_unannotated_reads() + unannotated_ambig,
-                count_annotator,
+        else:
+            ambig_bookkeeper = contextlib.nullcontext()
+
+        with ambig_bookkeeper:
+            self.bamfile = BamFile(
+                bamfile,
+                large_header=not self.do_overlap_detection,
+                buffer_size=buffer_size,
+                ambig_bookkeeper=ambig_bookkeeper
             )
 
-            count_dumper.dump_gene_counts(
-                count_annotator.gene_counts,
-                count_annotator.scaling_factors["total_uniq"],
-                count_annotator.scaling_factors["total_ambi"]
+            aln_count, unannotated_ambig, _ = self.process_alignments(
+                ambig_bookkeeper, min_identity=min_identity, min_seqlen=min_seqlen
             )
 
-            # count_annotator.dump_counts(bamfile, unannotated_ambig, self.out_prefix)
-
-            # to be implemented
-            # self.overlap_counter.annotate_counts(
-            # 	bamfile=self.bamfile,
-            # 	itermode="counts" if self.do_overlap_detection else "database"
+            # self.bamfile = BamFile(
+            #     bamfile,
+            #     large_header=not self.do_overlap_detection,  # ugly!
+            #     buffer_size=buffer_size
             # )
-            # self.overlap_counter.unannotated_reads += unannotated_ambig
-            # self.overlap_counter.dump_counts(bam=self.bamfile)
+            # # first pass: process uniqs and dump ambigs (if required)
+            # aln_count, unannotated_ambig, ambig_dumpfile = self.process_alignments(
+            #     min_identity=min_identity, min_seqlen=min_seqlen
+            # )
+            self.gff_dbm.clear_caches()
+            ambig_bookkeeper.clear()
 
-        try:
-            if not self.debugmode:
-                os.remove(ambig_dumpfile)
-        except FileNotFoundError:
-            pass
+            if aln_count:
+                # second pass: process ambiguous alignment groups
+                # if ambig_dumpfile:
+                #     if (
+                #         os.path.isfile(ambig_dumpfile) and os.stat(ambig_dumpfile).st_size > 0
+                #     ):
+                #         t0 = time.time()
+
+                #         ambig_aln = FeatureQuantifier.read_ambiguous_alignments(
+                #             ambig_dumpfile
+                #         )
+                #         n_align = self._process_ambiguous_aln_groups(ambig_aln)
+
+                #         t1 = time.time()
+                #         print(
+                #             f"Processed {n_align} secondary alignments in {t1 - t0:.3f}s.",
+                #             flush=True,
+                #         )
+                #     else:
+                #         print(
+                #             "Warning: ambig-mode chosen, "
+                #             "but bamfile does not contain secondary alignments."
+                #         )
+
+                self.count_manager.dump_raw_counters(self.out_prefix, self.bamfile)
+
+                ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
+                count_annotator = ca_ctr(self.strand_specific)
+                count_annotator.annotate(self.bamfile, self.gff_dbm, self.count_manager)
+
+                count_dumper = CountDumper(
+                    self.out_prefix,
+                    has_ambig_counts=self.count_manager.has_ambig_counts(),
+                    strand_specific=self.strand_specific,
+                )
+                count_dumper.dump_feature_counts(
+                    self.count_manager.get_unannotated_reads() + unannotated_ambig,
+                    count_annotator,
+                )
+
+                count_dumper.dump_gene_counts(
+                    count_annotator.gene_counts,
+                    count_annotator.scaling_factors["total_uniq"],
+                    count_annotator.scaling_factors["total_ambi"]
+                )
+
+                # count_annotator.dump_counts(bamfile, unannotated_ambig, self.out_prefix)
+
+                # to be implemented
+                # self.overlap_counter.annotate_counts(
+                # 	bamfile=self.bamfile,
+                # 	itermode="counts" if self.do_overlap_detection else "database"
+                # )
+                # self.overlap_counter.unannotated_reads += unannotated_ambig
+                # self.overlap_counter.dump_counts(bam=self.bamfile)
+
+        # try:
+        #     if not self.debugmode:
+        #         os.remove(ambig_dumpfile)
+        # except FileNotFoundError:
+        #     pass
+
 
         print("Finished.", flush=True)

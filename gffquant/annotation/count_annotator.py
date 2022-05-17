@@ -156,7 +156,7 @@ class CtCountAnnotator(CountAnnotator):
         for rid in set(count_manager.uniq_regioncounts).union(
             count_manager.ambig_regioncounts
         ):
-            ref = bam.get_reference(rid)[0]
+            ref = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)[0]
             for start, end, rev_strand in count_manager.get_regions(rid):
                 # region_annotation is a tuple of key-value pairs:
                 # (strand, func_category1: subcategories, func_category2: subcategories, ...)
@@ -205,7 +205,7 @@ class DbCountAnnotator(CountAnnotator):
         for ref, region_annotation in db.iterate():
             rid = bam.revlookup_reference(ref)
             if rid is not None:
-                _, region_length = bam.get_reference(rid)
+                _, region_length = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
                 counts = self.compute_count_vector(count_manager, rid, region_length)
                 self.distribute_feature_counts(counts, region_annotation[1:])
 
