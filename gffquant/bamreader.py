@@ -128,6 +128,9 @@ class BamAlignment:
             f"{self.rnext}:{self.pnext}"
         )
 
+    def shorten(self):
+        return (self.rid, self.start, self.end, self.is_reverse())
+
 
 class BamBuffer:
     def __init__(self, fn, size=1000000):
