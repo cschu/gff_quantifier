@@ -61,20 +61,38 @@ suffix_pattern = params.file_pattern.replaceAll(/\*\*/, "")
 
 
 process run_gffquant {
-	publishDir "$output_dir", mode: params.publish_mode
+	publishDir "${output_dir}", mode: params.publish_mode
 
 	input:
 	tuple val(sample), path(bam)
+	path(db)
 
 	output:
-	tuple val(sample), path("${sample}/*.txt"), emit: results
-	tuple val(sample), path("logs/${sample}.*"), emit: logs
-	
+	tuple val(sample), path("${sample}/*.txt.gz"), emit: results
+
 	script:
+	def emapper_version = (params.emapper_version) ? "--emapper_version ${params.emapper_version}" : ""
 	"""
 	echo $sample $bam
-	mkdir -p logs
-	gffquant ${params.db} ${bam} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} --emapper_version ${params.emapper_version} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
+	mkdir -p logs/
+	gffquant ${db} ${bam} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${emapper_version} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
+	"""
+}
+
+process collate_feature_counts {
+	publishDir "${output_dir}", mode: params.publish_mode
+
+	input:
+	tuple val(sample), path(count_tables)
+
+	output:
+	path("collated/*.txt.gz"), emit: collated, optional: true
+
+	script:
+	"""
+	mkdir -p collated/
+	collate_counts . -o collated/collated -c uniq_scaled
+	collate_counts . -o collated/collated -c combined_scaled
 	"""
 }
 
@@ -90,5 +108,24 @@ workflow {
 		}
 		.groupTuple(sort:true)
 
-	run_gffquant(bam_ch)
+	run_gffquant(bam_ch, params.db)
+
+	feature_count_ch = run_gffquant.out.results //.collect()
+		.map { sample, files -> return files }
+		.flatten()
+		.filter { !it.name.endsWith("gene_counts.txt") }
+		.filter { !it.name.endsWith("seqname.uniq.txt") }
+		.filter { !it.name.endsWith("seqname.dist1.txt") }
+		.map { file -> 
+			def category = file.name.replaceAll(/\.txt$/, "")
+				.replaceAll(/.+\./, "")
+			return tuple(category, file)
+		}
+		.groupTuple(sort:true)
+
+	//feature_count_ch.view()
+	
+	collate_feature_counts(feature_count_ch)
+
+
 }
