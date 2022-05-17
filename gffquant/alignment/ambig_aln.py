@@ -140,7 +140,6 @@ class AmbiguousAlignmentGroup:
         self.add_alignment(aln)
 
     def add_alignment(self, aln):
-        # print(aln)
         aln = AmbiguousAlignment(*aln[2:])
 
         if aln.is_unannotated():

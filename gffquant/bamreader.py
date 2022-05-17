@@ -219,6 +219,7 @@ class BamFile:
             #         parse_tags=False, reference_screening=True
             #     )
             # )
+
             t1 = time.time()
             print(f" done. ({t1-t0}s)", flush=True)
 

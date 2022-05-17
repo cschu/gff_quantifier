@@ -2,7 +2,6 @@
 
 """ module docstring """
 
-# import os
 import time
 import sys
 from datetime import datetime
@@ -266,13 +265,6 @@ class FeatureQuantifier:
             if aln_count == 0:
                 print("Warning: bam file does not contain any alignments.")
 
-        # if self.require_ambig_bookkeeping():
-        #    return (
-        #        aln_count,
-        #        ambig_bookkeeper.n_unannotated(),
-        #        ambig_bookkeeper.dumpfile,
-        #    )
-
         return aln_count, 0, None
 
     def _process_ambiguous_aln_groups(self, ambig_aln):
@@ -397,5 +389,6 @@ class FeatureQuantifier:
         #         os.remove(ambig_dumpfile)
         # except FileNotFoundError:
         #     pass
+
 
         print("Finished.", flush=True)
