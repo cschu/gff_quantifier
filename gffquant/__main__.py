@@ -2,6 +2,7 @@
 
 """ module docstring """
 
+import logging
 import os
 import pathlib
 import sys
@@ -11,9 +12,12 @@ from . import __version__
 from .handle_args import handle_args
 
 
+logger = logging.getLogger(__name__)
+
+
 def main():
 
-    args = handle_args()
+    args = handle_args(sys.argv[1:])
 
     print("Version:", __version__)
     print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
@@ -39,14 +43,10 @@ def main():
 
     fq = FeatureQuantifier(
         db=args.annotation_db,
-        db_index=db_index,
         out_prefix=args.out_prefix,
         ambig_mode=args.ambig_mode,
         reference_type=args.mode,
         strand_specific=args.strand_specific,
-        emapper_version=args.emapper_version
-        if args.mode in ("gene", "genes")
-        else None,
         debugmode=args.debug,
     )
 

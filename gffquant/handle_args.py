@@ -1,12 +1,31 @@
+# pylint: disable=C0301,C0103
+""" module docstring """
+
 import argparse
+import logging
 import textwrap
 
 from . import __version__
 
 
-def handle_args():
+def handle_args(args):
+
+    log_ap = argparse.ArgumentParser(prog="gffquant", add_help=False)
+    log_ap.add_argument("-l", "--log_level", type=int, choices=range(1, 5), default=logging.INFO)
+    log_args, _ = log_ap.parse_known_args(args)
+
+    try:
+        logging.basicConfig(
+            level=log_args.log_level,
+            format='[%(asctime)s] %(message)s'
+        )
+    except ValueError as invalid_loglevel_err:
+        raise ValueError(f"Invalid log level: {log_args.log_level}") from invalid_loglevel_err
+
     ap = argparse.ArgumentParser(
-        prog="gffquant", formatter_class=argparse.RawTextHelpFormatter
+        prog="gffquant",
+        formatter_class=argparse.RawTextHelpFormatter,
+        parents=(log_ap,),
     )
     ap.add_argument(
         "annotation_db",
@@ -44,20 +63,12 @@ def handle_args():
         ),
     )
     ap.add_argument(
-        "--emapper_version",
-        type=str,
-        default="v2",
-        choices=("v1", "v2"),
-        help="eggnog emapper version: determines annotation columns. (only for gene mode)",
-    )
-    ap.add_argument(
         "--out_prefix",
         "-o",
         type=str,
         default="gffquant",
         help="Prefix for output files.",
     )
-
     ap.add_argument(
         "--ambig_mode",
         type=str,
@@ -99,4 +110,4 @@ def handle_args():
     )
     ap.add_argument("--debug", action="store_true")
 
-    return ap.parse_args()
+    return ap.parse_args(args)

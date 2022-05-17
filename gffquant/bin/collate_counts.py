@@ -1,3 +1,6 @@
+# pylint: disable=R0914,C0103,C0301,R0913
+""" module docstring """
+
 import argparse
 import gzip
 import os

@@ -288,7 +288,7 @@ class OverlapCounter(dict):
     def _iterate_counts(self, bins, bam, strand_specific):
         total_counts, feature_count_sums = np.zeros(4), dict()
 
-        for rid in set(self.keys()).union(self.ambig_counts): 
+        for rid in set(self.keys()).union(self.ambig_counts):
             ref = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)[0]
             regions = set(self.get(rid, set())).union(self.ambig_counts.get(rid, set()))
             for start, end, rev_strand in regions:

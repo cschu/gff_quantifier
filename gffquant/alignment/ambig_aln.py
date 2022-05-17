@@ -158,7 +158,7 @@ class AmbiguousAlignmentGroup:
                     (aln.start, aln.end, aln.flag, aln.cstart, aln.cend)
                 )
             if hits:
-                print(hits, len(mate_alignments), ucounts)
+                # print(hits, len(mate_alignments), ucounts)
                 yield hits, len(mate_alignments), ucounts
 
         # hits = {}
