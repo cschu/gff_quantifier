@@ -47,7 +47,6 @@ def main():
         ambig_mode=args.ambig_mode,
         reference_type=args.mode,
         strand_specific=args.strand_specific,
-        debugmode=args.debug,
     )
 
     fq.process_bamfile(
