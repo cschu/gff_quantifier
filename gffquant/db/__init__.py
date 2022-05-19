@@ -13,7 +13,7 @@ from .models import meta
 def get_database(db_path, in_memory=True):
 
     if in_memory:
-        source = sqlite3.connect(db_path + "?mode=ro", uri=True)
+        source = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
 
         # https://stackoverflow.com/questions/68286690/copy-an-sqlite-database-into-memory-using-sqlalchemy-for-testing-flask-app !!!
         engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={'check_same_thread': False},)
