@@ -40,10 +40,8 @@ class AlignmentGroup:
 
     def is_aligned_pair(self):
         aln1, aln2 = self.primaries
-        return all(
-            (
-                aln1 is not None and aln2 is not None,
-                aln1.rid == aln2.rid,
-                aln1.is_paired() and aln2.is_paired()
-            )
-        )
+
+        try:
+            return aln1.rid == aln2.rid and aln1.is_paired() and aln2.is_paired()
+        except AttributeError:
+            return False
