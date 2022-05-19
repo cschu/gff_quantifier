@@ -87,6 +87,7 @@ class GeneQuantifier(FeatureQuantifier):
         return aln_count, 0, None
 
     def process_alignment_group(self, aln_group):
+        logging.info("Processing new alignment group %s (%s)", aln_group.qname.decode(), aln_group.n_align())
         ambig_counts = aln_group.get_ambig_align_counts()
         if any(ambig_counts) and self.require_ambig_bookkeeping:
             for aln in aln_group.get_alignments():
