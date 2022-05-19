@@ -3,14 +3,17 @@ from itertools import chain
 
 
 class AlignmentGroup:
-    def __init__(self, aln):
-        self.qname = aln.qname
+    def __init__(self, aln=None):
+        self.qname = None
         self.primaries = [None, None]
         self.secondaries = [[], []]
 
-        self.add_alignment(aln)
+        if aln is not None:
+            self.add_alignment(aln)
 
     def add_alignment(self, aln):
+        if self.qname is None:
+            self.qname = aln.qname
         if aln.is_unique():
             self.primaries[aln.is_second()] = aln
         else:
@@ -34,7 +37,7 @@ class AlignmentGroup:
         return (
             bool(self.primaries[False]) + len(self.secondaries[False]),
             bool(self.primaries[True]) + len(self.secondaries[True])
-        )
+        ) if len(self.secondaries[False]) + len(self.secondaries[True]) else (0, 0)
 
     def is_aligned_pair(self):
         aln1, aln2 = self.primaries

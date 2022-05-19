@@ -71,7 +71,9 @@ class GeneQuantifier(FeatureQuantifier):
             if current_aln_group is None or current_aln_group.qname != aln.qname:
                 if current_aln_group is not None:
                     self.process_alignment_group(current_aln_group)
-                current_aln_group = AlignmentGroup(aln)
+                current_aln_group = AlignmentGroup()
+
+            current_aln_group.add_alignment(aln)
 
         if current_aln_group is not None:
             self.process_alignment_group(current_aln_group)
@@ -85,17 +87,18 @@ class GeneQuantifier(FeatureQuantifier):
         return aln_count, 0, None
 
     def process_alignment_group(self, aln_group):
-        ambig_counts = aln_group.get_ambig_aln_counts()
+        ambig_counts = aln_group.get_ambig_align_counts()
         if any(ambig_counts) and self.require_ambig_bookkeeping:
             for aln in aln_group.get_alignments():
-                current_ref = self.bamfile.get_reference(aln.rid)[0]
-                ambig_count = ambig_counts[aln.is_second()]
-                hits = self.process_alignments_sameref(
-                    current_ref, (aln.shorten(),), aln_count=ambig_count
-                )
-                self.count_manager.update_counts(
-                    hits, ambiguous_counts=True
-                )
+                if aln is not None:
+                    current_ref = self.bamfile.get_reference(aln.rid)[0]
+                    ambig_count = ambig_counts[aln.is_second()]
+                    hits = self.process_alignments_sameref(
+                        current_ref, (aln.shorten(),), aln_count=ambig_count
+                    )
+                    self.count_manager.update_counts(
+                        hits, ambiguous_counts=True
+                    )
         elif aln_group.is_aligned_pair():
             current_ref = self.bamfile.get_reference(aln_group.primaries[0].rid)[0]
             hits = self.process_alignments_sameref(
