@@ -1,6 +1,7 @@
 # pylint: disable=C0301
 """ module docstring """
 
+import logging
 import sqlite3
 
 from sqlalchemy import create_engine
@@ -8,6 +9,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from .models import meta
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_database(db_path, in_memory=True):
@@ -18,7 +22,9 @@ def get_database(db_path, in_memory=True):
         # https://stackoverflow.com/questions/68286690/copy-an-sqlite-database-into-memory-using-sqlalchemy-for-testing-flask-app !!!
         engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={'check_same_thread': False},)
         conn = engine.raw_connection().connection
+        logger.info("Loading database into memory...")
         source.backup(conn)
+        logger.info("Finished loading database.")
 
         meta.Base.metadata.create_all(engine)
 
