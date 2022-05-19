@@ -20,12 +20,12 @@ class AlignmentGroup:
             self.secondaries[aln.is_second()].append(aln)
 
     def n_align(self):
-        return sum(
+        return sum((
             (self.primaries[0] is not None),
             (self.primaries[1] is not None),
             len(self.secondaries[0]),
             len(self.secondaries[1])
-        )
+        ))
 
     def get_alignments(self):
         for aln in chain(self.primaries, *self.secondaries):
