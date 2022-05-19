@@ -32,7 +32,8 @@ class FeatureQuantifier:
         reference_type="genome",
         strand_specific=False,
     ):
-        self.adm = AnnotationDatabaseManager(db)
+        self.db = db
+        self.adm = None
         self.umap_cache = PairedEndAlignmentCache()
         self.ambig_cache = PairedEndAlignmentCache(ambig_alignments=True)
         self.do_overlap_detection = reference_type in ("genome", "domain")
@@ -268,6 +269,9 @@ class FeatureQuantifier:
         print("Finished.", flush=True)
 
     def dump_counters(self, unannotated_ambig):
+        if self.adm is None:
+            self.adm = AnnotationDatabaseManager(self.db)
+
         self.count_manager.dump_raw_counters(self.out_prefix, self.bamfile)
 
         ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
