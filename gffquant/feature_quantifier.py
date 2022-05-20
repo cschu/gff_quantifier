@@ -235,7 +235,7 @@ class FeatureQuantifier:
                     hits, ambiguous_counts=not aln.is_unique()
                 )
 
-            self.process_caches(current_ref)
+        self.process_caches(current_ref)
 
         if aln_count == 0:
             print("Warning: bam file does not contain any alignments.")
