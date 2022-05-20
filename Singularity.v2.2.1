@@ -35,7 +35,8 @@ export PATH=$PATH:/opt/software/miniconda3/bin:/opt/software/mOTUs
   # /opt/software/miniconda3/bin/conda install -y -c conda-forge -c bioconda 'samtools>=1.13' bwa kraken2 fastqc multiqc bbmap seqtk
   git clone https://github.com/cschu/gff_quantifier.git
   cd gff_quantifier
-  git checkout b74c9e1d3a793d876d7a2fda1d57bd2197b89563
+  git checkout cc1aeadc6dcf42426345520e4fd92f535e08b334
+  # was: b74c9e1d3a793d876d7a2fda1d57bd2197b89563
   /opt/software/miniconda3/bin/python setup.py bdist_wheel
   /opt/software/miniconda3/bin/pip install --force-reinstall dist/*whl
   cd ..
