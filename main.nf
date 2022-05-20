@@ -53,10 +53,6 @@ if (!params.output_dir) {
 }
 output_dir = "${params.output_dir}/${params.ambig_mode}_${params.mode}"
 
-if (!params.emapper_version) {
-	params.emapper_version = "v2"
-}
-
 suffix_pattern = params.file_pattern.replaceAll(/\*\*/, "")
 
 
@@ -71,11 +67,10 @@ process run_gffquant {
 	tuple val(sample), path("${sample}/*.txt.gz"), emit: results
 
 	script:
-	def emapper_version = (params.emapper_version) ? "--emapper_version ${params.emapper_version}" : ""
 	"""
 	echo $sample $bam
 	mkdir -p logs/
-	gffquant ${db} ${bam} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${emapper_version} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
+	gffquant ${db} ${bam} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
 	"""
 }
 
