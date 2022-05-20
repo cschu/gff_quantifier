@@ -42,7 +42,8 @@ class FeatureQuantifier:
         strand_specific=False,
         debugmode=False,
     ):
-        self.adm = AnnotationDatabaseManager(db)
+        self.db = db
+        self.adm = None        
         self.umap_cache = PairedEndAlignmentCache()
         self.ambig_cache = PairedEndAlignmentCache(ambig_alignments=True)
         self.do_overlap_detection = reference_type in ("genome", "domain")
@@ -272,7 +273,8 @@ class FeatureQuantifier:
             ambig_bookkeeper.clear()
 
             if aln_count:
-                # second pass: process ambiguous alignment groups
+                self.adm = AnnotationDatabaseManager(self.db)
+
                 self.count_manager.dump_raw_counters(self.out_prefix, self.bamfile)
 
                 ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
