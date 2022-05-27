@@ -8,6 +8,7 @@ import logging
 from gffquant.bamreader import BamFile, SamFlags
 from gffquant.alignment.aln_group import AlignmentGroup
 from gffquant.feature_quantifier import FeatureQuantifier
+from gffquant.pysam_support import AlignmentProcessor
 
 
 logger = logging.getLogger(__name__)
@@ -33,11 +34,13 @@ class GeneQuantifier(FeatureQuantifier):
     def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None, buffer_size=10000000):
         """processes one bamfile"""
 
-        self.bamfile = BamFile(
-            bamfile,
-            large_header=not self.do_overlap_detection,
-            buffer_size=buffer_size
-        )
+        self.alp = AlignmentProcessor(bamfile, "sam")
+
+        # self.bamfile = BamFile(
+        #     bamfile,
+        #     large_header=not self.do_overlap_detection,
+        #     buffer_size=buffer_size
+        # )
 
         aln_count, unannotated_ambig, _ = self.process_alignments(
             min_identity=min_identity, min_seqlen=min_seqlen
@@ -52,17 +55,17 @@ class GeneQuantifier(FeatureQuantifier):
         # pylint: disable=R0914
         t0 = time.time()
 
-        bam_stream = self.bamfile.get_alignments(
-            allow_multiple=self.allow_ambiguous_alignments(),
-            allow_unique=True,
-            disallowed_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
+        aln_stream = self.alp.get_alignments(
             min_identity=min_identity,
             min_seqlen=min_seqlen,
+            allow_multiple=self.allow_ambiguous_alignments(),
+            allow_unique=True,
+            filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
         )
 
         aln_count = 0
         current_aln_group = None
-        for aln_count, aln in bam_stream:
+        for aln_count, aln in enumerate(aln_stream, start=1):
             if self.ambig_mode == "primary_only" and not aln.is_primary():
                 continue
             if self.ambig_mode in ("uniq_only", "unique_only") and not aln.is_unique():
@@ -86,13 +89,15 @@ class GeneQuantifier(FeatureQuantifier):
 
         return aln_count, 0, None
 
+
     def process_alignment_group(self, aln_group):
-        logging.info("Processing new alignment group %s (%s)", aln_group.qname.decode().strip(), aln_group.n_align())
+        # logging.info("Processing new alignment group %s (%s)", aln_group.qname.decode().strip(), aln_group.n_align())
+        logging.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
         ambig_counts = aln_group.get_ambig_align_counts()
         if any(ambig_counts) and self.require_ambig_bookkeeping:
             for aln in aln_group.get_alignments():
                 if aln is not None:
-                    current_ref = self.bamfile.get_reference(aln.rid)[0]
+                    current_ref = self.alp.get_reference(aln.rid)[0]
                     ambig_count = ambig_counts[aln.is_second()]
                     hits = self.process_alignments_sameref(
                         current_ref, (aln.shorten(),), aln_count=ambig_count
@@ -101,7 +106,7 @@ class GeneQuantifier(FeatureQuantifier):
                         hits, ambiguous_counts=True
                     )
         elif aln_group.is_aligned_pair():
-            current_ref = self.bamfile.get_reference(aln_group.primaries[0].rid)[0]
+            current_ref = self.alp.get_reference(aln_group.primaries[0].rid)[0]
             hits = self.process_alignments_sameref(
                 current_ref,
                 (
@@ -114,7 +119,7 @@ class GeneQuantifier(FeatureQuantifier):
             )
         else:
             for aln in aln_group.get_alignments():
-                current_ref = self.bamfile.get_reference(aln.rid)[0]
+                current_ref = self.alp.get_reference(aln.rid)[0]
                 hits = self.process_alignments_sameref(
                     current_ref, (aln.shorten(),)
                 )

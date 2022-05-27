@@ -44,7 +44,8 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 			"intervaltree",
 			"numpy",
 			"pandas",
-			"sqlalchemy"
+			"sqlalchemy",
+			"pysam",
 		],
 		entry_points={
 			"console_scripts": [
