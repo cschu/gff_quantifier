@@ -23,7 +23,7 @@ def main():
     print("Version:", __version__)
     print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
 
-    if not os.path.exists(args.bam_file):
+    if args.bam_file != "-" and not os.path.exists(args.bam_file):
         raise ValueError("bam file does not exist", args.bam_file)
     if not os.path.exists(args.annotation_db):
         raise ValueError("annotation database does not exist", args.annotation_db)
