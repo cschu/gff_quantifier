@@ -67,11 +67,18 @@ process run_gffquant {
 	tuple val(sample), path("${sample}/*.txt.gz"), emit: results
 
 	script:
-	"""
-	echo $sample $bam
-	mkdir -p logs/
-	gffquant ${db} ${bam} -o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${params.strand_specific} > logs/${sample}.o 2> logs/${sample}.e
-	"""
+	def gq_params = "-o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${params.strand_specific}"
+	if (params.do_name_sort) {
+		"""
+		mkdir -p logs/
+		samtools collate -O ${bam} -@ ${task.cpus} | gffquant ${gq_params} ${db} - > logs/${sample}.o 2> logs/${sample}.e
+		"""
+	} else {
+		"""
+		mkdir -p logs/
+		gffquant ${gq_params} ${db} ${bam} > logs/${sample}.o 2> logs/${sample}.e
+		"""
+	}
 }
 
 process collate_feature_counts {
