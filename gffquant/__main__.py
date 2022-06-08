@@ -7,6 +7,7 @@ import os
 import pathlib
 import sys
 
+# pylint: disable=F401
 from gffquant.feature_quantifier import FeatureQuantifier
 from gffquant.gene_quantifier import GeneQuantifier
 from . import __version__
@@ -42,14 +43,13 @@ def main():
             exist_ok=True, parents=True
         )
 
-    # fq_f = FeatureQuantifier if args.mode == "genome" or args.mode == "domain" else GeneQuantifier
-
+    # fq_f = FeatureQuantifier if args.mode == "genome" or args.mode == "domain" else GeneQuantifier
 
     fq = GeneQuantifier(
         db=args.annotation_db,
         out_prefix=args.out_prefix,
         ambig_mode=args.ambig_mode,
-        # reference_type=args.mode,
+        # reference_type=args.mode,
         strand_specific=args.strand_specific,
     )
 

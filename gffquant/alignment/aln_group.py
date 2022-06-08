@@ -31,7 +31,7 @@ class AlignmentGroup:
         for aln in chain(self.primaries, *self.secondaries):
             if aln is not None:
                 yield aln
-        
+
     def get_ambig_align_counts(self):
         return (
             bool(self.primaries[False]) + len(self.secondaries[False]),

@@ -1,8 +1,6 @@
 import pysam
 
-from gffquant.bamreader import SamFlags, BamAlignment
-
-
+from gffquant.bamreader import BamAlignment
 
 
 class AlignmentProcessor:
@@ -11,7 +9,7 @@ class AlignmentProcessor:
 		assert aln_type in ("bam", "sam", "cram")
 
 		self.used_refs = {}
-		self.aln_stream = pysam.AlignmentFile(aln_source, "rb" if aln_type=="bam" else "r")
+		self.aln_stream = pysam.AlignmentFile(aln_source, "rb" if aln_type == "bam" else "r")
 
 	def get_reference(self, rid):
 		return self.used_refs.get(rid, (None, None))
@@ -25,7 +23,7 @@ class AlignmentProcessor:
 					aln.flag,
 					aln.reference_id,
 					aln.pos,
-					aln.mapq, 
+					aln.mapq,
 					[(y, x) for x, y in aln.cigar],
 					aln.rnext,
 					aln.pnext,
@@ -45,15 +43,12 @@ class AlignmentProcessor:
 
 				if aln.len_seq < min_seqlen:
 					continue
-				
+
 				seqid = 1 - aln.tags.get("NM", 0) / aln.len_seq
 				if seqid < min_identity:
 					continue
 
 				rname = self.aln_stream.get_reference_name(aln.rid)
 				self.used_refs[aln.rid] = rname, self.aln_stream.get_reference_length(rname)
-				
+
 				yield aln
-
-
-	

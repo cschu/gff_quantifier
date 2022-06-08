@@ -5,7 +5,7 @@
 import time
 import logging
 
-from gffquant.bamreader import BamFile, SamFlags
+from gffquant.bamreader import SamFlags
 from gffquant.alignment.aln_group import AlignmentGroup
 from gffquant.feature_quantifier import FeatureQuantifier
 from gffquant.pysam_support import AlignmentProcessor
@@ -88,7 +88,6 @@ class GeneQuantifier(FeatureQuantifier):
         print(f"Processed {aln_count} alignments in {t1 - t0:.3f}s.", flush=True)
 
         return aln_count, 0, None
-
 
     def process_alignment_group(self, aln_group):
         # logging.info("Processing new alignment group %s (%s)", aln_group.qname.decode().strip(), aln_group.n_align())
