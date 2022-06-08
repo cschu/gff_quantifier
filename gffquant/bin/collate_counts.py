@@ -20,13 +20,23 @@ class FeatureCountCollator:
 
     @staticmethod
     def is_valid_file(f, suffix):
-        return all((
-            f.endswith(suffix),
-            not f.endswith(f".seqname.dist1{suffix}"),
-            not f.endswith(f".seqname.uniq{suffix}"),
-            not f.endswith(f".gene_counts{suffix}"),
-            not f.endswith(f".ambig_tmp{suffix}"),
-        ))
+        def is_valid_suffix(f, suffix, wanted):
+            has_suffix = f.endswith(suffix)
+            return (has_suffix and wanted) or (not has_suffix and not wanted)
+
+        return is_valid_suffix(suffix, True) and all(
+            is_valid_suffix(f, f"{infix}{suffix}", False) for infix in
+                (".seqname.dist1", ".seqname.uniq", ".gene_counts", ".ambig_tmp", "Counter")
+        )
+
+        # return all((
+        #     f.endswith(suffix),
+        #     not f.endswith(f".seqname.dist1{suffix}"),
+        #     not f.endswith(f".seqname.uniq{suffix}"),
+        #     not f.endswith(f".gene_counts{suffix}"),
+        #     not f.endswith(f".ambig_tmp{suffix}"),
+        #     not f.endswith(f"Counter{suffix}"),
+        # ))
 
     def _collect_count_files(self, recursive=False):
         all_files = []
