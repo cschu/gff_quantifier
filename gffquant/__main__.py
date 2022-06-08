@@ -7,7 +7,7 @@ import os
 import pathlib
 import sys
 
-# pylint: disable=F401
+# pylint: disable=W0611
 from gffquant.feature_quantifier import FeatureQuantifier
 from gffquant.gene_quantifier import GeneQuantifier
 from . import __version__
