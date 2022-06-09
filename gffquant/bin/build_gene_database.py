@@ -107,7 +107,7 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
         _, strand = region_annotation[0]
         db_sequence = db.AnnotatedSequence(
             seqid=ref,
-            contig=None,
+            featureid=None,
             strand=int(strand == "+") if strand is not None else None,
             annotation_str=encoded
         )

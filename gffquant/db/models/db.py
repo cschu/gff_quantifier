@@ -13,7 +13,7 @@ class AnnotatedSequence(Base):
 
     id = Column(Integer, primary_key=True)
     seqid = Column(String, index=True)
-    contig = Column(String)
+    featureid = Column(String)
     start = Column(Integer)
     end = Column(Integer)
     strand = Column(Integer)
