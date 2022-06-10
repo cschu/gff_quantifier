@@ -97,6 +97,7 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
     gzipped = open(input_data, "rb").read(3).startswith(gz_magic)
     _open = gzip.open if gzipped else open
 
+    d = {}
     with _open(input_data, "rt") as _in:
         for i, line in enumerate(_in, start=1):
             if i % 10000 == 0:
@@ -104,6 +105,10 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
             line = line.strip().split("\t")
             gid, start, end, features = line
             # features = features.split(",")
+
+            d.setdefault((gid, start, end), set()).update(features.split(","))
+
+        for i, ((gid, start, end), features) in enumerate(d.items(), start=1):
             
             if nseqs is not None:
                 logging.info("Processed %s entries. (%s%%)", i, round(i / nseqs * 100, 3))
@@ -112,7 +117,7 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
 
             encoded = []
             enc_category = code_map["domain"]['key']
-            enc_features = sorted(code_map["domain"]['features'][feature] for feature in features.split(","))
+            enc_features = sorted(code_map["domain"]['features'][feature] for feature in features)
             encoded.append((enc_category, ",".join(map(str, enc_features))))
             encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
 
