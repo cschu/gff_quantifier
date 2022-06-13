@@ -9,12 +9,13 @@ from gffquant.bamreader import SamFlags
 from gffquant.alignment.aln_group import AlignmentGroup
 from gffquant.feature_quantifier import FeatureQuantifier
 from gffquant.pysam_support import AlignmentProcessor
+from gffquant.db.annotation_db import AnnotationDatabaseManager
 
 
 logger = logging.getLogger(__name__)
 
 
-class GeneQuantifier(FeatureQuantifier):
+class RegionQuantifier(FeatureQuantifier):
     def __init__(
         self,
         db=None,
@@ -29,9 +30,10 @@ class GeneQuantifier(FeatureQuantifier):
             out_prefix=out_prefix,
             ambig_mode=ambig_mode,
             strand_specific=strand_specific,
-            reference_type="gene",
-            calc_coverage=calc_coverage and False,  # TODO: figure out, but nobody wants it anyway
+            reference_type="genome",
+            calc_coverage=calc_coverage,
         )
+        self.adm = AnnotationDatabaseManager(self.db)
 
     def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None, buffer_size=10000000):
         """processes one bamfile"""
@@ -93,18 +95,42 @@ class GeneQuantifier(FeatureQuantifier):
 
     def process_alignment_group(self, aln_group):
         logging.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
-        ambig_counts = aln_group.get_ambig_align_counts()
+        ambig_counts = list(aln_group.get_ambig_align_counts())
         if any(ambig_counts) and self.require_ambig_bookkeeping:
+            all_hits = []
             for aln in aln_group.get_alignments():
-                if aln is not None:
-                    current_ref = self.alp.get_reference(aln.rid)[0]
-                    ambig_count = ambig_counts[aln.is_second()]
-                    hits = self.process_alignments_sameref(
-                        current_ref, (aln.shorten(),), aln_count=ambig_count
-                    )
-                    self.count_manager.update_counts(
-                        hits, ambiguous_counts=True
-                    )
+                current_ref = self.alp.get_reference(aln.rid)[0]
+                # how many other positons does this read align to?
+                # this is needed in 1overN to scale down counts of multiple alignments  
+                ambig_count = ambig_counts[aln.is_second()]
+                # if no overlaps: aln_count = 0
+                # yield ({rid: hits}, aln_count, 0 if aln_count else 1)
+                hit, _, unaligned = next(self.process_alignments_sameref(
+                    current_ref, (aln.shorten(),), aln_count=ambig_count
+                ))
+
+                all_hits.append((aln, hit, unaligned))
+                # correct for alignments in unannotated regions
+                if unaligned:
+                    ambig_counts[aln.is_second()] -= 1
+
+            self.count_manager.update_counts(
+                (
+                    (hit, 0 if unaligned else ambig_counts[aln.is_second()], unaligned)
+                    for aln, hit, unaligned in all_hits
+                ), 
+                ambiguous_counts=True
+            )           
+            
+            # if aln is not None:
+            #     current_ref = self.alp.get_reference(aln.rid)[0]
+            #     ambig_count = ambig_counts[aln.is_second()]
+            #     hits = self.process_alignments_sameref(
+            #         current_ref, (aln.shorten(),), aln_count=ambig_count
+            #     )
+            #     self.count_manager.update_counts(
+            #         hits, ambiguous_counts=True
+            #     )
         elif aln_group.is_aligned_pair():
             current_ref = self.alp.get_reference(aln_group.primaries[0].rid)[0]
             hits = self.process_alignments_sameref(
@@ -115,7 +141,7 @@ class GeneQuantifier(FeatureQuantifier):
                 )
             )
             self.count_manager.update_counts(
-                hits, ambiguous_counts=False
+                hits, ambiguous_counts=False, pair=True
             )
         else:
             for aln in aln_group.get_alignments():

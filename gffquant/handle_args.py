@@ -92,6 +92,12 @@ def handle_args(args):
     )
 
     ap.add_argument(
+        "--calc_coverage",
+        action="store_true",
+        help="Perform coverage calculations."
+    )
+
+    ap.add_argument(
         "--min_identity",
         type=float,
         default=0.97,

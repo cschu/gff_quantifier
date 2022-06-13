@@ -37,7 +37,7 @@ class UniqueSeqCounter(AlignmentCounter):
                 else:
                     self[rid] += len(hits) * increment
 
-            yield counts, aln_count, unaligned
+            # yield counts, aln_count, unaligned
 
 
 class AmbiguousSeqCounter(AlignmentCounter):
@@ -65,4 +65,4 @@ class AmbiguousSeqCounter(AlignmentCounter):
                 else:
                     self[rid] += len(hits) * increment
 
-            yield counts, aln_count, unaligned
+            # yield counts, aln_count, unaligned

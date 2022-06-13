@@ -6,6 +6,8 @@ import time
 import contextlib
 import logging
 
+from sqlalchemy import over
+
 from gffquant.bamreader import BamFile, SamFlags
 from gffquant.db.annotation_db import AnnotationDatabaseManager
 from gffquant.alignment import (
@@ -31,6 +33,7 @@ class FeatureQuantifier:
         ambig_mode="unique_only",
         reference_type="genome",
         strand_specific=False,
+        calc_coverage=False,
     ):
         self.db = db
         self.adm = None
@@ -41,6 +44,7 @@ class FeatureQuantifier:
             distribution_mode=ambig_mode,
             region_counts=reference_type in ("genome", "domain"),
             strand_specific=strand_specific and reference_type not in ("genome", "domain"),
+            calc_coverage=calc_coverage,
         )
         self.out_prefix = out_prefix
         self.ambig_mode = ambig_mode
@@ -99,6 +103,7 @@ class FeatureQuantifier:
                     (ovl.begin, ovl.end, rev_strand, cstart, cend)
                     for ovl, (cstart, cend) in zip(overlaps, coverage)
                 }
+
                 # if the alignment overlaps multiple features, each one gets a count
                 aln_count = int(bool(overlaps)) * aln_count
 
@@ -265,20 +270,20 @@ class FeatureQuantifier:
             ambig_bookkeeper.clear()
 
             if aln_count:
-                self.dump_counters(unannotated_ambig)
+                self.process_counters(unannotated_ambig)
 
         print("Finished.", flush=True)
 
-    def dump_counters(self, unannotated_ambig):
+    def process_counters(self, unannotated_ambig):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager(self.db)
 
         self.count_manager.dump_raw_counters(self.out_prefix, self.alp)
-
+        
         ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
         count_annotator = ca_ctr(self.strand_specific)
         count_annotator.annotate(self.alp, self.adm, self.count_manager)
-
+        
         count_dumper = CountDumper(
             self.out_prefix,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
