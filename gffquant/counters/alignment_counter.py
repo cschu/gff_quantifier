@@ -4,6 +4,8 @@
 
 """module docstring"""
 
+import gzip
+
 from collections import Counter
 
 
@@ -24,7 +26,7 @@ class AlignmentCounter(Counter):
         self.unannotated_reads = 0
 
     def dump(self, prefix, bam):
-        with open(f"{prefix}.{self.__class__.__name__}.tsv", "wt") as _out:
+        with gzip.open(f"{prefix}.{self.__class__.__name__}.txt.gz", "wt") as _out:
             for k, v in self.items():
                 ref, reflen = bam.get_reference(k[0] if isinstance(k, tuple) else k)
                 print(k, ref, reflen, v, sep="\t", file=_out)

@@ -45,6 +45,7 @@ class FeatureQuantifier:
         self.out_prefix = out_prefix
         self.ambig_mode = ambig_mode
         self.bamfile = None
+        self.alp = None
         self.strand_specific = strand_specific
 
     def allow_ambiguous_alignments(self):
@@ -272,11 +273,11 @@ class FeatureQuantifier:
         if self.adm is None:
             self.adm = AnnotationDatabaseManager(self.db)
 
-        self.count_manager.dump_raw_counters(self.out_prefix, self.bamfile)
+        self.count_manager.dump_raw_counters(self.out_prefix, self.alp)
 
         ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
         count_annotator = ca_ctr(self.strand_specific)
-        count_annotator.annotate(self.bamfile, self.adm, self.count_manager)
+        count_annotator.annotate(self.alp, self.adm, self.count_manager)
 
         count_dumper = CountDumper(
             self.out_prefix,

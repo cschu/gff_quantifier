@@ -44,12 +44,16 @@ def gather_category_and_feature_data(args, db_session=None):
     cat_d = {}
 
     logging.info("First pass: gathering category and feature information.")
-    gffdbm = GffDatabaseManager(args.input_data, "genes", emapper_version=args.emapper_version)
+    gz_magic = b"\x1f\x8b\x08"
+    # pylint: disable=R1732,W0511
+    gzipped = open(args.input_data, "rb").read(3).startswith(gz_magic)
+    _open = gzip.open if gzipped else open
 
     n = 0
-    for n, (_, region_annotation) in enumerate(gffdbm.iterate(bufsize=4000000000), start=1):
-        for category, features in region_annotation[1:]:
-            cat_d.setdefault(category, set()).update(features)
+    with _open(args.input_data, "rt") as _in:
+        for n, line in enumerate(_in, start=1):
+            line = line.strip().split("\t")
+            cat_d.setdefault("domain", set()).update(line[3].split(","))
 
     logging.info("    Parsed %s entries.", n)
 
@@ -87,32 +91,47 @@ def gather_category_and_feature_data(args, db_session=None):
 
 def process_annotations(input_data, db_session, code_map, nseqs, emapper_version):
     logging.info("Second pass: Encoding sequence annotations")
-    gffdbm = GffDatabaseManager(input_data, "genes", emapper_version=emapper_version)
-    for i, (ref, region_annotation) in enumerate(gffdbm.iterate(bufsize=4000000000), start=1):
-        if i % 10000 == 0:
-            db_session.commit()
 
+    gz_magic = b"\x1f\x8b\x08"
+    # pylint: disable=R1732,W0511
+    gzipped = open(input_data, "rb").read(3).startswith(gz_magic)
+    _open = gzip.open if gzipped else open
+
+    d = {}
+    with _open(input_data, "rt") as _in:
+        for i, line in enumerate(_in, start=1):
+            if i % 10000 == 0:
+                db_session.commit()
+            line = line.strip().split("\t")
+            gid, start, end, features = line
+            # features = features.split(",")
+
+            d.setdefault((gid, start, end), set()).update(features.split(","))
+
+        for i, ((gid, start, end), features) in enumerate(d.items(), start=1):
+            
             if nseqs is not None:
                 logging.info("Processed %s entries. (%s%%)", i, round(i / nseqs * 100, 3))
             else:
                 logging.info("Processed %s entries.", str(i))
 
-        encoded = []
-        for category, features in region_annotation[1:]:
-            enc_category = code_map[category]['key']
-            enc_features = sorted(code_map[category]['features'][feature] for feature in features)
+            encoded = []
+            enc_category = code_map["domain"]['key']
+            enc_features = sorted(code_map["domain"]['features'][feature] for feature in features)
             encoded.append((enc_category, ",".join(map(str, enc_features))))
-        encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
+            encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
 
-        _, strand = region_annotation[0]
-        db_sequence = db.AnnotatedSequence(
-            seqid=ref,
-            contig=None,
-            strand=int(strand == "+") if strand is not None else None,
-            annotation_str=encoded
-        )
-        db_session.add(db_sequence)
-    db_session.commit()
+            db_sequence = db.AnnotatedSequence(
+                seqid=gid,
+                featureid=None,
+                start=int(start),
+                end=int(end),
+                annotation_str=encoded,
+            )
+
+            db_session.add(db_sequence)
+
+        db_session.commit()
 
 
 def main():
@@ -148,14 +167,13 @@ def main():
 
     process_annotations(args.input_data, db_session, code_map, nseqs, args.emapper_version)
 
-    # https://www.sqlite.org/wal.html
-    # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections
-    # concurrent read-access from more than 3 processes seems to be an issue
+    # https://www.sqlite.org/wal.html
+    # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections
+    # concurrent read-access from more than 3 processes seems to be an issue
     with sqlite3.connect(args.db_path) as conn:
         cur = conn.cursor()
         cur.execute('PRAGMA journal_mode=wal')
         cur.fetchall()
-    
 
 
 if __name__ == "__main__":
