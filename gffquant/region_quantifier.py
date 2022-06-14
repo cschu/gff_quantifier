@@ -101,7 +101,7 @@ class RegionQuantifier(FeatureQuantifier):
             for aln in aln_group.get_alignments():
                 current_ref = self.alp.get_reference(aln.rid)[0]
                 # how many other positons does this read align to?
-                # this is needed in 1overN to scale down counts of multiple alignments  
+                # this is needed in 1overN to scale down counts of multiple alignments
                 ambig_count = ambig_counts[aln.is_second()]
                 # if no overlaps: aln_count = 0
                 # yield ({rid: hits}, aln_count, 0 if aln_count else 1)
@@ -118,10 +118,10 @@ class RegionQuantifier(FeatureQuantifier):
                 (
                     (hit, 0 if unaligned else ambig_counts[aln.is_second()], unaligned)
                     for aln, hit, unaligned in all_hits
-                ), 
+                ),
                 ambiguous_counts=True
-            )           
-            
+            )
+
             # if aln is not None:
             #     current_ref = self.alp.get_reference(aln.rid)[0]
             #     ambig_count = ambig_counts[aln.is_second()]

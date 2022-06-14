@@ -1,7 +1,6 @@
 """module docstring"""
 
 from collections import Counter
-from itertools import chain
 
 from .region_counter import UniqueRegionCounter, AmbiguousRegionCounter
 from .seq_counter import UniqueSeqCounter, AmbiguousSeqCounter
@@ -61,7 +60,7 @@ class CountManager:
         elif region_counter is not None:
             region_counter.update_counts(count_stream, pair=pair)
 
-        # CountManager._windup_stream(stream)
+        # CountManager._windup_stream(stream)
 
     def dump_raw_counters(self, prefix, bam):
         if self.uniq_seqcounts is not None:
@@ -111,7 +110,7 @@ class CountManager:
             else:
                 print(uniq_counter)
                 print(ambig_counter)
-            
+
                 uniq_counts, ambig_counts = [uniq_counter[seqid]], [ambig_counter[seqid]]
 
             return uniq_counts, ambig_counts

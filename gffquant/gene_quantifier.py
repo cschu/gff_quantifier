@@ -30,7 +30,7 @@ class GeneQuantifier(FeatureQuantifier):
             ambig_mode=ambig_mode,
             strand_specific=strand_specific,
             reference_type="gene",
-            calc_coverage=calc_coverage and False,  # TODO: figure out, but nobody wants it anyway
+            calc_coverage=calc_coverage and False,  # TODO: figure out, but nobody wants it anyway
         )
 
     def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None, buffer_size=10000000):

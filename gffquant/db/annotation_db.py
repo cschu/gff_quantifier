@@ -40,7 +40,7 @@ class AnnotationDatabaseManager:
         db_sequences = self.dbsession.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).all()
         return IntervalTree.from_tuples(
             sorted((seq.start, seq.end) for seq in db_sequences)
-        )    
+        )
 
     def get_overlaps(self, seqid, start, end):
 
@@ -59,11 +59,7 @@ class AnnotationDatabaseManager:
             for interval in overlaps
         )
         return overlaps, covered
-        
 
-
-
-    
 
 """
     def get_overlaps(self, ref, start, end, cache_data=False):
@@ -126,8 +122,6 @@ class AnnotationDatabaseManager:
             )
         return gff_annotation
 
-    
-
     def get_data(self, ref, start, end):
         if self.reference_type == "domain":
             dom_features = self.db.get(ref, {}).get((start, end), [])
@@ -137,7 +131,6 @@ class AnnotationDatabaseManager:
 
         return self._read_data(ref, include_payload=True).get((ref, start, end), {})
 
-    
     # pylint: disable=E1120
     def clear_caches(self):
         print(self._read_data.cache_info(), flush=True)

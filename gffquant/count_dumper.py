@@ -121,7 +121,3 @@ class CountDumper:
                 for feature_id, feature_counts in features.items():
                     feature = db.query_feature(feature_id).name
                     print(category, feature, np.mean(feature_counts), sep="\t", file=feat_out)
-
-
-
-        

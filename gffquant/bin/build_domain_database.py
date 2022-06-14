@@ -12,7 +12,6 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 from gffquant.db import initialise_db
 from gffquant.db.models import db
-from gffquant.db.gff_dbm import GffDatabaseManager
 from ..db.models.meta import Base
 
 
@@ -104,12 +103,12 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
                 db_session.commit()
             line = line.strip().split("\t")
             gid, start, end, features = line
-            # features = features.split(",")
+            # features = features.split(",")
 
             d.setdefault((gid, start, end), set()).update(features.split(","))
 
         for i, ((gid, start, end), features) in enumerate(d.items(), start=1):
-            
+
             if nseqs is not None:
                 logging.info("Processed %s entries. (%s%%)", i, round(i / nseqs * 100, 3))
             else:

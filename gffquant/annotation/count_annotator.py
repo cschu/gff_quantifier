@@ -109,7 +109,7 @@ class CountAnnotator(dict):
         counts = np.zeros(self.bins)
 
         if strand_specific:
-            ss_counts, as_counts = strand_specific 
+            ss_counts, as_counts = strand_specific
             # counts[4:12] are strand-specific values
             # uniq_raw, uniq_norm, combined_raw, combined_norm
             counts[4:8] = uniq_counts[ss_counts]
@@ -132,8 +132,7 @@ class CountAnnotator(dict):
         # all odd elements are length-normalised
         counts[1::2] /= float(length)
 
-        return counts   
-
+        return counts
 
     def compute_count_vector_old(self, count_manager, rid, length, antisense_region=False, region_counts=False, calc_coverage=False):
         """Computes a count vector for a region."""
@@ -168,7 +167,7 @@ class CountAnnotator(dict):
             counts[10:12] += ambig_counts[as_counts]
 
         # print(*locals().items(), sep="\n")
-        
+
         # counts[0:4] are unstranded
         # uniq_raw, uniq_norm, combined_raw, combined_norm
         if region_counts:
@@ -204,8 +203,8 @@ class CtCountAnnotator(CountAnnotator):
             count_manager.ambig_regioncounts
         ):
             ref = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)[0]
-            print(rid, ref)            
-            
+            print(rid, ref)
+
             for region in count_manager.get_regions(rid):
                 if self.strand_specific:
                     (start, end), rev_strand = region
@@ -221,7 +220,7 @@ class CtCountAnnotator(CountAnnotator):
                     if feature_id is None:
                         feature_id = ref
                     print(start, end, rev_strand, region_annotation)
-                    
+
                     on_other_strand = (region_strand == "+" and rev_strand) \
                         or (region_strand == "-" and not rev_strand)
 
@@ -255,7 +254,6 @@ class CtCountAnnotator(CountAnnotator):
                     if coverage_counter is not None:
                         coverage_counter.update_coverage(rid, start, end, uniq_counts, ambig_counts, region_annotation)
 
-                
                     # counts = self.compute_count_vector(
                     #     count_manager,
                     #     (rid, start, end),
@@ -300,7 +298,7 @@ class DbCountAnnotator(CountAnnotator):
                 _, _, region_annotation = region_annotation
 
                 uniq_counts, ambig_counts = count_manager.get_counts(
-                        rid, region_counts=False, strand_specific=self.strand_specific
+                    rid, region_counts=False, strand_specific=self.strand_specific
                 )
 
                 counts = self.compute_count_vector(

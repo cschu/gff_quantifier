@@ -25,8 +25,8 @@ class FeatureCountCollator:
             return (has_suffix and wanted) or (not has_suffix and not wanted)
 
         return is_valid_suffix(suffix, True) and all(
-            is_valid_suffix(f, f"{infix}{suffix}", False) for infix in
-                (".seqname.dist1", ".seqname.uniq", ".gene_counts", ".ambig_tmp", "Counter")
+            is_valid_suffix(f, f"{infix}{suffix}", False)
+            for infix in (".seqname.dist1", ".seqname.uniq", ".gene_counts", ".ambig_tmp", "Counter")
         )
 
         # return all((

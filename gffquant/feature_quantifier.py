@@ -6,8 +6,6 @@ import time
 import contextlib
 import logging
 
-from sqlalchemy import over
-
 from gffquant.bamreader import BamFile, SamFlags
 from gffquant.db.annotation_db import AnnotationDatabaseManager
 from gffquant.alignment import (
@@ -281,7 +279,7 @@ class FeatureQuantifier:
             self.adm = AnnotationDatabaseManager(self.db)
 
         self.count_manager.dump_raw_counters(self.out_prefix, self.alp)
-        
+
         ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
         count_annotator = ca_ctr(self.strand_specific)
 
@@ -290,7 +288,7 @@ class FeatureQuantifier:
         count_annotator.annotate(self.alp, self.adm, self.count_manager, coverage_counter=cov_ctr)
 
         print(*cov_ctr.items(), sep="\n")
-        
+
         count_dumper = CountDumper(
             self.out_prefix,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
