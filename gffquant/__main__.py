@@ -8,6 +8,7 @@ import pathlib
 import sys
 
 from gffquant.feature_quantifier import FeatureQuantifier
+from gffquant.gene_quantifier import GeneQuantifier
 from . import __version__
 from .handle_args import handle_args
 
@@ -41,13 +42,15 @@ def main():
             exist_ok=True, parents=True
         )
 
-    fq = FeatureQuantifier(
+    # fq_f = FeatureQuantifier if args.mode == "genome" or args.mode == "domain" else GeneQuantifier
+
+
+    fq = GeneQuantifier(
         db=args.annotation_db,
         out_prefix=args.out_prefix,
         ambig_mode=args.ambig_mode,
-        reference_type=args.mode,
+        # reference_type=args.mode,
         strand_specific=args.strand_specific,
-        debugmode=args.debug,
     )
 
     fq.process_bamfile(

@@ -6,8 +6,6 @@ import time
 import contextlib
 import logging
 
-import pandas
-
 from gffquant.bamreader import BamFile, SamFlags
 from gffquant.db.annotation_db import AnnotationDatabaseManager
 from gffquant.alignment import (
@@ -26,13 +24,6 @@ class FeatureQuantifier:
     # pylint: disable=R0902,R0913
     TRUE_AMBIG_MODES = ("dist1", "1overN")
 
-    @staticmethod
-    def read_ambiguous_alignments(ambig_in):
-        """reads the dumped ambig alignments and returns them sorted by alignment group"""
-        # using a pandas dataframe/numpy array saves us a lot of memory
-        ambig_aln = pandas.read_csv(ambig_in, sep="\t", header=None)
-        return ambig_aln.sort_values(axis=0, by=0)
-
     def __init__(
         self,
         db=None,
@@ -40,10 +31,9 @@ class FeatureQuantifier:
         ambig_mode="unique_only",
         reference_type="genome",
         strand_specific=False,
-        debugmode=False,
     ):
         self.db = db
-        self.adm = None        
+        self.adm = None
         self.umap_cache = PairedEndAlignmentCache()
         self.ambig_cache = PairedEndAlignmentCache(ambig_alignments=True)
         self.do_overlap_detection = reference_type in ("genome", "domain")
@@ -55,7 +45,6 @@ class FeatureQuantifier:
         self.out_prefix = out_prefix
         self.ambig_mode = ambig_mode
         self.bamfile = None
-        self.debugmode = debugmode
         self.strand_specific = strand_specific
 
     def allow_ambiguous_alignments(self):
@@ -136,7 +125,7 @@ class FeatureQuantifier:
             ambiguous_counts=True
         )
 
-    def process_alignments(self, ambig_bookkeeper, min_identity=None, min_seqlen=None):
+    def process_alignments(self, ambig_bookkeeper=None, min_identity=None, min_seqlen=None):
         # pylint: disable=R0914
         """
         Reads from a position-sorted bam file are processed in batches according to the reference
@@ -267,35 +256,41 @@ class FeatureQuantifier:
             )
 
             aln_count, unannotated_ambig, _ = self.process_alignments(
-                ambig_bookkeeper, min_identity=min_identity, min_seqlen=min_seqlen
+                ambig_bookkeeper=ambig_bookkeeper,
+                min_identity=min_identity,
+                min_seqlen=min_seqlen
             )
 
             ambig_bookkeeper.clear()
 
             if aln_count:
-                self.adm = AnnotationDatabaseManager(self.db)
-
-                self.count_manager.dump_raw_counters(self.out_prefix, self.bamfile)
-
-                ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
-                count_annotator = ca_ctr(self.strand_specific)
-                count_annotator.annotate(self.bamfile, self.adm, self.count_manager)
-
-                count_dumper = CountDumper(
-                    self.out_prefix,
-                    has_ambig_counts=self.count_manager.has_ambig_counts(),
-                    strand_specific=self.strand_specific,
-                )
-                count_dumper.dump_feature_counts(
-                    self.adm,
-                    self.count_manager.get_unannotated_reads() + unannotated_ambig,
-                    count_annotator,
-                )
-
-                count_dumper.dump_gene_counts(
-                    count_annotator.gene_counts,
-                    count_annotator.scaling_factors["total_uniq"],
-                    count_annotator.scaling_factors["total_ambi"]
-                )
+                self.dump_counters(unannotated_ambig)
 
         print("Finished.", flush=True)
+
+    def dump_counters(self, unannotated_ambig):
+        if self.adm is None:
+            self.adm = AnnotationDatabaseManager(self.db)
+
+        self.count_manager.dump_raw_counters(self.out_prefix, self.bamfile)
+
+        ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
+        count_annotator = ca_ctr(self.strand_specific)
+        count_annotator.annotate(self.bamfile, self.adm, self.count_manager)
+
+        count_dumper = CountDumper(
+            self.out_prefix,
+            has_ambig_counts=self.count_manager.has_ambig_counts(),
+            strand_specific=self.strand_specific,
+        )
+        count_dumper.dump_feature_counts(
+            self.adm,
+            self.count_manager.get_unannotated_reads() + unannotated_ambig,
+            count_annotator,
+        )
+
+        count_dumper.dump_gene_counts(
+            count_annotator.gene_counts,
+            count_annotator.scaling_factors["total_uniq"],
+            count_annotator.scaling_factors["total_ambi"]
+        )

@@ -128,6 +128,9 @@ class BamAlignment:
             f"{self.rnext}:{self.pnext}"
         )
 
+    def shorten(self):
+        return (self.rid, self.start, self.end, self.is_reverse())
+
 
 class BamBuffer:
     def __init__(self, fn, size=1000000):
@@ -202,7 +205,7 @@ class BamFile:
         self._reverse_references = {}
 
         self._read_header(keep_refs=set() if large_header else None)
-        do_ambig_bookkeeping = not isinstance(ambig_bookkeeper, contextlib.nullcontext)
+        do_ambig_bookkeeping = ambig_bookkeeper is not None and not isinstance(ambig_bookkeeper, contextlib.nullcontext)
 
         if large_header or do_ambig_bookkeeping:
             t0 = time.time()

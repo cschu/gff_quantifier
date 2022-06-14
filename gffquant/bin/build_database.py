@@ -5,6 +5,7 @@ import argparse
 import gzip
 import json
 import logging
+import sqlite3
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -146,6 +147,15 @@ def main():
         return
 
     process_annotations(args.input_data, db_session, code_map, nseqs, args.emapper_version)
+
+    # https://www.sqlite.org/wal.html
+    # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections
+    # concurrent read-access from more than 3 processes seems to be an issue
+    with sqlite3.connect(args.db_path) as conn:
+        cur = conn.cursor()
+        cur.execute('PRAGMA journal_mode=wal')
+        cur.fetchall()
+    
 
 
 if __name__ == "__main__":
