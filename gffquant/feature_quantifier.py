@@ -2,7 +2,6 @@
 
 """ module docstring """
 
-from itertools import count
 import logging
 
 from gffquant.db.annotation_db import AnnotationDatabaseManager
@@ -112,7 +111,7 @@ class FeatureQuantifier:
         self.count_manager.dump_raw_counters(self.out_prefix, self.alp)
 
         cov_ctr = CoverageCounter() if self.calc_coverage else None
-        
+
         if self.do_overlap_detection:
             count_annotator = RegionCountAnnotator(self.strand_specific)
             count_annotator.annotate(self.alp, self.adm, self.count_manager, coverage_counter=cov_ctr)

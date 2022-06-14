@@ -26,7 +26,7 @@ class RegionCounter(AlignmentCounter):
             self.setdefault(region_id, {}) \
                 .setdefault(overlap_id, []).append((cstart, cend, increment))
         else:
-            self.setdefault(region_id, Counter())[overlap_id] += increment  
+            self.setdefault(region_id, Counter())[overlap_id] += increment
 
 
 class UniqueRegionCounter(RegionCounter):
