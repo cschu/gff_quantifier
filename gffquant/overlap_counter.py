@@ -8,20 +8,7 @@ import numpy as np
 
 
 """
-normalizeCounts nmethod counts sizes
-	| nmethod `elem` [NMScaled, NMFpkm] = do
-		-- count vectors always include a -1 at this point (it is
-		-- ignored in output if the user does not request it, but is
-		-- always computed). Thus, we compute the sum without it and do
-		-- not normalize it later:
-		let totalCounts v = withVector v (VU.sum . VU.tail)
-		initial <- totalCounts counts
-		normalizeCounts NMNormed counts sizes
-		afternorm <- totalCounts counts
-		let factor
-				| nmethod == NMScaled = initial / afternorm
-				| otherwise = 1.0e9 / initial --- 1e6 [million fragments] * 1e3 [kilo basepairs] = 1e9
-		liftIO $ forM_ [1.. VUM.length counts - 1] (VUM.unsafeModify counts (* factor))
+WARNING: FILE IS OBSOLETE, ONLY KEPT FOR RESTORING COVERAGE-FUNCTIONALITY
 """
 
 
