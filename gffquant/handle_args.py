@@ -112,6 +112,14 @@ def handle_args(args):
     )
 
     ap.add_argument(
+        "--format",
+        type=str,
+        choices=("sam", "bam", "SAM", "BAM"),
+        default="sam",
+        help="Format of the alignment input. Supported: sam, bam."
+    )
+
+    ap.add_argument(
         "--version", "-v", action="version", version="%(prog)s " + __version__
     )
     ap.add_argument("--debug", action="store_true")

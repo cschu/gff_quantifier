@@ -8,7 +8,7 @@ from gffquant.bamreader import BamAlignment
 class AlignmentProcessor:
     def __init__(self, aln_source="-", aln_type="bam"):
         aln_type = aln_type.lower()
-        assert aln_type in ("bam", "sam", "cram")
+        assert aln_type in ("bam", "sam")
 
         self.used_refs = {}
         # pylint: disable=E1101

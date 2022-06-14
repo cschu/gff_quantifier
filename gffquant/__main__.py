@@ -29,15 +29,6 @@ def main():
     if not os.path.exists(args.annotation_db):
         raise ValueError("annotation database does not exist", args.annotation_db)
 
-    # db_index = None
-    # if args.mode == "genome":
-    #     db_index = args.annotation_db + ".index"
-    #     if not os.path.exists(db_index):
-    #         raise ValueError(
-    #             f"gff index '{db_index}' does not exist "
-    #             f"(please generate index with `gffindex {args.annotation_db}`)"
-    #         )
-
     if os.path.dirname(args.out_prefix):
         pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(
             exist_ok=True, parents=True
@@ -49,7 +40,6 @@ def main():
             db=args.annotation_db,
             out_prefix=args.out_prefix,
             ambig_mode=args.ambig_mode,
-            # reference_type=args.mode,
             strand_specific=args.strand_specific,
         )
 
@@ -64,7 +54,7 @@ def main():
         )
 
     fq.process_bamfile(
-        args.bam_file, min_identity=args.min_identity, min_seqlen=args.min_seqlen
+        args.bam_file, format=args.format, min_identity=args.min_identity, min_seqlen=args.min_seqlen
     )
 
 

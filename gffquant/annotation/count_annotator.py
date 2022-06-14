@@ -4,7 +4,6 @@
 
 from itertools import chain
 
-
 import numpy as np
 
 
@@ -107,6 +106,10 @@ class CountAnnotator(dict):
         strand_specific=None,
         region_counts=False
     ):
+        """Computes a count vector for a region."""
+        # we have either 4 bins (unstranded) or 12 (strand-specific)
+        # UNSTRANDED = {uniq,ambig} x {raw,normalised}
+        # STRANDED = UNSTRANDED x {all,sense/plus,antisense/minus}
         counts = np.zeros(self.bins)
 
         if strand_specific:
@@ -135,58 +138,8 @@ class CountAnnotator(dict):
 
         return counts
 
-    def compute_count_vector_old(self, count_manager, rid, length, antisense_region=False, region_counts=False):
-        """Computes a count vector for a region."""
-        # we have either 4 bins (unstranded) or 12 (strand-specific)
-        # UNSTRANDED = {uniq,ambig} x {raw,normalised}
-        # STRANDED = UNSTRANDED x {all,sense/plus,antisense/minus}
-        counts = np.zeros(self.bins)
 
-        # not sure if this is still needed
-        # use_region_counts = isinstance(self, CtCountAnnotator)
-
-        uniq_counts, ambig_counts = count_manager.get_counts(
-            rid, region_counts=region_counts, strand_specific=self.strand_specific
-        )
-
-        if self.strand_specific:
-            # if the region is antisense, 'sense-counts' (relative to the) region come from the
-            # negative strand and 'antisense-counts' from the positive strand
-            # vice-versa for a sense-region
-            ss_counts, as_counts = (
-                (count_manager.MINUS_STRAND, count_manager.PLUS_STRAND)
-                if antisense_region
-                else (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
-            )
-
-            # counts[4:12] are strand-specific values
-            # uniq_raw, uniq_norm, combined_raw, combined_norm
-            counts[4:8] = uniq_counts[ss_counts]
-            counts[8:12] = uniq_counts[as_counts]
-            # add the ambig counts to combined_raw, combined_norm
-            counts[6:8] += ambig_counts[ss_counts]
-            counts[10:12] += ambig_counts[as_counts]
-
-        # print(*locals().items(), sep="\n")
-
-        # counts[0:4] are unstranded
-        # uniq_raw, uniq_norm, combined_raw, combined_norm
-        if region_counts:
-            counts[0:4] = sum(x[2] for x in chain(*uniq_counts) if x is not None)
-        else:
-            counts[0:4] = sum(uniq_counts)
-        # add the ambig counts to combined_raw, combined_norm
-        if region_counts:
-            counts += sum(x[2] for x in chain(*ambig_counts) if x is not None)
-        else:
-            counts[2:4] += sum(ambig_counts)
-        # all odd elements are length-normalised
-        counts[1::2] /= float(length)
-
-        return counts
-
-
-class CtCountAnnotator(CountAnnotator):
+class RegionCountAnnotator(CountAnnotator):
     """ CountAnnotator subclass for contig/region-based counting. """
 
     def __init__(self, strand_specific):
@@ -256,16 +209,6 @@ class CtCountAnnotator(CountAnnotator):
                     if coverage_counter is not None:
                         coverage_counter.update_coverage(rid, start, end, uniq_counts, ambig_counts, region_annotation)
 
-                    # counts = self.compute_count_vector(
-                    #     count_manager,
-                    #     (rid, start, end),
-                    #     end - start + 1,
-                    #     antisense_region=antisense_region,
-                    #     region_counts=True,
-                    # )
-
-                    # this is [2:] as the gene id comes in the feature string as described
-                    # above! (region key != gene id!!)
                     self.distribute_feature_counts(counts, region_annotation)
 
                     gcounts = self.gene_counts.setdefault(
@@ -276,7 +219,7 @@ class CtCountAnnotator(CountAnnotator):
         self.calculate_scaling_factors()
 
 
-class DbCountAnnotator(CountAnnotator):
+class GeneCountAnnotator(CountAnnotator):
     """ CountAnnotator subclass for gene-based counting. """
 
     def __init__(self, strand_specific):

@@ -34,16 +34,10 @@ class GeneQuantifier(FeatureQuantifier):
             calc_coverage=calc_coverage and False,  # TODO: figure out, but nobody wants it anyway
         )
 
-    def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None, buffer_size=10000000):
+    def process_bamfile(self, bamfile, format="sam", min_identity=None, min_seqlen=None):
         """processes one bamfile"""
 
-        self.alp = AlignmentProcessor(bamfile, "sam")
-
-        # self.bamfile = BamFile(
-        #     bamfile,
-        #     large_header=not self.do_overlap_detection,
-        #     buffer_size=buffer_size
-        # )
+        self.alp = AlignmentProcessor(bamfile, format)
 
         aln_count, unannotated_ambig, _ = self.process_alignments(
             min_identity=min_identity, min_seqlen=min_seqlen
@@ -54,7 +48,7 @@ class GeneQuantifier(FeatureQuantifier):
 
         print("Finished.", flush=True)
 
-    def process_alignments(self, ambig_bookkeeper=None, min_identity=None, min_seqlen=None):
+    def process_alignments(self, min_identity=None, min_seqlen=None):
         # pylint: disable=R0914
         t0 = time.time()
 

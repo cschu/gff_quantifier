@@ -26,30 +26,7 @@ class RegionCounter(AlignmentCounter):
             self.setdefault(region_id, {}) \
                 .setdefault(overlap_id, []).append((cstart, cend, increment))
         else:
-            self.setdefault(region_id, Counter())[overlap_id] += increment
-
-    # pylint: disable=W0613
-    def update_counts(self, count_stream, pair=False):
-        """Update counter with alignments against the same reference.
-
-        input: count_stream
-        - counts: set of overlaps with the reference
-        - aln_count: 1 if overlaps else 0
-        - unaligned: 1 - aln_count
-        (redundant input due to streamlining uniq/ambig dataflows)
-        """
-        for counts, aln_count, unaligned in count_stream:
-            if aln_count:
-                increment = (
-                    (1 / aln_count) if self.distribution_mode == "1overN" else 1
-                )  # 1overN = lavern. Maya <3
-                for rid, hits in counts.items():
-                    for hit in hits:
-                        self._update_region(
-                            rid, *hit, increment=increment
-                        )
-            else:
-                self.unannotated_reads += unaligned
+            self.setdefault(region_id, Counter())[overlap_id] += increment  
 
 
 class UniqueRegionCounter(RegionCounter):

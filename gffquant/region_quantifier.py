@@ -36,16 +36,10 @@ class RegionQuantifier(FeatureQuantifier):
         )
         self.adm = AnnotationDatabaseManager(self.db)
 
-    def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None, buffer_size=10000000):
+    def process_bamfile(self, bamfile, format="sam", min_identity=None, min_seqlen=None):
         """processes one bamfile"""
 
-        self.alp = AlignmentProcessor(bamfile, "sam")
-
-        # self.bamfile = BamFile(
-        #     bamfile,
-        #     large_header=not self.do_overlap_detection,
-        #     buffer_size=buffer_size
-        # )
+        self.alp = AlignmentProcessor(bamfile, format)
 
         aln_count, unannotated_ambig, _ = self.process_alignments(
             min_identity=min_identity, min_seqlen=min_seqlen
@@ -56,7 +50,7 @@ class RegionQuantifier(FeatureQuantifier):
 
         print("Finished.", flush=True)
 
-    def process_alignments(self, ambig_bookkeeper=None, min_identity=None, min_seqlen=None):
+    def process_alignments(self, min_identity=None, min_seqlen=None):
         # pylint: disable=R0914
         t0 = time.time()
 
@@ -122,16 +116,6 @@ class RegionQuantifier(FeatureQuantifier):
                 ),
                 ambiguous_counts=True
             )
-
-            # if aln is not None:
-            #     current_ref = self.alp.get_reference(aln.rid)[0]
-            #     ambig_count = ambig_counts[aln.is_second()]
-            #     hits = self.process_alignments_sameref(
-            #         current_ref, (aln.shorten(),), aln_count=ambig_count
-            #     )
-            #     self.count_manager.update_counts(
-            #         hits, ambiguous_counts=True
-            #     )
         elif aln_group.is_aligned_pair():
             current_ref = self.alp.get_reference(aln_group.primaries[0].rid)[0]
             hits = self.process_alignments_sameref(

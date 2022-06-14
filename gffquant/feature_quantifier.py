@@ -2,18 +2,12 @@
 
 """ module docstring """
 
-import time
-import contextlib
+from itertools import count
 import logging
 
-from gffquant.bamreader import BamFile, SamFlags
 from gffquant.db.annotation_db import AnnotationDatabaseManager
-from gffquant.alignment import (
-    AmbiguousAlignmentRecordKeeper,
-    PairedEndAlignmentCache,
-)
 from gffquant.counters import CountManager
-from gffquant.annotation import DbCountAnnotator, CtCountAnnotator
+from gffquant.annotation import GeneCountAnnotator, RegionCountAnnotator
 from gffquant.count_dumper import CountDumper
 from gffquant.coverage_counter import CoverageCounter
 
@@ -36,8 +30,6 @@ class FeatureQuantifier:
     ):
         self.db = db
         self.adm = None
-        self.umap_cache = PairedEndAlignmentCache()
-        self.ambig_cache = PairedEndAlignmentCache(ambig_alignments=True)
         self.do_overlap_detection = reference_type in ("genome", "domain")
         self.count_manager = CountManager(
             distribution_mode=ambig_mode,
@@ -113,187 +105,27 @@ class FeatureQuantifier:
 
             yield ({rid: hits}, aln_count, 0 if aln_count else 1)
 
-    def process_caches(self, ref, aln_count=1):
-        """Update the count managers and clear the alignment caches. This is usually done,
-        when a new reference is encountered while processing a position-sorted bamfile."""
-
-        self.count_manager.update_counts(
-            self.process_alignments_sameref(
-                ref, self.umap_cache.empty_cache(), aln_count=aln_count
-            ),
-            ambiguous_counts=False
-        )
-
-        self.count_manager.update_counts(
-            self.process_alignments_sameref(
-                ref, self.ambig_cache.empty_cache(), aln_count=aln_count
-            ),
-            ambiguous_counts=True
-        )
-
-    def process_alignments(self, ambig_bookkeeper=None, min_identity=None, min_seqlen=None):
-        # pylint: disable=R0914
-        """
-        Reads from a position-sorted bam file are processed in batches according to the reference
-        sequence they were aligned to. This allows a partitioning of the reference annotation
-        (which saves memory and time in case of large reference data sets).
-        Ambiguous reads are dumped to disk for dist1 and 1overN distribution modes and processed
-        in a follow-up step.
-        """
-
-        t0 = time.time()
-        current_ref, current_rid = None, None
-
-        bam_stream = self.bamfile.get_alignments(
-            allow_multiple=self.allow_ambiguous_alignments(),
-            allow_unique=True,
-            disallowed_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
-            min_identity=min_identity,
-            min_seqlen=min_seqlen,
-        )
-
-        aln_count = 0
-        for aln_count, aln in bam_stream:
-            start, end, rev_strand = aln.start, aln.end, aln.is_reverse()
-
-            if aln.rid != current_rid:
-                # if a new reference sequence is encountered,
-                # empty the alignment cache (if needed)
-                if current_rid is not None:
-                    self.process_caches(current_ref)
-                current_ref, current_rid = (
-                    self.bamfile.get_reference(aln.rid)[0],
-                    aln.rid,
-                )
-
-            if aln.is_ambiguous() and self.require_ambig_bookkeeping():
-                # if ambiguous alignments are not treated as individual alignments
-                # (dist1 or 1overN mode)
-                # then the alignment processing is deferred to the bookkeeper
-                ambig_count = ambig_bookkeeper.get_ambig_alignment_count(aln)
-                # ambig_bookkeeper.process_alignment(current_ref, aln, aln_count)
-                # start, end, rev_strand = None, None, None
-                hits = self.process_alignments_sameref(
-                    current_ref, ((current_rid, start, end, rev_strand),), aln_count=ambig_count
-                )
-                self.count_manager.update_counts(
-                    hits, ambiguous_counts=True
-                )
-                start = None
-
-            else:
-                pair_aligned = all(
-                    [
-                        aln.is_paired(),
-                        aln.rid == aln.rnext,
-                        not aln.flag & SamFlags.MATE_UNMAPPED,
-                    ]
-                )
-                process_pair = aln.is_unique() or (
-                    self.ambig_mode == "primary_only" and aln.is_primary()
-                )
-                if process_pair and pair_aligned:
-                    # if a read belongs to a properly-paired unique alignment
-                    # (both mates align to the same reference sequence),
-                    # then it can only be processed if the mate
-                    # has already been encountered, otherwise it is cached
-                    mate = self.umap_cache.process_alignment(aln)
-                    mate_start, mate_end, mate_rev_strand = mate
-                    if mate_start is not None:
-                        hits = self.process_alignments_sameref(
-                            current_ref,
-                            (
-                                (current_rid, start, end, rev_strand),
-                                (current_rid, mate_start, mate_end, mate_rev_strand)
-                            )
-                        )
-                        self.count_manager.update_counts(
-                            hits, ambiguous_counts=False
-                        )
-
-                        mate_start = None
-
-                    # if there was a mate cached, then both mates have been dealt with
-                    # hence, signal that the read does not need to be processed further
-                    # for overlap/merge later on, the mate_start will be not None
-                    start = mate_start
-
-            # at this point only single-end reads, 'improper' and merged pairs
-            # should be processed here
-            # ( + ambiguous reads in "all1" mode )
-            # remember:
-            # in all1, pair information is not easy to retain for the secondary alignments!
-            if start is not None:
-                hits = self.process_alignments_sameref(
-                    current_ref, ((current_rid, start, end, rev_strand),)
-                )
-                self.count_manager.update_counts(
-                    hits, ambiguous_counts=not aln.is_unique()
-                )
-
-        self.process_caches(current_ref)
-
-        if aln_count == 0:
-            print("Warning: bam file does not contain any alignments.")
-
-        t1 = time.time()
-        print(f"Processed {aln_count} alignments in {t1 - t0:.3f}s.", flush=True)
-
-        return aln_count, 0, None
-
-    def process_bamfile(self, bamfile, min_identity=None, min_seqlen=None, buffer_size=10000000):
-        """processes one position-sorted bamfile"""
-
-        if self.require_ambig_bookkeeping():
-            ambig_bookkeeper = AmbiguousAlignmentRecordKeeper(
-                self.out_prefix,
-                self.adm,
-                do_overlap_detection=self.do_overlap_detection,
-            )
-        else:
-            ambig_bookkeeper = contextlib.nullcontext()
-
-        with ambig_bookkeeper:
-            self.bamfile = BamFile(
-                bamfile,
-                large_header=not self.do_overlap_detection,
-                buffer_size=buffer_size,
-                ambig_bookkeeper=ambig_bookkeeper
-            )
-
-            aln_count, unannotated_ambig, _ = self.process_alignments(
-                ambig_bookkeeper=ambig_bookkeeper,
-                min_identity=min_identity,
-                min_seqlen=min_seqlen
-            )
-
-            ambig_bookkeeper.clear()
-
-            if aln_count:
-                self.process_counters(unannotated_ambig)
-
-        print("Finished.", flush=True)
-
     def process_counters(self, unannotated_ambig):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager(self.db)
 
         self.count_manager.dump_raw_counters(self.out_prefix, self.alp)
 
-        ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
-        count_annotator = ca_ctr(self.strand_specific)
-
         cov_ctr = CoverageCounter() if self.calc_coverage else None
-
-        count_annotator.annotate(self.alp, self.adm, self.count_manager, coverage_counter=cov_ctr)
-
-        print(*cov_ctr.items(), sep="\n")
+        
+        if self.do_overlap_detection:
+            count_annotator = RegionCountAnnotator(self.strand_specific)
+            count_annotator.annotate(self.alp, self.adm, self.count_manager, coverage_counter=cov_ctr)
+        else:
+            count_annotator = GeneCountAnnotator(self.strand_specific)
+            count_annotator.annotate(self.alp, self.adm, self.count_manager)
 
         count_dumper = CountDumper(
             self.out_prefix,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
             strand_specific=self.strand_specific,
         )
+
         count_dumper.dump_feature_counts(
             self.adm,
             self.count_manager.get_unannotated_reads() + unannotated_ambig,
@@ -306,6 +138,8 @@ class FeatureQuantifier:
             count_annotator.scaling_factors["total_ambi"]
         )
 
-        count_dumper.dump_coverage(self.adm, cov_ctr)
+        if self.calc_coverage:
+            print(*cov_ctr.items(), sep="\n")
+            count_dumper.dump_coverage(self.adm, cov_ctr)
 
         self.adm.clear_caches()
