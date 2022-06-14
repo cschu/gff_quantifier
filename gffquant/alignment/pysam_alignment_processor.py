@@ -2,7 +2,7 @@
 
 import pysam
 
-from gffquant.bamreader import BamAlignment
+from .bamreader import BamAlignment
 
 
 class AlignmentProcessor:

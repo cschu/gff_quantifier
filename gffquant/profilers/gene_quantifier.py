@@ -4,7 +4,7 @@
 
 import logging
 
-from gffquant.feature_quantifier import FeatureQuantifier
+from .feature_quantifier import FeatureQuantifier
 
 
 logger = logging.getLogger(__name__)

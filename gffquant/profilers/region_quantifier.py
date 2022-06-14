@@ -4,8 +4,8 @@
 
 import logging
 
-from gffquant.feature_quantifier import FeatureQuantifier
 from gffquant.db.annotation_db import AnnotationDatabaseManager
+from .feature_quantifier import FeatureQuantifier
 
 
 logger = logging.getLogger(__name__)

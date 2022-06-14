@@ -8,8 +8,7 @@ import pathlib
 import sys
 
 # pylint: disable=W0611
-from gffquant.gene_quantifier import GeneQuantifier
-from gffquant.region_quantifier import RegionQuantifier
+from gffquant.profilers import GeneQuantifier, RegionQuantifier
 from . import __version__
 from .handle_args import handle_args
 

@@ -7,12 +7,9 @@ import time
 
 from gffquant.db.annotation_db import AnnotationDatabaseManager
 from gffquant.counters import CountManager
-from gffquant.annotation import GeneCountAnnotator, RegionCountAnnotator
-from gffquant.count_dumper import CountDumper
-from gffquant.coverage_counter import CoverageCounter
-from gffquant.pysam_support import AlignmentProcessor
-from gffquant.bamreader import SamFlags
-from gffquant.alignment.aln_group import AlignmentGroup
+from gffquant.annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
+from gffquant.counters.coverage_counter import CoverageCounter
+from gffquant.alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 
 
 logger = logging.getLogger(__name__)
@@ -123,19 +120,19 @@ class FeatureQuantifier:
             count_annotator = GeneCountAnnotator(self.strand_specific)
             count_annotator.annotate(self.alp, self.adm, self.count_manager)
 
-        count_dumper = CountDumper(
+        count_writer = CountWriter(
             self.out_prefix,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
             strand_specific=self.strand_specific,
         )
 
-        count_dumper.dump_feature_counts(
+        count_writer.write_feature_counts(
             self.adm,
             self.count_manager.get_unannotated_reads() + unannotated_ambig,
             count_annotator,
         )
 
-        count_dumper.dump_gene_counts(
+        count_writer.write_gene_counts(
             count_annotator.gene_counts,
             count_annotator.scaling_factors["total_uniq"],
             count_annotator.scaling_factors["total_ambi"]
@@ -143,7 +140,7 @@ class FeatureQuantifier:
 
         if self.calc_coverage:
             print(*cov_ctr.items(), sep="\n")
-            count_dumper.dump_coverage(self.adm, cov_ctr)
+            count_writer.write_coverage(self.adm, cov_ctr)
 
         self.adm.clear_caches()
 

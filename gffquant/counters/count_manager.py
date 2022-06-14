@@ -39,13 +39,6 @@ class CountManager:
                 distribution_mode=distribution_mode
             )
 
-    @staticmethod
-    def _windup_stream(stream):
-        """Count data are coming in via generators.
-        This function ensures that the generator is actually exhausted."""
-        for _ in stream:
-            ...
-
     def has_ambig_counts(self):
         return self.ambig_regioncounts or self.ambig_seqcounts
 
@@ -59,8 +52,6 @@ class CountManager:
             seq_counter.update_counts(count_stream)
         elif region_counter is not None:
             region_counter.update_counts(count_stream, pair=pair)
-
-        # CountManager._windup_stream(stream)
 
     def dump_raw_counters(self, prefix, bam):
         if self.uniq_seqcounts is not None:
