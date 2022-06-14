@@ -109,7 +109,6 @@ def process_annotations(input_data, db_session, code_map, nseqs):
             d.setdefault((gid, start, end), set()).update(features.split(","))
 
         for i, ((gid, start, end), features) in enumerate(d.items(), start=1):
-
             if nseqs is not None:
                 logging.info("Processed %s entries. (%s%%)", i, round(i / nseqs * 100, 3))
             else:
@@ -142,7 +141,6 @@ def main():
     ap.add_argument("--code_map", type=str)
     ap.add_argument("--nseqs", type=int)
     ap.add_argument("--extract_map_only", action="store_true")
-
     args = ap.parse_args()
 
     engine, db_session = get_database(args.db_path) if not args.extract_map_only else (None, None)
