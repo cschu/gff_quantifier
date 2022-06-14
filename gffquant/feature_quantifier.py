@@ -17,6 +17,7 @@ from gffquant.alignment import (
 from gffquant.counters import CountManager
 from gffquant.annotation import DbCountAnnotator, CtCountAnnotator
 from gffquant.count_dumper import CountDumper
+from gffquant.coverage_counter import CoverageCounter
 
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ class FeatureQuantifier:
         self.bamfile = None
         self.alp = None
         self.strand_specific = strand_specific
+        self.calc_coverage = calc_coverage
 
     def allow_ambiguous_alignments(self):
         """All distribution modes support ambiguous alignments,
@@ -282,7 +284,12 @@ class FeatureQuantifier:
         
         ca_ctr = CtCountAnnotator if self.do_overlap_detection else DbCountAnnotator
         count_annotator = ca_ctr(self.strand_specific)
-        count_annotator.annotate(self.alp, self.adm, self.count_manager)
+
+        cov_ctr = CoverageCounter() if self.calc_coverage else None
+
+        count_annotator.annotate(self.alp, self.adm, self.count_manager, coverage_counter=cov_ctr)
+
+        print(*cov_ctr.items(), sep="\n")
         
         count_dumper = CountDumper(
             self.out_prefix,
@@ -300,3 +307,5 @@ class FeatureQuantifier:
             count_annotator.scaling_factors["total_uniq"],
             count_annotator.scaling_factors["total_ambi"]
         )
+
+        count_dumper.dump_coverage(self.adm, cov_ctr)

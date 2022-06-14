@@ -4,6 +4,8 @@
 
 import gzip
 
+import numpy as np
+
 
 class CountDumper:
     COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
@@ -101,3 +103,25 @@ class CountDumper:
                     ambig_scaling_factor=ambig_scaling_factor
                 )
                 print(gene, *(f"{c:.5f}" for c in out_row), flush=True, sep="\t", file=gene_out)
+
+    def dump_coverage(self, db, coverage_counts):
+        d = {}
+
+        for cov_data in coverage_counts.values():
+            n_features = sum(len(features) for _, features in cov_data["annotation"])
+            for category, features in cov_data["annotation"]:
+                for feature in features:
+                    d.setdefault(category, {}).setdefault(feature, []).append(
+                        cov_data["coverage"].mean() / n_features
+                    )
+
+        for category_id, features in d.items():
+            category = db.query_category(category_id).name
+            with gzip.open(f"{self.out_prefix}.{category}.coverage.txt.gz", "wt") as feat_out:
+                for feature_id, feature_counts in features.items():
+                    feature = db.query_feature(feature_id).name
+                    print(category, feature, np.mean(feature_counts), sep="\t", file=feat_out)
+
+
+
+        
