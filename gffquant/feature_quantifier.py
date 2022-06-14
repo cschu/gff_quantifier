@@ -15,7 +15,6 @@ from gffquant.bamreader import SamFlags
 from gffquant.alignment.aln_group import AlignmentGroup
 
 
-
 logger = logging.getLogger(__name__)
 
 
