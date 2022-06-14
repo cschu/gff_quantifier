@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class GeneQuantifier(FeatureQuantifier):
+    # pylint: disable=R0913,W0511
     def __init__(
         self,
         db=None,

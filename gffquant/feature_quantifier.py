@@ -307,3 +307,5 @@ class FeatureQuantifier:
         )
 
         count_dumper.dump_coverage(self.adm, cov_ctr)
+
+        self.adm.clear_caches()

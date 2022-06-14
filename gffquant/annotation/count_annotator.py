@@ -98,6 +98,7 @@ class CountAnnotator(dict):
                 total_ambi, total_ambi_normed, self.scaling_factors[category]
             )
 
+    # pylint: disable=R0913
     def compute_count_vector(
         self,
         uniq_counts,
@@ -134,7 +135,7 @@ class CountAnnotator(dict):
 
         return counts
 
-    def compute_count_vector_old(self, count_manager, rid, length, antisense_region=False, region_counts=False, calc_coverage=False):
+    def compute_count_vector_old(self, count_manager, rid, length, antisense_region=False, region_counts=False):
         """Computes a count vector for a region."""
         # we have either 4 bins (unstranded) or 12 (strand-specific)
         # UNSTRANDED = {uniq,ambig} x {raw,normalised}
@@ -191,6 +192,7 @@ class CtCountAnnotator(CountAnnotator):
     def __init__(self, strand_specific):
         CountAnnotator.__init__(self, strand_specific)
 
+    # pylint: disable=R0914
     def annotate(self, bam, db, count_manager, coverage_counter=None):
         """
         Annotate a set of region counts via db-lookup.

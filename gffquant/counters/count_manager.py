@@ -90,6 +90,7 @@ class CountManager:
             uniq_counter = self.uniq_regioncounts.get(rid, {} if self.calc_coverage else Counter())
             ambig_counter = self.ambig_regioncounts.get(rid, {} if self.calc_coverage else Counter())
 
+            # pylint: disable=R1720
             if strand_specific:
                 raise NotImplementedError
             else:

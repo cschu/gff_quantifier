@@ -19,6 +19,7 @@ class RegionCounter(AlignmentCounter):
         )
         self.calc_coverage = calc_coverage
 
+    # pylint: disable=R0913
     def _update_region(self, region_id, ostart, oend, rev_strand, cstart, cend, increment=1):
         overlap_id = ((ostart, oend), rev_strand) if self.strand_specific else (ostart, oend)
         if self.calc_coverage:
@@ -27,6 +28,7 @@ class RegionCounter(AlignmentCounter):
         else:
             self.setdefault(region_id, Counter())[overlap_id] += increment
 
+    # pylint: disable=W0613
     def update_counts(self, count_stream, pair=False):
         """Update counter with alignments against the same reference.
 

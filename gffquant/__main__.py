@@ -43,7 +43,7 @@ def main():
             exist_ok=True, parents=True
         )
 
-    if args.mode == "gene" or args.mode == "genes":
+    if args.mode in ("gene", "genes"):
 
         fq = GeneQuantifier(
             db=args.annotation_db,

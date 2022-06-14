@@ -88,7 +88,7 @@ def gather_category_and_feature_data(args, db_session=None):
     return code_map, n
 
 
-def process_annotations(input_data, db_session, code_map, nseqs, emapper_version):
+def process_annotations(input_data, db_session, code_map, nseqs):
     logging.info("Second pass: Encoding sequence annotations")
 
     gz_magic = b"\x1f\x8b\x08"
@@ -141,12 +141,7 @@ def main():
     ap.add_argument("--code_map", type=str)
     ap.add_argument("--nseqs", type=int)
     ap.add_argument("--extract_map_only", action="store_true")
-    ap.add_argument(
-        "--emapper_version",
-        type=str,
-        default="v2",
-        choices=("v1", "v2"),
-    )
+
     args = ap.parse_args()
 
     engine, db_session = get_database(args.db_path) if not args.extract_map_only else (None, None)
@@ -164,7 +159,7 @@ def main():
     if args.extract_map_only:
         return
 
-    process_annotations(args.input_data, db_session, code_map, nseqs, args.emapper_version)
+    process_annotations(args.input_data, db_session, code_map, nseqs)
 
     # https://www.sqlite.org/wal.html
     # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections
