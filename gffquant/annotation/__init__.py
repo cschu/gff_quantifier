@@ -2,4 +2,5 @@
 
 """ module docstring """
 
-from .count_annotator import DbCountAnnotator, CtCountAnnotator
+from .count_annotator import GeneCountAnnotator, RegionCountAnnotator
+from .count_writer import CountWriter

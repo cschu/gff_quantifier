@@ -1,4 +1,6 @@
 # pylint: disable=R0914,C0103
+# pylint: disable=duplicate-code
+
 """ module docstring """
 
 import argparse

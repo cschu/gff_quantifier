@@ -4,8 +4,10 @@
 
 import gzip
 
+import numpy as np
 
-class CountDumper:
+
+class CountWriter:
     COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
 
     def __init__(self, prefix, has_ambig_counts=False, strand_specific=False):
@@ -15,21 +17,21 @@ class CountDumper:
 
     def get_header(self):
         header = []
-        header += (f"uniq_{element}" for element in CountDumper.COUNT_HEADER_ELEMENTS)
+        header += (f"uniq_{element}" for element in CountWriter.COUNT_HEADER_ELEMENTS)
         if self.has_ambig_counts:
             header += (
-                f"combined_{element}" for element in CountDumper.COUNT_HEADER_ELEMENTS
+                f"combined_{element}" for element in CountWriter.COUNT_HEADER_ELEMENTS
             )
         if self.strand_specific:
             for strand in ("ss", "as"):
                 header += (
                     f"uniq_{element}_{strand}"
-                    for element in CountDumper.COUNT_HEADER_ELEMENTS
+                    for element in CountWriter.COUNT_HEADER_ELEMENTS
                 )
                 if self.has_ambig_counts:
                     header += (
                         f"combined_{element}_{strand}"
-                        for element in CountDumper.COUNT_HEADER_ELEMENTS
+                        for element in CountWriter.COUNT_HEADER_ELEMENTS
                     )
         return header
 
@@ -63,7 +65,7 @@ class CountDumper:
                 row += (row[-1] * ambig_scaling_factor,)
         return row  # + [scaling_factor, ambig_scaling_factor]
 
-    def dump_feature_counts(self, db, unannotated_reads, featcounts):
+    def write_feature_counts(self, db, unannotated_reads, featcounts):
         for category_id, counts in sorted(featcounts.items()):
             scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
                 category_id
@@ -88,7 +90,7 @@ class CountDumper:
                         file=feat_out,
                     )
 
-    def dump_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
+    def write_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
         print("SCALING_FACTORS", uniq_scaling_factor, ambig_scaling_factor)
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
@@ -101,3 +103,21 @@ class CountDumper:
                     ambig_scaling_factor=ambig_scaling_factor
                 )
                 print(gene, *(f"{c:.5f}" for c in out_row), flush=True, sep="\t", file=gene_out)
+
+    def write_coverage(self, db, coverage_counts):
+        d = {}
+
+        for cov_data in coverage_counts.values():
+            n_features = sum(len(features) for _, features in cov_data["annotation"])
+            for category, features in cov_data["annotation"]:
+                for feature in features:
+                    d.setdefault(category, {}).setdefault(feature, []).append(
+                        cov_data["coverage"].mean() / n_features
+                    )
+
+        for category_id, features in d.items():
+            category = db.query_category(category_id).name
+            with gzip.open(f"{self.out_prefix}.{category}.coverage.txt.gz", "wt") as feat_out:
+                for feature_id, feature_counts in features.items():
+                    feature = db.query_feature(feature_id).name
+                    print(category, feature, np.mean(feature_counts), sep="\t", file=feat_out)

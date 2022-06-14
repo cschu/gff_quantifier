@@ -2,5 +2,6 @@
 
 """ module docstring """
 
-from .ambig_aln import AmbiguousAlignmentRecordKeeper, AmbiguousAlignmentGroup
-from .pe_cache import PairedEndAlignmentCache
+from .aln_group import AlignmentGroup
+from .pysam_alignment_processor import AlignmentProcessor
+from .bamreader import SamFlags

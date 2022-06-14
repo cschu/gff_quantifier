@@ -1,8 +1,28 @@
-# pylint: disable=C0103
+# pylint: disable=C0103,W0105
 
 """ This module contains code for transforming gene counts to feature counts. """
 
+from itertools import chain
+
 import numpy as np
+
+
+"""
+normalizeCounts nmethod counts sizes
+	| nmethod `elem` [NMScaled, NMFpkm] = do
+		-- count vectors always include a -1 at this point (it is
+		-- ignored in output if the user does not request it, but is
+		-- always computed). Thus, we compute the sum without it and do
+		-- not normalize it later:
+		let totalCounts v = withVector v (VU.sum . VU.tail)
+		initial <- totalCounts counts
+		normalizeCounts NMNormed counts sizes
+		afternorm <- totalCounts counts
+		let factor
+				| nmethod == NMScaled = initial / afternorm
+				| otherwise = 1.0e9 / initial --- 1e6 [million fragments] * 1e3 [kilo basepairs] = 1e9
+		liftIO $ forM_ [1.. VUM.length counts - 1] (VUM.unsafeModify counts (* factor))
+"""
 
 
 class CountAnnotator(dict):
@@ -95,30 +115,23 @@ class CountAnnotator(dict):
                 total_ambi, total_ambi_normed, self.scaling_factors[category]
             )
 
-    def compute_count_vector(self, count_manager, rid, length, antisense_region=False):
+    # pylint: disable=R0913
+    def compute_count_vector(
+        self,
+        uniq_counts,
+        ambig_counts,
+        length,
+        strand_specific=None,
+        region_counts=False
+    ):
         """Computes a count vector for a region."""
         # we have either 4 bins (unstranded) or 12 (strand-specific)
         # UNSTRANDED = {uniq,ambig} x {raw,normalised}
         # STRANDED = UNSTRANDED x {all,sense/plus,antisense/minus}
         counts = np.zeros(self.bins)
 
-        # not sure if this is still needed
-        # use_region_counts = isinstance(self, CtCountAnnotator)
-
-        uniq_counts, ambig_counts = count_manager.get_counts(
-            rid, region_counts=False, strand_specific=self.strand_specific
-        )
-
-        if self.strand_specific:
-            # if the region is antisense, 'sense-counts' (relative to the) region come from the
-            # negative strand and 'antisense-counts' from the positive strand
-            # vice-versa for a sense-region
-            ss_counts, as_counts = (
-                (count_manager.MINUS_STRAND, count_manager.PLUS_STRAND)
-                if antisense_region
-                else (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
-            )
-
+        if strand_specific:
+            ss_counts, as_counts = strand_specific
             # counts[4:12] are strand-specific values
             # uniq_raw, uniq_norm, combined_raw, combined_norm
             counts[4:8] = uniq_counts[ss_counts]
@@ -129,22 +142,29 @@ class CountAnnotator(dict):
 
         # counts[0:4] are unstranded
         # uniq_raw, uniq_norm, combined_raw, combined_norm
-        counts[0:4] = sum(uniq_counts)
+        if region_counts:
+            counts[0:4] = sum(x[2] for x in chain(*uniq_counts) if x is not None)
+        else:
+            counts[0:4] = sum(uniq_counts)
         # add the ambig counts to combined_raw, combined_norm
-        counts[2:4] += sum(ambig_counts)
+        if region_counts:
+            counts += sum(x[2] for x in chain(*ambig_counts) if x is not None)
+        else:
+            counts[2:4] += sum(ambig_counts)
         # all odd elements are length-normalised
         counts[1::2] /= float(length)
 
         return counts
 
 
-class CtCountAnnotator(CountAnnotator):
+class RegionCountAnnotator(CountAnnotator):
     """ CountAnnotator subclass for contig/region-based counting. """
 
     def __init__(self, strand_specific):
         CountAnnotator.__init__(self, strand_specific)
 
-    def annotate(self, bam, db, count_manager):
+    # pylint: disable=R0914
+    def annotate(self, bam, db, count_manager, coverage_counter=None):
         """
         Annotate a set of region counts via db-lookup.
         input:
@@ -156,38 +176,68 @@ class CtCountAnnotator(CountAnnotator):
             count_manager.ambig_regioncounts
         ):
             ref = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)[0]
-            for start, end, rev_strand in count_manager.get_regions(rid):
+            print(rid, ref)
+
+            for region in count_manager.get_regions(rid):
+                if self.strand_specific:
+                    (start, end), rev_strand = region
+                else:
+                    (start, end), rev_strand = region, None
                 # region_annotation is a tuple of key-value pairs:
                 # (strand, func_category1: subcategories, func_category2: subcategories, ...)
                 # the first is the strand, the second is the gene id, the rest are the features
-                region_annotation = db.get_data(ref, start, end)
-                region_strand = region_annotation[0][1]
 
-                on_other_strand = (region_strand == "+" and rev_strand) \
-                    or (region_strand == "-" and not rev_strand)
+                region_annotation = db.query_sequence(ref, start=start, end=end)
+                if region_annotation is not None:
+                    region_strand, feature_id, region_annotation = region_annotation
+                    if feature_id is None:
+                        feature_id = ref
+                    print(start, end, rev_strand, region_annotation)
 
-                antisense_region = self.strand_specific and on_other_strand
+                    on_other_strand = (region_strand == "+" and rev_strand) \
+                        or (region_strand == "-" and not rev_strand)
 
-                counts = self.compute_count_vector(
-                    count_manager,
-                    (rid, start, end),
-                    end - start + 1,
-                    antisense_region=antisense_region,
-                )
+                    antisense_region = self.strand_specific and on_other_strand
 
-                # this is [2:] as the gene id comes in the feature string as described
-                # above! (region key != gene id!!)
-                self.distribute_feature_counts(counts, region_annotation[2:])
+                    uniq_counts, ambig_counts = count_manager.get_counts(
+                        (rid, start, end), region_counts=True, strand_specific=self.strand_specific
+                    )
 
-                gcounts = self.gene_counts.setdefault(
-                    region_annotation[1][1], np.zeros(self.bins)
-                )
-                gcounts += counts
+                    print((rid, start, end), uniq_counts, ambig_counts, sep="\n")
+
+                    if self.strand_specific:
+                        # if the region is antisense, 'sense-counts' (relative to the) region come from the
+                        # negative strand and 'antisense-counts' from the positive strand
+                        # vice-versa for a sense-region
+                        ss_counts, as_counts = (
+                            (count_manager.MINUS_STRAND, count_manager.PLUS_STRAND)
+                            if antisense_region
+                            else (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
+                        )
+
+                    region_length = end - start + 1
+                    counts = self.compute_count_vector(
+                        uniq_counts,
+                        ambig_counts,
+                        region_length,
+                        strand_specific=(ss_counts, as_counts) if self.strand_specific else None,
+                        region_counts=True
+                    )
+
+                    if coverage_counter is not None:
+                        coverage_counter.update_coverage(rid, start, end, uniq_counts, ambig_counts, region_annotation)
+
+                    self.distribute_feature_counts(counts, region_annotation)
+
+                    gcounts = self.gene_counts.setdefault(
+                        feature_id, np.zeros(self.bins)
+                    )
+                    gcounts += counts
 
         self.calculate_scaling_factors()
 
 
-class DbCountAnnotator(CountAnnotator):
+class GeneCountAnnotator(CountAnnotator):
     """ CountAnnotator subclass for gene-based counting. """
 
     def __init__(self, strand_specific):
@@ -208,7 +258,18 @@ class DbCountAnnotator(CountAnnotator):
             ref, region_length = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
             region_annotation = db.query_sequence(ref)
             if region_annotation is not None:
-                counts = self.compute_count_vector(count_manager, rid, region_length)
+                _, _, region_annotation = region_annotation
+
+                uniq_counts, ambig_counts = count_manager.get_counts(
+                    rid, region_counts=False, strand_specific=self.strand_specific
+                )
+
+                counts = self.compute_count_vector(
+                    uniq_counts,
+                    ambig_counts,
+                    region_length,
+                )
+
                 self.distribute_feature_counts(counts, region_annotation)
 
                 gcounts = self.gene_counts.setdefault(ref, np.zeros(self.bins))

@@ -92,6 +92,12 @@ def handle_args(args):
     )
 
     ap.add_argument(
+        "--calc_coverage",
+        action="store_true",
+        help="Perform coverage calculations."
+    )
+
+    ap.add_argument(
         "--min_identity",
         type=float,
         default=0.97,
@@ -103,6 +109,14 @@ def handle_args(args):
         type=int,
         default=45,
         help="Minimum read length [bp] for an alignment to be considered.",
+    )
+
+    ap.add_argument(
+        "--format",
+        type=str,
+        choices=("sam", "bam", "SAM", "BAM"),
+        default="sam",
+        help="Format of the alignment input. Supported: sam, bam."
     )
 
     ap.add_argument(

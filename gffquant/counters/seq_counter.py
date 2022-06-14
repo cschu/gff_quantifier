@@ -24,7 +24,7 @@ class UniqueSeqCounter(AlignmentCounter):
         return sum(self[seq_id] for seq_id in seq_ids)
 
     def update_counts(self, count_stream, increment=1):
-        for counts, aln_count, unaligned in count_stream:
+        for counts, _, _ in count_stream:
 
             for rid, hits in counts.items():
 
@@ -37,8 +37,6 @@ class UniqueSeqCounter(AlignmentCounter):
                 else:
                     self[rid] += len(hits) * increment
 
-            yield counts, aln_count, unaligned
-
 
 class AmbiguousSeqCounter(AlignmentCounter):
     def __init__(self, strand_specific=False, distribution_mode="1overN"):
@@ -50,7 +48,7 @@ class AmbiguousSeqCounter(AlignmentCounter):
         def get_increment(n_aln, distribution_mode):
             return 1 / n_aln if distribution_mode == "1overN" else 1
 
-        for counts, aln_count, unaligned in count_stream:
+        for counts, aln_count, _ in count_stream:
 
             increment = get_increment(aln_count, self.distribution_mode)
 
@@ -64,5 +62,3 @@ class AmbiguousSeqCounter(AlignmentCounter):
 
                 else:
                     self[rid] += len(hits) * increment
-
-            yield counts, aln_count, unaligned

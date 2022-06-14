@@ -14,7 +14,7 @@ class AlignmentGroup:
     def add_alignment(self, aln):
         if self.qname is None:
             self.qname = aln.qname
-        if aln.is_unique():
+        if aln.is_primary():
             self.primaries[aln.is_second()] = aln
         else:
             self.secondaries[aln.is_second()].append(aln)
