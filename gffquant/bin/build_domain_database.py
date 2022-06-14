@@ -1,4 +1,5 @@
 # pylint: disable=R0914,C0103
+# pylint: disable=R0801
 """ module docstring """
 
 import argparse

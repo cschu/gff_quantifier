@@ -40,6 +40,7 @@ class UniqueRegionCounter(RegionCounter):
             self, distribution_mode=distribution_mode, strand_specific=strand_specific, calc_coverage=calc_coverage
         )
 
+    # pylint: disable=W0613
     def update_counts(self, count_stream, pair=False):
         """Update counter with alignments against the same reference.
 
@@ -71,6 +72,7 @@ class AmbiguousRegionCounter(RegionCounter):
             self, distribution_mode=distribution_mode, strand_specific=strand_specific, calc_coverage=calc_coverage
         )
 
+    # pylint: disable=W0613
     def update_counts(self, count_stream, pair=False):
         """Update counter with alignments against the same reference.
 

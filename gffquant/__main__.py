@@ -54,7 +54,7 @@ def main():
         )
 
     fq.process_bamfile(
-        args.bam_file, format=args.format, min_identity=args.min_identity, min_seqlen=args.min_seqlen
+        args.bam_file, aln_format=args.format, min_identity=args.min_identity, min_seqlen=args.min_seqlen
     )
 
 

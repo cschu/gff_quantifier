@@ -3,12 +3,17 @@
 """ module docstring """
 
 import logging
+import time
 
 from gffquant.db.annotation_db import AnnotationDatabaseManager
 from gffquant.counters import CountManager
 from gffquant.annotation import GeneCountAnnotator, RegionCountAnnotator
 from gffquant.count_dumper import CountDumper
 from gffquant.coverage_counter import CoverageCounter
+from gffquant.pysam_support import AlignmentProcessor
+from gffquant.bamreader import SamFlags
+from gffquant.alignment.aln_group import AlignmentGroup
+
 
 
 logger = logging.getLogger(__name__)
@@ -142,3 +147,59 @@ class FeatureQuantifier:
             count_dumper.dump_coverage(self.adm, cov_ctr)
 
         self.adm.clear_caches()
+
+    # pylint: disable=W0613
+    def process_alignment_group(self, aln_group):
+        ...
+
+    def process_alignments(self, min_identity=None, min_seqlen=None):
+        # pylint: disable=R0914
+        t0 = time.time()
+
+        aln_stream = self.alp.get_alignments(
+            min_identity=min_identity,
+            min_seqlen=min_seqlen,
+            allow_multiple=self.allow_ambiguous_alignments(),
+            allow_unique=True,
+            filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
+        )
+
+        aln_count = 0
+        current_aln_group = None
+        for aln_count, aln in enumerate(aln_stream, start=1):
+            if self.ambig_mode == "primary_only" and not aln.is_primary():
+                continue
+            if self.ambig_mode in ("uniq_only", "unique_only") and not aln.is_unique():
+                continue
+
+            if current_aln_group is None or current_aln_group.qname != aln.qname:
+                if current_aln_group is not None:
+                    self.process_alignment_group(current_aln_group)
+                current_aln_group = AlignmentGroup()
+
+            current_aln_group.add_alignment(aln)
+
+        if current_aln_group is not None:
+            self.process_alignment_group(current_aln_group)
+
+        if aln_count == 0:
+            print("Warning: bam file does not contain any alignments.")
+
+        t1 = time.time()
+        print(f"Processed {aln_count} alignments in {t1 - t0:.3f}s.", flush=True)
+
+        return aln_count, 0, None
+
+    def process_bamfile(self, bamfile, aln_format="sam", min_identity=None, min_seqlen=None):
+        """processes one bamfile"""
+
+        self.alp = AlignmentProcessor(bamfile, aln_format)
+
+        aln_count, unannotated_ambig, _ = self.process_alignments(
+            min_identity=min_identity, min_seqlen=min_seqlen
+        )
+
+        if aln_count:
+            self.process_counters(unannotated_ambig)
+
+        print("Finished.", flush=True)
