@@ -121,7 +121,7 @@ class CountAnnotator(dict):
         uniq_counts,
         ambig_counts,
         length,
-        strand_specific=None,
+        strand_specific_counts=None,
         region_counts=False
     ):
         """Computes a count vector for a region."""
@@ -130,8 +130,8 @@ class CountAnnotator(dict):
         # STRANDED = UNSTRANDED x {all,sense/plus,antisense/minus}
         counts = np.zeros(self.bins)
 
-        if strand_specific:
-            ss_counts, as_counts = strand_specific
+        if strand_specific_counts is not None:
+            ss_counts, as_counts = strand_specific_counts
             # counts[4:12] are strand-specific values
             # uniq_raw, uniq_norm, combined_raw, combined_norm
             counts[4:8] = uniq_counts[ss_counts]
@@ -209,18 +209,20 @@ class RegionCountAnnotator(CountAnnotator):
                         # if the region is antisense, 'sense-counts' (relative to the) region come from the
                         # negative strand and 'antisense-counts' from the positive strand
                         # vice-versa for a sense-region
-                        ss_counts, as_counts = (
+                        strand_specific_counts = (
                             (count_manager.MINUS_STRAND, count_manager.PLUS_STRAND)
                             if antisense_region
                             else (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
                         )
+                    else:
+                        strand_specific_counts = None
 
                     region_length = end - start + 1
                     counts = self.compute_count_vector(
                         uniq_counts,
                         ambig_counts,
                         region_length,
-                        strand_specific=(ss_counts, as_counts) if self.strand_specific else None,
+                        strand_specific_counts=strand_specific_counts,
                         region_counts=True
                     )
 
@@ -251,6 +253,10 @@ class GeneCountAnnotator(CountAnnotator):
         - db: GffDatabaseManager holding functional annotation database
         - count_manager: count_data
         """
+        strand_specific_counts = (
+            (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
+            if self.strand_specific else None
+        )
 
         for rid in set(count_manager.uniq_seqcounts).union(
             count_manager.ambig_seqcounts
@@ -268,6 +274,7 @@ class GeneCountAnnotator(CountAnnotator):
                     uniq_counts,
                     ambig_counts,
                     region_length,
+                    strand_specific_counts=strand_specific_counts,
                 )
 
                 self.distribute_feature_counts(counts, region_annotation)
