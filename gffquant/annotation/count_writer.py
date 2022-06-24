@@ -160,7 +160,8 @@ class CountWriter:
                         file=feat_out,
                     )
 
-# pylint: disable=W0105
+
+# pylint: disable=W0105
 """
 domain_cov = dict()
         for pos in set(ref_coverage).union(ambig_ref_coverage):
