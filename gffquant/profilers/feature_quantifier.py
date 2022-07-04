@@ -2,6 +2,7 @@
 
 """ module docstring """
 
+import gzip
 import logging
 import time
 
@@ -194,6 +195,11 @@ class FeatureQuantifier:
         aln_count, unannotated_ambig, _ = self.process_alignments(
             min_identity=min_identity, min_seqlen=min_seqlen
         )
+
+        #print(self.alp.get_alignment_stats_str())
+        with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
+            print(self.alp.get_alignment_stats_str(table=True), file=aln_stats_out)
+
 
         if aln_count:
             self.process_counters(unannotated_ambig)

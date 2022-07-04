@@ -52,7 +52,10 @@ class FeatureCountCollator:
     def collate(self):
         for category, files in self.categories.items():
             print(category, self.column)
-            self._collate_category(category, sorted(files))
+            if category == "aln_stats":
+                self._collate_aln_stats(sorted(files))
+            else:
+                self._collate_category(category, sorted(files))
 
     def _collate_category(self, category, files):
         table_file = f"{self.prefix}.{category}.{self.column}.txt.gz"
@@ -68,7 +71,17 @@ class FeatureCountCollator:
             merged_tab[sample]["unannotated"] = src_tab["uniq_raw"]["unannotated"]
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
 
+    def _collate_aln_stats(self, files):
+        table_file = f"{self.prefix}.aln_stats.txt.gz"
+        index = ("Total", "Passed", "Seqid", "Length")
+        merged_tab = pd.DataFrame(index=index)
+        for sample, fn in files:
+            src_tab = pd.read_csv(fn, sep="\t", index_col=0, header=None)
+            merged_tab = merged_tab.merge(src_tab, left_index=True, right_index=True, how="outer")
+            merged_tab.rename(columns={1: sample}, inplace=True)
+        merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="stat")
 
+        
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("count_dir", type=str)
