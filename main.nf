@@ -2,6 +2,22 @@
 
 nextflow.enable.dsl=2
 
+def classify_sample(sample, files) {
+
+    def meta = [:]
+    meta.is_paired = (files instanceof Collection && files.size() == 2)
+    meta.id = sample
+
+    return [meta, files]
+
+    if (meta.is_paired) {
+        return [meta, files]
+    }
+
+    return [meta, [files]]
+
+}
+
 
 def helpMessage() {
 	log.info """
@@ -54,6 +70,29 @@ if (!params.output_dir) {
 output_dir = "${params.output_dir}/${params.ambig_mode}_${params.mode}"
 
 suffix_pattern = params.file_pattern.replaceAll(/\*\*/, "")
+
+
+process stream_minimap2_gffquant {
+	publishDir "${output_dir}", mode: params.publish_mode
+
+	input:
+	tuple val(sample), path(fastq)
+	path(index)
+	path(db)
+
+	output:
+	tuple val(sample), path("${sample}/*.txt.gz"), emit: results
+
+	script:
+	def gq_params = "-o ${sample.id}/${sample.id} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${params.strand_specific}"
+	def reads = (sample.is_paired) ? "${sample.id}_R1.fastq.gz ${sample.id}_R2.fastq.gz" : "${sample.id}_R1.fastq.gz"
+	def mm_options = "--sam-hit-only -t ${task.cpus} -x sr --secondary=yes -a"
+	"""
+	mkdir -p logs/
+	minimap2 ${mm_options} --split-prefix ${sample.id}_split ${index} ${reads} | gffquant ${gq_params} ${db} - > logs/${sample}.o 2> logs/${sample}.e
+	"""
+	// minimap2 --sam-hit-only -t <threads> -x sr --secondary=yes -a [-o <out.sam>] --split-prefix <prefix> <mmi> <reads>
+}
 
 
 process run_gffquant {
@@ -112,7 +151,20 @@ workflow {
 
 	run_gffquant(bam_ch, params.db)
 
+	fastq_ch = Channel
+		.fromPath(params.input_dir + "/" + "**.{fastq.gz,fq.gz}")
+		.map { file ->
+			def sample = file.name.replaceAll(/.(fastq|fq)(.gz)?$/, "")
+			sample = sample.replaceAll(/_R?[12]$/, "")
+			return tuple(sample, file)
+		}
+		.groupTuple(sort: true)
+		.map { classify_sample(it[0], it[1]) }
+
+	stream_minimap2_gffquant(fastq_ch, params.minimap2_index, params.db)
+
 	feature_count_ch = run_gffquant.out.results //.collect()
+		.concat(stream_minimap2_gffquant.out.results)
 		.map { sample, files -> return files }
 		.flatten()
 		.filter { !it.name.endsWith("gene_counts.txt") }
