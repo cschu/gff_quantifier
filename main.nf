@@ -89,7 +89,10 @@ process stream_minimap2_gffquant {
 	def mm_options = "--sam-hit-only -t ${task.cpus} -x sr --secondary=yes -a"
 	"""
 	mkdir -p logs/
-	minimap2 ${mm_options} --split-prefix ${sample.id}_split ${index} ${reads} | gffquant ${gq_params} ${db} - > logs/${sample}.o 2> logs/${sample}.e
+	echo 'Copying database...'
+	cp -v ${db} gq_db.sqlite3
+	minimap2 ${mm_options} --split-prefix ${sample.id}_split ${index} ${reads} | gffquant ${gq_params} gq_db.sqlite3 - > logs/${sample}.o 2> logs/${sample}.e
+	rm -v gq_db.sqlite3
 	"""
 	// minimap2 --sam-hit-only -t <threads> -x sr --secondary=yes -a [-o <out.sam>] --split-prefix <prefix> <mmi> <reads>
 }
@@ -110,12 +113,18 @@ process run_gffquant {
 	if (params.do_name_sort) {
 		"""
 		mkdir -p logs/
-		samtools collate -O ${bam} -@ ${task.cpus} | gffquant ${gq_params} ${db} - > logs/${sample}.o 2> logs/${sample}.e
+		echo 'Copying database...'
+		cp -v ${db} gq_db.sqlite3
+		samtools collate -O ${bam} -@ ${task.cpus} | gffquant ${gq_params} gq_db.sqlite3 - > logs/${sample}.o 2> logs/${sample}.e
+		rm -v gq_db.sqlite3
 		"""
 	} else {
 		"""
 		mkdir -p logs/
-		gffquant ${gq_params} ${db} ${bam} > logs/${sample}.o 2> logs/${sample}.e
+		echo 'Copying database...'
+		cp -v ${db} gq_db.sqlite3
+		gffquant ${gq_params} gq_db.sqlite3 ${bam} > logs/${sample}.o 2> logs/${sample}.e
+		rm -v gq_db.sqlite3
 		"""
 	}
 }
@@ -150,6 +159,8 @@ workflow {
 		.groupTuple(sort:true)
 
 	run_gffquant(bam_ch, params.db)
+
+
 
 	fastq_ch = Channel
 		.fromPath(params.input_dir + "/" + "**.{fastq.gz,fq.gz}")
