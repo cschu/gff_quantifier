@@ -20,6 +20,8 @@ class RegionQuantifier(FeatureQuantifier):
         ambig_mode="uniq_only",
         strand_specific=False,
         calc_coverage=False,
+        paired_end_count=1,
+        unmarked_orphans=False,
     ):
         FeatureQuantifier.__init__(
             self,
@@ -29,6 +31,8 @@ class RegionQuantifier(FeatureQuantifier):
             strand_specific=strand_specific,
             reference_type="genome",
             calc_coverage=calc_coverage,
+            paired_end_count=paired_end_count,
+            unmarked_orphans=unmarked_orphans,
         )
         self.adm = AnnotationDatabaseManager(self.db)
 
@@ -58,7 +62,8 @@ class RegionQuantifier(FeatureQuantifier):
                     (hit, 0 if unaligned else ambig_counts[aln.is_second()], unaligned)
                     for aln, hit, unaligned in all_hits
                 ),
-                ambiguous_counts=True
+                ambiguous_counts=True,
+                pair=aln_group.is_paired()
             )
         elif aln_group.is_aligned_pair():
             current_ref = self.alp.get_reference(aln_group.primaries[0].rid)[0]
@@ -79,5 +84,6 @@ class RegionQuantifier(FeatureQuantifier):
                     current_ref, (aln.shorten(),)
                 )
                 self.count_manager.update_counts(
-                    hits, ambiguous_counts=not aln.is_unique()
+                    hits, ambiguous_counts=not aln.is_unique(),
+                    pair=aln_group.is_paired()
                 )

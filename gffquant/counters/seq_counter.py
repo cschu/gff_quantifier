@@ -44,21 +44,19 @@ class AmbiguousSeqCounter(AlignmentCounter):
             self, distribution_mode=distribution_mode, strand_specific=strand_specific
         )
 
-    def update_counts(self, count_stream):
-        def get_increment(n_aln, distribution_mode):
-            return 1 / n_aln if distribution_mode == "1overN" else 1
+    def update_counts(self, count_stream, increment=1):
 
         for counts, aln_count, _ in count_stream:
 
-            increment = get_increment(aln_count, self.distribution_mode)
+            inc = self.get_increment(aln_count, increment)
 
             for rid, hits in counts.items():
 
                 if self.strand_specific:
                     strands = tuple(int(strand) for _, _, strand, _, _ in hits)
 
-                    self[(rid, True)] += sum(strands) * increment
-                    self[(rid, False)] += (len(hits) - sum(strands)) * increment
+                    self[(rid, True)] += sum(strands) * inc
+                    self[(rid, False)] += (len(hits) - sum(strands)) * inc
 
                 else:
-                    self[rid] += len(hits) * increment
+                    self[rid] += len(hits) * inc

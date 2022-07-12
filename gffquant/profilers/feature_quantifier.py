@@ -28,6 +28,8 @@ class FeatureQuantifier:
         reference_type="genome",
         strand_specific=False,
         calc_coverage=False,
+        paired_end_count=1,
+        unmarked_orphans=False,
     ):
         self.db = db
         self.adm = None
@@ -37,6 +39,8 @@ class FeatureQuantifier:
             region_counts=reference_type in ("genome", "domain"),
             strand_specific=strand_specific and reference_type not in ("genome", "domain"),
             calc_coverage=calc_coverage,
+            paired_end_count=paired_end_count,
+            unmarked_orphans=unmarked_orphans,
         )
         self.out_prefix = out_prefix
         self.ambig_mode = ambig_mode
@@ -196,10 +200,8 @@ class FeatureQuantifier:
             min_identity=min_identity, min_seqlen=min_seqlen
         )
 
-        #print(self.alp.get_alignment_stats_str())
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
             print(self.alp.get_alignment_stats_str(table=True), file=aln_stats_out)
-
 
         if aln_count:
             self.process_counters(unannotated_ambig)

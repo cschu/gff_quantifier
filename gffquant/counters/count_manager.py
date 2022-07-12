@@ -6,6 +6,7 @@ from .region_counter import UniqueRegionCounter, AmbiguousRegionCounter
 from .seq_counter import UniqueSeqCounter, AmbiguousSeqCounter
 
 
+# pylint: disable=R0902
 class CountManager:
     # this may be counter-intuitive
     # but originates from the samflags 0x10, 0x20,
@@ -14,12 +15,29 @@ class CountManager:
     PLUS_STRAND, MINUS_STRAND = False, True
 
     def __init__(
-        # pylint: disable=W0613
-        self, distribution_mode="1overN", region_counts=True, strand_specific=False, calc_coverage=False
+        # pylint: disable=W0613,R0913
+        self,
+        distribution_mode="1overN",
+        region_counts=True,
+        strand_specific=False,
+        calc_coverage=False,
+        paired_end_count=1,
+        unmarked_orphans=False,
     ):
         self.distribution_mode = distribution_mode
         self.strand_specific = strand_specific
         self.calc_coverage = calc_coverage
+        # precalculate count-increment for single-end, paired-end reads
+        # for mixed input (i.e., paired-end data with single-end reads = orphans from preprocessing),
+        # properly attribute fractional counts to the orphans
+        # Increments:
+        # alignment from single end library read: 1
+        # alignment from paired-end library read: 0.5 / mate (pe_count = 1) or 1 / mate (pe_count = 2)
+        # alignment from paired-end library orphan: 0.5 (pe_count = 1) or 1 (pe_count = 2)
+        self.increments = [
+            (paired_end_count / 2.0) if unmarked_orphans else 1.0,
+            paired_end_count / 2.0
+        ]
 
         self.uniq_seqcounts, self.ambig_seqcounts = None, None
         self.uniq_regioncounts, self.ambig_regioncounts = None, None
@@ -48,10 +66,20 @@ class CountManager:
             if not ambiguous_counts
             else (self.ambig_seqcounts, self.ambig_regioncounts)
         )
+
+        increment = self.increments[pair]
+
+        # increment = 1 if (not pair or self.paired_end_count == 2) else 0.5
+
+        # if pair:
+        #     increment = 1 if self.paired_end_count == 2 else 0.5
+        # else:
+        #     increment = 0.5 if self.unmarked_orphans else 1
+
         if seq_counter is not None:
-            seq_counter.update_counts(count_stream)
+            seq_counter.update_counts(count_stream, increment=increment)
         elif region_counter is not None:
-            region_counter.update_counts(count_stream, pair=pair)
+            region_counter.update_counts(count_stream, increment=increment)
 
     def dump_raw_counters(self, prefix, bam):
         if self.uniq_seqcounts is not None:

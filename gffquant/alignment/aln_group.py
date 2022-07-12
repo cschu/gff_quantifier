@@ -45,3 +45,6 @@ class AlignmentGroup:
             return aln1.rid == aln2.rid and aln1.is_paired() and aln2.is_paired()
         except AttributeError:
             return False
+
+    def is_paired(self):
+        return any(aln.is_paired() for aln in self.get_alignments())

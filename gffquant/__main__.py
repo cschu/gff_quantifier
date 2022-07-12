@@ -40,6 +40,8 @@ def main():
             out_prefix=args.out_prefix,
             ambig_mode=args.ambig_mode,
             strand_specific=args.strand_specific,
+            paired_end_count=args.paired_end_count,
+            unmarked_orphans=args.unmarked_orphans,
         )
 
     else:
@@ -50,6 +52,8 @@ def main():
             ambig_mode=args.ambig_mode,
             strand_specific=args.strand_specific,
             calc_coverage=args.calc_coverage,
+            paired_end_count=args.paired_end_count,
+            unmarked_orphans=args.unmarked_orphans_present,
         )
 
     fq.process_bamfile(

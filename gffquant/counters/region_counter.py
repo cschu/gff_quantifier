@@ -41,7 +41,7 @@ class UniqueRegionCounter(RegionCounter):
         )
 
     # pylint: disable=W0613
-    def update_counts(self, count_stream, pair=False):
+    def update_counts(self, count_stream, increment=1, pair=False):
         """Update counter with alignments against the same reference.
 
         input: count_stream
@@ -55,7 +55,7 @@ class UniqueRegionCounter(RegionCounter):
                 for rid, hits in counts.items():
                     for hit in hits:
                         self._update_region(
-                            rid, *hit, increment=1
+                            rid, *hit, increment=increment
                         )
             else:
                 self.unannotated_reads += unaligned
@@ -73,7 +73,7 @@ class AmbiguousRegionCounter(RegionCounter):
         )
 
     # pylint: disable=W0613
-    def update_counts(self, count_stream, pair=False):
+    def update_counts(self, count_stream, pair=False, increment=1):
         """Update counter with alignments against the same reference.
 
         input: count_stream
@@ -84,13 +84,11 @@ class AmbiguousRegionCounter(RegionCounter):
         """
         for counts, aln_count, unaligned in count_stream:
             if aln_count:
-                increment = (
-                    (1 / aln_count) if self.distribution_mode == "1overN" else 1
-                )  # 1overN = lavern. Maya <3
+                inc = self.get_increment(aln_count, increment)
                 for rid, hits in counts.items():
                     for hit in hits:
                         self._update_region(
-                            rid, *hit, increment=increment
+                            rid, *hit, increment=inc
                         )
             else:
                 self.unannotated_reads += unaligned

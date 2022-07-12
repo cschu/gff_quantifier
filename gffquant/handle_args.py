@@ -32,8 +32,8 @@ def handle_args(args):
         type=str,
         help=textwrap.dedent(
             """\
-			Path to a text file containing the reference annotation.
-			The required type of file is determined by the --mode argument (gff3 or tsv)."""
+            Path to an sqlite3 database containing the reference annotation.
+			"""
         ),
     )
     ap.add_argument(
@@ -41,9 +41,10 @@ def handle_args(args):
         type=str,
         help=textwrap.dedent(
             """\
-			Path to a position-sorted bam file. Ambiguous alignments need to be flagged as secondary
-			alignments with the same read id as their primary alignment.
-			(e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0."""
+            Path to a name-sorted sam or bam (s. --format) file. Ambiguous alignments need to be flagged as secondary
+            alignments with the same read id as their primary alignment.
+            (e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0.
+            Input from STDOUT can be used with '-'."""
         ),
     )
     ap.add_argument(
@@ -54,12 +55,10 @@ def handle_args(args):
         choices=("genome", "genes", "gene", "domain"),
         help=textwrap.dedent(
             """\
-			Run mode:"
-			 - 'genome' counts reads aligned against contigs, which are annotated with a gff3 file.
-				The gff3 needs to have been indexed with gffindex prior to the run.
-			 - 'gene' counts reads aligned against gene sequences, which are annotated with a tab-separated file.
-			 - 'genes' is an alias for the 'gene' mode
-			 - 'domain' counts reads against domain annotations within gene sequences, which are annotated with a bed4 file."""
+            Run mode:"
+             - 'genome' counts reads aligned against contigs.
+             - 'gene' (alias 'genes') counts reads aligned against gene sequences.
+             - 'domain' counts reads against domain annotations within gene sequences."""
         ),
     )
     ap.add_argument(
@@ -76,11 +75,11 @@ def handle_args(args):
         default="unique_only",
         help=textwrap.dedent(
             """\
-			Setting how ambiguous alignments should be treated. This setting mimics NGLess' behaviour.
-			- 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). This is the default setting.
-			- 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to.)
-			- 'primary_only' takes the unique alignments and the primary and alignment of each ambiguous read group.
-			- '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to."""
+            Determines how ambiguous alignments should be treated. This setting mimics NGLess' behaviour.
+            - 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). This is the default setting.
+            - 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to.)
+            - 'primary_only' takes the unique alignments and the primary and alignment of each ambiguous read group.
+            - '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to."""
         ),
     )
 
@@ -116,7 +115,22 @@ def handle_args(args):
         type=str,
         choices=("sam", "bam", "SAM", "BAM"),
         default="sam",
-        help="Format of the alignment input. Supported: sam, bam."
+        help="Format of the alignment input. Supported: sam, bam.",
+    )
+
+    ap.add_argument(
+        "--paired_end_count",
+        type=int,
+        choices=(1, 2),
+        default=1,
+        help="Paired-end count contribution: 0.5 / mate (1) or 1 / mate (2) [1]",
+    )
+
+    # orphan reads will not have flag 0x1 set
+    ap.add_argument(
+        "--unmarked_orphans",
+        action="store_true",
+        help="Ensure that alignments from unmarked orphan reads (from preprocessing) are properly accounted for.",
     )
 
     ap.add_argument(

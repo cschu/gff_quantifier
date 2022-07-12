@@ -19,6 +19,8 @@ class GeneQuantifier(FeatureQuantifier):
         ambig_mode="uniq_only",
         strand_specific=False,
         calc_coverage=False,
+        paired_end_count=1,
+        unmarked_orphans=False,
     ):
         FeatureQuantifier.__init__(
             self,
@@ -28,6 +30,8 @@ class GeneQuantifier(FeatureQuantifier):
             strand_specific=strand_specific,
             reference_type="gene",
             calc_coverage=calc_coverage and False,  # TODO: figure out, but nobody wants it anyway
+            paired_end_count=paired_end_count,
+            unmarked_orphans=unmarked_orphans,
         )
 
     def process_alignment_group(self, aln_group):
@@ -42,7 +46,7 @@ class GeneQuantifier(FeatureQuantifier):
                         current_ref, (aln.shorten(),), aln_count=ambig_count
                     )
                     self.count_manager.update_counts(
-                        hits, ambiguous_counts=True
+                        hits, ambiguous_counts=True, pair=aln_group.is_paired()
                     )
         elif aln_group.is_aligned_pair():
             current_ref = self.alp.get_reference(aln_group.primaries[0].rid)[0]
@@ -54,7 +58,7 @@ class GeneQuantifier(FeatureQuantifier):
                 )
             )
             self.count_manager.update_counts(
-                hits, ambiguous_counts=False
+                hits, ambiguous_counts=False, pair=True
             )
         else:
             for aln in aln_group.get_alignments():
@@ -63,5 +67,5 @@ class GeneQuantifier(FeatureQuantifier):
                     current_ref, (aln.shorten(),)
                 )
                 self.count_manager.update_counts(
-                    hits, ambiguous_counts=not aln.is_unique()
+                    hits, ambiguous_counts=not aln.is_unique(), pair=aln_group.is_paired()
                 )

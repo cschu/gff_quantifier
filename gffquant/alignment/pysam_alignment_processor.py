@@ -9,6 +9,7 @@ class AlignmentProcessor:
     PASS_FILTER = 0
     SEQID_FILTERED = 1
     LENGTH_FILTERED = 2
+
     def __init__(self, aln_source="-", aln_type="bam"):
         aln_type = aln_type.lower()
         assert aln_type in ("bam", "sam")
@@ -25,6 +26,7 @@ class AlignmentProcessor:
         return self.stat_counter
 
     def get_alignment_stats_str(self, table=True):
+        # pylint: disable=R1705
         if table:
             return "\n".join(
                 "\t".join(s)
@@ -34,9 +36,12 @@ class AlignmentProcessor:
                 )
             )
         else:
-            return f"Total:{sum(self.stat_counter)} Passed filters: {self.stat_counter[0]} Filtered(seqid): {self.stat_counter[1]} Filtered(length): {self.stat_counter[2]}"
+            return f"Total:{sum(self.stat_counter)} " + \
+                f"Passed filters: {self.stat_counter[0]} " + \
+                f"Filtered(seqid): {self.stat_counter[1]} " + \
+                f"Filtered(length): {self.stat_counter[2]}"
 
-    # pylint: disable=R0913
+    # pylint: disable=R0913,W0613
     def get_alignments(
         self,
         min_identity=0.97,

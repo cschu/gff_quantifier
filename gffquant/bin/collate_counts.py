@@ -81,7 +81,7 @@ class FeatureCountCollator:
             merged_tab.rename(columns={1: sample}, inplace=True)
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="stat")
 
-        
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("count_dir", type=str)

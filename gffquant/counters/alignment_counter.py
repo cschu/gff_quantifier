@@ -19,6 +19,10 @@ class AlignmentCounter(Counter):
         scaled = normalised * scaling_factor
         return counts, normalised, scaled
 
+    def get_increment(self, n_aln, increment):
+        # 1overN = lavern. Maya <3
+        return (increment / n_aln) if self.distribution_mode == "1overN" else increment
+
     def __init__(self, distribution_mode="uniq_only", strand_specific=False):
         Counter.__init__(self)
         self.distribution_mode = distribution_mode
