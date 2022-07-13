@@ -53,7 +53,7 @@ def main():
             strand_specific=args.strand_specific,
             calc_coverage=args.calc_coverage,
             paired_end_count=args.paired_end_count,
-            unmarked_orphans=args.unmarked_orphans_present,
+            unmarked_orphans=args.unmarked_orphans,
         )
 
     fq.process_bamfile(
