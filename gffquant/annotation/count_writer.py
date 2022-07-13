@@ -108,6 +108,12 @@ class CountWriter:
     def write_coverage(self, db, coverage_counts):
         uniq_cov, combined_cov = {}, {}
         uniq_depth, combined_depth = {}, {}
+        uniq_depth_raw, combined_depth_raw = {}, {}
+        counts = (
+            uniq_cov, combined_cov,
+            uniq_depth_raw, combined_depth_raw,
+            uniq_depth, combined_depth
+        )
 
         all_categories, all_features = set(), set()
         for cov_data in coverage_counts.values():
@@ -121,6 +127,12 @@ class CountWriter:
                     )
                     combined_depth.setdefault(category, {}).setdefault(feature, []).append(
                         cov_data["combined_coverage"].mean() / n_features
+                    )
+                    uniq_depth_raw.setdefault(category, {}).setdefault(feature, []).append(
+                        cov_data["uniq_coverage"].sum() / n_features
+                    )
+                    combined_depth_raw.setdefault(category, {}).setdefault(feature, []).append(
+                        cov_data["combined_coverage"].sum() / n_features
                     )
                     uniq_cov.setdefault(category, {}).setdefault(feature, []).append(
                         (cov_data["uniq_coverage"] > 0).mean()
@@ -137,25 +149,30 @@ class CountWriter:
                     "feature",
                     "coverage_unique",
                     "coverage_combined",
+                    "depth_raw_unique",
+                    "depth_raw_combined",
                     "depth_unique",
                     "depth_combined",
+
                     sep="\t",
                     file=feat_out,
                 )
                 for feature_id in sorted(all_features):
                     feature = db.query_feature(feature_id).name
-                    uc, cc, ud, cd = [
+                    uc, cc, urd, crd, ud, cd = [
                         d.get(category_id, {}).get(feature_id)
-                        for d in (uniq_cov, combined_cov, uniq_depth, combined_depth)
+                        for d in counts
                     ]
 
                     print(
                         category,
                         feature,
-                        np.mean(uc) if uc is not None else "NA",
-                        np.mean(cc) if cc is not None else "NA",
-                        np.mean(ud) if ud is not None else "NA",
-                        np.mean(cd) if cd is not None else "NA",
+                        np.sum(uc) if uc is not None else "NA",
+                        np.sum(cc) if cc is not None else "NA",
+                        np.sum(urd) if ud is not None else "NA",
+                        np.sum(crd) if cd is not None else "NA",
+                        np.sum(ud) if ud is not None else "NA",
+                        np.sum(cd) if cd is not None else "NA",
                         sep="\t",
                         file=feat_out,
                     )

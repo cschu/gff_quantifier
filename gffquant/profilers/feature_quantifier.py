@@ -145,6 +145,7 @@ class FeatureQuantifier:
 
         if self.calc_coverage:
             print(*cov_ctr.items(), sep="\n")
+            cov_ctr.dump(self.out_prefix)
             count_writer.write_coverage(self.adm, cov_ctr)
 
         self.adm.clear_caches()

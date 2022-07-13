@@ -1,5 +1,7 @@
 """ module docstring """
 
+import gzip
+
 from itertools import chain
 
 import numpy as np
@@ -26,3 +28,17 @@ class CoverageCounter(dict):
             cov["combined_coverage"][rstart:rend] += rcount
         for rstart, rend, rcount in chain(*ambig_counts):
             cov["combined_coverage"][rstart:rend] += rcount
+
+    def dump(self, prefix):
+        with gzip.open(f"{prefix}.{self.__class__.__name__}.txt.gz", "wt") as _out:
+            # pylint: disable=C0103
+            for k, v in self.items():
+                # ref, reflen = bam.get_reference(k[0] if isinstance(k, tuple) else k)
+                # print(k, ref, reflen, v, sep="\t", file=_out)
+                print(*k, ":", file=_out)
+                # print(*v.items(), sep="\n", file=_out)
+                print(
+                    v["annotation"],
+                    v["uniq_coverage"].mean() if v["uniq_coverage"] is not None else "NA",
+                    v["combined_coverage"].mean() if v["combined_coverage"] is not None else "NA",
+                    file=_out)
