@@ -20,8 +20,8 @@ def main():
 
     args = handle_args(sys.argv[1:])
 
-    print("Version:", __version__)
-    print("Command:", os.path.basename(sys.argv[0]), *sys.argv[1:])
+    logger.info("Version: %s", __version__)
+    logger.info("Command: %s %s", os.path.basename(sys.argv[0]), " ".join(sys.argv[1:]))
 
     if args.bam_file != "-" and not os.path.exists(args.bam_file):
         raise ValueError("bam file does not exist", args.bam_file)

@@ -2,12 +2,16 @@
 
 """ module docstring """
 
+import logging
+
 from functools import lru_cache
 
 from intervaltree import IntervalTree
 
 from gffquant.db import get_database
 from gffquant.db.models import db
+
+logger = logging.getLogger(__name__)
 
 
 class AnnotationDatabaseManager:
@@ -62,5 +66,5 @@ class AnnotationDatabaseManager:
 
     # pylint: disable=E1120
     def clear_caches(self):
-        print(self.get_interval_tree.cache_info(), flush=True)
+        logger.info("%s", self.get_interval_tree.cache_info())
         self.get_interval_tree.cache_clear()

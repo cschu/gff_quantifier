@@ -144,7 +144,6 @@ class FeatureQuantifier:
         )
 
         if self.calc_coverage:
-            print(*cov_ctr.items(), sep="\n")
             cov_ctr.dump(self.out_prefix)
             count_writer.write_coverage(self.adm, cov_ctr)
 
@@ -185,10 +184,10 @@ class FeatureQuantifier:
             self.process_alignment_group(current_aln_group)
 
         if aln_count == 0:
-            print("Warning: bam file does not contain any alignments.")
+            logger.warn("No alignments present in stream.")
 
         t1 = time.time()
-        print(f"Processed {aln_count} alignments in {t1 - t0:.3f}s.", flush=True)
+        logger.info("Processed %s alignments in %s.", aln_count, f"{t1 - t0:.3f}s")
 
         return aln_count, 0, None
 
@@ -207,4 +206,4 @@ class FeatureQuantifier:
         if aln_count:
             self.process_counters(unannotated_ambig)
 
-        print("Finished.", flush=True)
+        logger.info("Finished.")

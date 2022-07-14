@@ -3,8 +3,12 @@
 """ module docstring """
 
 import gzip
+import logging
 
 import numpy as np
+
+
+logger = logging.getLogger(__name__)
 
 
 class CountWriter:
@@ -71,7 +75,10 @@ class CountWriter:
                 category_id
             ]
             category = db.query_category(category_id).name
-            print("SCALING FACTORS", category, scaling_factor, ambig_scaling_factor)
+            logger.info(
+                "SCALING FACTORS %s %s %s",
+                category, scaling_factor, ambig_scaling_factor
+            )
             with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
                 print("feature", *self.get_header(), sep="\t", file=feat_out)
                 print("unannotated", unannotated_reads, sep="\t", file=feat_out)
@@ -91,12 +98,11 @@ class CountWriter:
                     )
 
     def write_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
-        print("SCALING_FACTORS", uniq_scaling_factor, ambig_scaling_factor)
+        logger.info("SCALING_FACTORS %s %s", uniq_scaling_factor, ambig_scaling_factor)
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
 
             for gene, g_counts in sorted(gene_counts.items()):
-                print(gene, g_counts)
                 out_row = self.compile_output_row(
                     g_counts,
                     scaling_factor=uniq_scaling_factor,

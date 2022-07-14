@@ -2,10 +2,14 @@
 
 """ This module contains code for transforming gene counts to feature counts. """
 
+import logging
+
 from itertools import chain
 
 import numpy as np
 
+
+logger = logging.getLogger(__name__)
 
 """
 normalizeCounts nmethod counts sizes
@@ -61,11 +65,9 @@ class CountAnnotator(dict):
             # add category-counts once for category scaling factor calculation
             total_fcounts = self.feature_count_sums.setdefault(category, np.zeros(4))
             total_fcounts += counts[:4]
-            # print("DFC:", category, self.total_counts, total_fcounts)
 
             for feature in category_counts:
                 self.add_counts(category, feature, counts)
-                # print("DFC:", category, feature, counts)
 
     def add_counts(self, category, feature, counts):
         """ Increments feature counts by input count vector """
@@ -82,8 +84,11 @@ class CountAnnotator(dict):
         def calc_scaling_factor(raw, normed, default=0):
             return (raw / normed) if normed else default
 
-        print("TOTAL COUNTS:", self.total_counts)
         total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_counts
+        logger.info(
+            "TOTAL COUNTS: uraw=%s unorm=%s araw=%s anorm=%s",
+            total_uniq, total_uniq_normed, total_ambi, total_ambi_normed
+        )
 
         self.scaling_factors["total_uniq"] = calc_scaling_factor(
             total_uniq, total_uniq_normed, default_scaling_factor
@@ -110,8 +115,9 @@ class CountAnnotator(dict):
                 )
             )
 
-            print(
-                "SCALING FACTOR", category, total_uniq, total_uniq_normed,
+            logger.info(
+                "Calculating scaling factors for category=%s: uraw=%s unorm=%s araw=%s anorm=%s -> factors=%s",
+                category, total_uniq, total_uniq_normed,
                 total_ambi, total_ambi_normed, self.scaling_factors[category]
             )
 
@@ -176,7 +182,6 @@ class RegionCountAnnotator(CountAnnotator):
             count_manager.ambig_regioncounts
         ):
             ref = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)[0]
-            print(rid, ref)
 
             for region in count_manager.get_regions(rid):
                 if self.strand_specific:
@@ -192,7 +197,6 @@ class RegionCountAnnotator(CountAnnotator):
                     region_strand, feature_id, region_annotation = region_annotation
                     if feature_id is None:
                         feature_id = ref
-                    print(start, end, rev_strand, region_annotation)
 
                     on_other_strand = (region_strand == "+" and rev_strand) \
                         or (region_strand == "-" and not rev_strand)
@@ -202,8 +206,6 @@ class RegionCountAnnotator(CountAnnotator):
                     uniq_counts, ambig_counts = count_manager.get_counts(
                         (rid, start, end), region_counts=True, strand_specific=self.strand_specific
                     )
-
-                    print((rid, start, end), uniq_counts, ambig_counts, sep="\n")
 
                     if self.strand_specific:
                         # if the region is antisense, 'sense-counts' (relative to the) region come from the

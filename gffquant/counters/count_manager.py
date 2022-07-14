@@ -129,9 +129,6 @@ class CountManager:
                     ambig_counter[(rid, CountManager.MINUS_STRAND)],
                 ]
             else:
-                print(uniq_counter)
-                print(ambig_counter)
-
                 uniq_counts, ambig_counts = [uniq_counter[seqid]], [ambig_counter[seqid]]
 
             return uniq_counts, ambig_counts

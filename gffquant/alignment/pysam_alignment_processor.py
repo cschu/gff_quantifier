@@ -93,7 +93,5 @@ class AlignmentProcessor:
                 rname = self.aln_stream.get_reference_name(aln.rid)
                 self.used_refs[aln.rid] = rname, self.aln_stream.get_reference_length(rname)
 
-                print(pysam_aln)
-
                 self.stat_counter[AlignmentProcessor.PASS_FILTER] += 1
                 yield aln
