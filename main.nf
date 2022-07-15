@@ -149,6 +149,8 @@ process collate_feature_counts {
 
 workflow {
 
+	feature_count_ch = Channel.empty()
+
 	bam_ch = Channel
 		.fromPath(params.input_dir + "/" + params.file_pattern)
 		.map { file ->
@@ -159,8 +161,8 @@ workflow {
 		.groupTuple(sort:true)
 
 	run_gffquant(bam_ch, params.db)
-
-
+	feature_count_ch = feature_count_ch
+		.concat(run_gffquant.out.results)
 
 	fastq_ch = Channel
 		.fromPath(params.input_dir + "/" + "**.{fastq.gz,fq.gz}")
@@ -172,10 +174,13 @@ workflow {
 		.groupTuple(sort: true)
 		.map { classify_sample(it[0], it[1]) }
 
-	stream_minimap2_gffquant(fastq_ch, params.minimap2_index, params.db)
+	if (params.minimap2_index) {
+		stream_minimap2_gffquant(fastq_ch, params.minimap2_index, params.db)
+		feature_count_ch = feature_count_ch
+			.concat(stream_minimap2_gffquant.out.results)
+	}
 
-	feature_count_ch = run_gffquant.out.results //.collect()
-		.concat(stream_minimap2_gffquant.out.results)
+	feature_count_ch = feature_count_ch
 		.map { sample, files -> return files }
 		.flatten()
 		.filter { !it.name.endsWith("gene_counts.txt") }
