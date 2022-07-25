@@ -119,15 +119,19 @@ class CountManager:
             uniq_counter, ambig_counter = self.uniq_seqcounts, self.ambig_seqcounts
 
             if strand_specific:
-                rid = seqid[0] if isinstance(seqid, tuple) else seqid
-                uniq_counts = [
-                    uniq_counter[(rid, CountManager.PLUS_STRAND)],
-                    uniq_counter[(rid, CountManager.MINUS_STRAND)],
-                ]
-                ambig_counts = [
-                    ambig_counter[(rid, CountManager.PLUS_STRAND)],
-                    ambig_counter[(rid, CountManager.MINUS_STRAND)],
-                ]
+                uniq_counts, ambig_counts = [0.0, 0.0], [0.0, 0.0]
+                uniq_counts[seqid[1]] = uniq_counter[seqid]
+                ambig_counts[seqid[1]] = ambig_counter[seqid]
+
+                # rid = seqid[0] if isinstance(seqid, tuple) else seqid
+                # uniq_counts = [
+                #     uniq_counter[(rid, CountManager.PLUS_STRAND)],
+                #     uniq_counter[(rid, CountManager.MINUS_STRAND)],
+                # ]
+                # ambig_counts = [
+                #     ambig_counter[(rid, CountManager.PLUS_STRAND)],
+                #     ambig_counter[(rid, CountManager.MINUS_STRAND)],
+                # ]
             else:
                 uniq_counts, ambig_counts = [uniq_counter[seqid]], [ambig_counter[seqid]]
 
