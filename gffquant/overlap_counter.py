@@ -277,7 +277,7 @@ class OverlapCounter(dict):
 				else:
 					self.ambig_seqcounts[rid] += 1 / len(hits)
 			else:
-				start, end, rev_str, cstart, cend = list(regions)[0]
+				start, end, cstart, cend, rev_str = list(regions)[0]
 				key = (rid, rev_str) if self.strand_specific else rid
 				self.ambig_seqcounts[key] += increment
 				# self.update_coverage_intervals(rid, [(start, end)], [(cstart, cend)], ambig_aln=True)
