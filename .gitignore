@@ -5,3 +5,4 @@ dist/
 gffquant.egg-info/
 slurm-*
 gffquant/counters/test.py
+*.pyc
