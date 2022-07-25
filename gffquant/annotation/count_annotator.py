@@ -95,7 +95,7 @@ class CountAnnotator(dict):
         )
 
         self.scaling_factors["total_ambi"] = calc_scaling_factor(
-            total_ambi, total_uniq_normed, default_scaling_factor
+            total_ambi, total_ambi_normed, default_scaling_factor
         )
 
         fc_items = self.feature_count_sums.items()
