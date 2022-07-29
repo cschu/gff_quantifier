@@ -139,8 +139,8 @@ class FeatureQuantifier:
 
         count_writer.write_gene_counts(
             count_annotator.gene_counts,
-            count_annotator.scaling_factors["total_uniq"],
-            count_annotator.scaling_factors["total_ambi"]
+            count_annotator.scaling_factors["total_gene_uniq"],
+            count_annotator.scaling_factors["total_gene_ambi"]
         )
 
         if self.calc_coverage:

@@ -43,6 +43,7 @@ class CountAnnotator(dict):
 
         # [uniq_raw, uniq_normed, combined_raw, combined_normed]
         self.total_counts = np.zeros(4)
+        self.total_gene_counts = np.zeros(4)
         # holds total_counts-like vectors for feature-wise scaling factor calculation
         self.feature_count_sums = {}
         self.scaling_factors = {}
@@ -95,6 +96,20 @@ class CountAnnotator(dict):
         )
 
         self.scaling_factors["total_ambi"] = calc_scaling_factor(
+            total_ambi, total_ambi_normed, default_scaling_factor
+        )
+
+        total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_gene_counts
+        logger.info(
+            "TOTAL GENE COUNTS: uraw=%s unorm=%s araw=%s anorm=%s",
+            total_uniq, total_uniq_normed, total_ambi, total_ambi_normed
+        )
+
+        self.scaling_factors["total_gene_uniq"] = calc_scaling_factor(
+            total_uniq, total_uniq_normed, default_scaling_factor
+        )
+
+        self.scaling_factors["total_gene_ambi"] = calc_scaling_factor(
             total_ambi, total_ambi_normed, default_scaling_factor
         )
 
@@ -237,6 +252,7 @@ class RegionCountAnnotator(CountAnnotator):
                         feature_id, np.zeros(self.bins)
                     )
                     gcounts += counts
+                    self.total_gene_counts += counts[:4]
 
         self.calculate_scaling_factors()
 
@@ -278,6 +294,7 @@ class GeneCountAnnotator(CountAnnotator):
 
             gcounts = self.gene_counts.setdefault(ref, np.zeros(self.bins))
             gcounts += counts
+            self.total_gene_counts += counts[:4]
 
             region_annotation = db.query_sequence(ref)
             if region_annotation is not None:
