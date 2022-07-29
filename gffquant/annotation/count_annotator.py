@@ -264,24 +264,25 @@ class GeneCountAnnotator(CountAnnotator):
             count_manager.ambig_seqcounts
         ):
             ref, region_length = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
+
+            uniq_counts, ambig_counts = count_manager.get_counts(
+                rid, region_counts=False, strand_specific=self.strand_specific
+            )
+
+            counts = self.compute_count_vector(
+                uniq_counts,
+                ambig_counts,
+                region_length,
+                strand_specific_counts=strand_specific_counts,
+            )
+
+            gcounts = self.gene_counts.setdefault(ref, np.zeros(self.bins))
+            gcounts += counts
+
             region_annotation = db.query_sequence(ref)
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
-
-                uniq_counts, ambig_counts = count_manager.get_counts(
-                    rid, region_counts=False, strand_specific=self.strand_specific
-                )
-
-                counts = self.compute_count_vector(
-                    uniq_counts,
-                    ambig_counts,
-                    region_length,
-                    strand_specific_counts=strand_specific_counts,
-                )
-
                 self.distribute_feature_counts(counts, region_annotation)
 
-                gcounts = self.gene_counts.setdefault(ref, np.zeros(self.bins))
-                gcounts += counts
 
         self.calculate_scaling_factors()
