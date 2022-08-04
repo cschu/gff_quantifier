@@ -70,6 +70,8 @@ class CountAnnotator(dict):
             for feature in category_counts:
                 self.add_counts(category, feature, counts)
 
+            self.add_counts(category, f"cat:::{category}", counts)
+
     def add_counts(self, category, feature, counts):
         """ Increments feature counts by input count vector """
         fcounts = self.setdefault(category, {}).setdefault(feature, np.zeros(self.bins))
@@ -300,6 +302,5 @@ class GeneCountAnnotator(CountAnnotator):
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
                 self.distribute_feature_counts(counts, region_annotation)
-
 
         self.calculate_scaling_factors()
