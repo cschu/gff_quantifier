@@ -184,7 +184,7 @@ class FeatureQuantifier:
             self.process_alignment_group(current_aln_group)
 
         if aln_count == 0:
-            logger.warn("No alignments present in stream.")
+            logger.warning("No alignments present in stream.")
 
         t1 = time.time()
         logger.info("Processed %s alignments in %s.", aln_count, f"{t1 - t0:.3f}s")
