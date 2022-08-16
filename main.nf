@@ -110,6 +110,7 @@ process run_gffquant {
 
 	script:
 	def gq_params = "-o ${sample}/${sample} -m ${params.mode} --ambig_mode ${params.ambig_mode} ${params.strand_specific}"
+	gq_params += (params.unmarked_orphans) ? " --unmarked_orphans" : ""
 	if (params.do_name_sort) {
 		"""
 		mkdir -p logs/
