@@ -82,7 +82,25 @@ class CountWriter:
             with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
                 print("feature", *self.get_header(), sep="\t", file=feat_out)
                 print("unannotated", unannotated_reads, sep="\t", file=feat_out)
+
+                cat_counts = counts.get(f"cat:::{category_id}")
+                if cat_counts is not None:
+                    out_row = self.compile_output_row(
+                        cat_counts,
+                        scaling_factor=featcounts.scaling_factors["total_uniq"],
+                        ambig_scaling_factor=featcounts.scaling_factors["total_ambi"],
+                    )
+                    print(
+                        "category",
+                        *(f"{c:.5f}" for c in out_row),
+                        flush=True,
+                        sep="\t",
+                        file=feat_out,
+                    )
+
                 for feature_id, f_counts in sorted(counts.items()):
+                    if feature_id.startswith("cat:::"):
+                        continue
                     feature = db.query_feature(feature_id).name
                     out_row = self.compile_output_row(
                         f_counts,
