@@ -3,6 +3,7 @@
 """ module docstring """
 
 import argparse
+import csv
 import gzip
 import json
 import logging
@@ -51,9 +52,8 @@ def gather_category_and_feature_data(args, db_session=None):
 
     n = 0
     with _open(args.input_data, "rt") as _in:
-        for n, line in enumerate(_in, start=1):
-            line = line.strip().split("\t")
-            cat_d.setdefault("domain", set()).update(line[3].split(","))
+        for row in csv.DictReader(_in):
+            cat_d.setdefault("domain", set()).update(row["family"])
 
     logging.info("    Parsed %s entries.", n)
 
@@ -99,12 +99,13 @@ def process_annotations(input_data, db_session, code_map, nseqs):
 
     d = {}
     with _open(input_data, "rt") as _in:
-        for i, line in enumerate(_in, start=1):
+        for i, row in enumerate(csv.DictReader(_in), start=1):
             if i % 10000 == 0:
                 db_session.commit()
-            line = line.strip().split("\t")
-            gid, start, end, features = line
+            
+            # gid, start, end, features = line
             # features = features.split(",")
+            gid, start, end, features = row["sequenceID"], row["start"], row["end"], row["family"]
 
             d.setdefault((gid, start, end), set()).update(features.split(","))
 
