@@ -53,7 +53,7 @@ def gather_category_and_feature_data(args, db_session=None):
     n = 0
     with _open(args.input_data, "rt") as _in:
         for n, row in enumerate(csv.DictReader(_in), start=1):
-            cat_d.setdefault("domain", set()).update(row["family"])
+            cat_d.setdefault("domain", set()).update(row["family"].split(","))
 
     logging.info("    Parsed %s entries.", n)
 
