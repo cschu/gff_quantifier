@@ -55,6 +55,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 				"split_table=gffquant.bin.split_table:main",
 				"build_gene_database=gffquant.bin.build_gene_database:main",
 				"build_domain_database=gffquant.bin.build_domain_database:main",
+				"build_bed_database=gffquant.bin.build_bed_database:main",
 			],
 		},
 		package_data={},
