@@ -2,7 +2,7 @@
 
 import pysam
 
-from .bamreader import BamAlignment
+from .bamreader import BamAlignment, SamFlags
 
 
 class AlignmentProcessor:
@@ -68,6 +68,9 @@ class AlignmentProcessor:
                     pysam_aln.alen,
                     dict(pysam_aln.tags)
                 )
+
+                if SamFlags.is_unmapped(aln.flag):
+                    continue
 
                 if aln.flag & filter_flags:
                     continue
