@@ -102,7 +102,7 @@ def process_annotations(input_data, db_session, code_map, nseqs):
         for i, row in enumerate(csv.DictReader(_in), start=1):
             if i % 10000 == 0:
                 db_session.commit()
-            
+
             # gid, start, end, features = line
             # features = features.split(",")
             gid, start, end, features = row["sequenceID"], row["start"], row["end"], row["family"]
@@ -168,7 +168,6 @@ def main():
         cur = conn.cursor()
         cur.execute('PRAGMA journal_mode=wal')
         cur.fetchall()
-
 
 
 if __name__ == "__main__":

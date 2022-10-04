@@ -34,6 +34,7 @@ class FeatureQuantifier:
         self.db = db
         self.adm = None
         self.do_overlap_detection = reference_type in ("genome", "domain")
+        self.reference_type = reference_type
         self.count_manager = CountManager(
             distribution_mode=ambig_mode,
             region_counts=reference_type in ("genome", "domain"),
@@ -95,14 +96,25 @@ class FeatureQuantifier:
 
         for rid, start, end, rev_strand in alignments:
             if self.do_overlap_detection:
-                overlaps, coverage = self.adm.get_overlaps(ref, start, end)
+
                 hits = {
-                    (ovl.begin, ovl.end, rev_strand, cstart, cend)
-                    for ovl, (cstart, cend) in zip(overlaps, coverage)
+                    (sstart, send, rev_strand, cstart, cend)
+                    for (sstart, send), (cstart, cend)
+                    in self.adm.get_overlaps(
+                        ref, start, end,
+                        domain_mode=self.reference_type == "domain",
+                        calc_coverage=self.calc_coverage,
+                    )
                 }
 
+                # overlaps, coverage = self.adm.get_overlaps(ref, start, end)
+                # hits = {
+                #     (ovl.begin, ovl.end, rev_strand, cstart, cend)
+                #     for ovl, (cstart, cend) in zip(overlaps, coverage)
+                # }
+
                 # if the alignment overlaps multiple features, each one gets a count
-                aln_count = int(bool(overlaps)) * aln_count
+                aln_count = int(bool(hits)) * aln_count
 
             else:
                 hits = {(None, None, rev_strand, None, None)}
