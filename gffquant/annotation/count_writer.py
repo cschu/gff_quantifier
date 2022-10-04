@@ -146,23 +146,28 @@ class CountWriter:
                 all_categories.add(category)
                 all_features.update(features)
                 for feature in features:
-                    uniq_depth.setdefault(category, {}).setdefault(feature, []).append(
-                        cov_data["uniq_coverage"].mean() / n_features
+                    # coverage = number of positions that are covered by at least 1 alignment
+                    uniq_cov.setdefault(category, {}).setdefault(feature, []).append(
+                        (cov_data["uniq_coverage"][cov_data["uniq_coverage"] > 0]).mean()
                     )
-                    combined_depth.setdefault(category, {}).setdefault(feature, []).append(
-                        cov_data["combined_coverage"].mean() / n_features
+                    combined_cov.setdefault(category, {}).setdefault(feature, []).append(
+                        (cov_data["combined_coverage"][cov_data["combined_coverage"] > 0]).mean()
                     )
+                    # raw depth = sum of the read depths over all positions;
+                    # in case of a region annotated with more than one feature,
+                    # raw depth and depth are divided by number of features
                     uniq_depth_raw.setdefault(category, {}).setdefault(feature, []).append(
                         cov_data["uniq_coverage"].sum() / n_features
                     )
                     combined_depth_raw.setdefault(category, {}).setdefault(feature, []).append(
                         cov_data["combined_coverage"].sum() / n_features
                     )
-                    uniq_cov.setdefault(category, {}).setdefault(feature, []).append(
-                        (cov_data["uniq_coverage"] > 0).mean()
+                    # depth = average read depth over all positions
+                    uniq_depth.setdefault(category, {}).setdefault(feature, []).append(
+                        cov_data["uniq_coverage"].mean() / n_features
                     )
-                    combined_cov.setdefault(category, {}).setdefault(feature, []).append(
-                        (cov_data["combined_coverage"] > 0).mean()
+                    combined_depth.setdefault(category, {}).setdefault(feature, []).append(
+                        cov_data["combined_coverage"].mean() / n_features
                     )
 
         for category_id in sorted(all_categories):
@@ -193,8 +198,8 @@ class CountWriter:
                         feature,
                         np.sum(uc) if uc is not None else "NA",
                         np.sum(cc) if cc is not None else "NA",
-                        np.sum(urd) if ud is not None else "NA",
-                        np.sum(crd) if cd is not None else "NA",
+                        np.sum(urd) if urd is not None else "NA",
+                        np.sum(crd) if crd is not None else "NA",
                         np.sum(ud) if ud is not None else "NA",
                         np.sum(cd) if cd is not None else "NA",
                         sep="\t",

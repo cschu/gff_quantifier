@@ -31,11 +31,14 @@ class CoverageCounter(dict):
 
     def dump(self, prefix):
         with gzip.open(f"{prefix}.{self.__class__.__name__}.txt.gz", "wt") as _out:
-            # pylint: disable=C0103
+            # pylint: disable=C0103,C0301
             for k, v in self.items():
                 print(*k, ":", file=_out)
                 print(
                     v["annotation"],
                     v["uniq_coverage"].mean() if v["uniq_coverage"] is not None else "NA",
+                    (v["uniq_coverage"][v["uniq_coverage"] > 0]).mean() if v["uniq_coverage"] is not None else "NA",
                     v["combined_coverage"].mean() if v["combined_coverage"] is not None else "NA",
-                    file=_out)
+                    (v["combined_coverage"][v["uniq_coverage"] > 0]).mean() if v["combined_coverage"] is not None else "NA",
+                    file=_out
+                )
