@@ -245,7 +245,7 @@ class RegionCountAnnotator(CountAnnotator):
                         region_counts=True
                     )
 
-                    if coverage_counter is not None:
+                    if coverage_counter is not None and (uniq_counts or ambig_counts):
                         coverage_counter.update_coverage(rid, start, end, uniq_counts, ambig_counts, region_annotation)
 
                     self.distribute_feature_counts(counts, region_annotation)
