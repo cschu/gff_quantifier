@@ -24,10 +24,10 @@ class CoverageCounter(dict):
         )
 
         for rstart, rend, rcount in chain(*uniq_counts):
-            cov["uniq_coverage"][rstart:rend] += rcount
-            cov["combined_coverage"][rstart:rend] += rcount
+            cov["uniq_coverage"][rstart - start:rend - start] += rcount
+            cov["combined_coverage"][rstart - start:rend - start] += rcount
         for rstart, rend, rcount in chain(*ambig_counts):
-            cov["combined_coverage"][rstart:rend] += rcount
+            cov["combined_coverage"][rstart - start:rend - start] += rcount
 
     def dump(self, prefix):
         with gzip.open(f"{prefix}.{self.__class__.__name__}.txt.gz", "wt") as _out:
