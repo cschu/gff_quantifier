@@ -92,16 +92,18 @@ class CountManager:
             self.ambig_regioncounts.dump(prefix, bam)
 
     def get_unannotated_reads(self):
-        if self.uniq_regioncounts:
-            return sum((
-                self.uniq_regioncounts.unannotated_reads,
-                self.ambig_regioncounts.unannotated_reads
-            ))
+        unannotated_reads = 0
 
-        return sum((
-            self.uniq_seqcounts.unannotated_reads,
-            self.ambig_seqcounts.unannotated_reads,
-        ))
+        if self.uniq_regioncounts is not None:
+            unannotated_reads += self.uniq_regioncounts.unannotated_reads
+        if self.ambig_regioncounts is not None:
+            unannotated_reads += self.ambig_regioncounts.unannotated_reads
+        if self.uniq_seqcounts is not None:
+            unannotated_reads += self.uniq_seqcounts.unannotated_reads
+        if self.ambig_seqcounts is not None:
+            unannotated_reads += self.ambig_seqcounts.unannotated_reads
+
+        return unannotated_reads
 
     def get_counts(self, seqid, region_counts=False, strand_specific=False):
         if region_counts:

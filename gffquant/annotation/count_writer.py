@@ -147,12 +147,14 @@ class CountWriter:
                 all_features.update(features)
                 for feature in features:
                     # coverage = number of positions that are covered by at least 1 alignment
-                    uniq_cov.setdefault(category, {}).setdefault(feature, []).append(
-                        (cov_data["uniq_coverage"][cov_data["uniq_coverage"] > 0]).mean()
-                    )
-                    combined_cov.setdefault(category, {}).setdefault(feature, []).append(
-                        (cov_data["combined_coverage"][cov_data["combined_coverage"] > 0]).mean()
-                    )
+                    if cov_data["uniq_coverage"].any():
+                        uniq_cov.setdefault(category, {}).setdefault(feature, []).append(
+                            (cov_data["uniq_coverage"][cov_data["uniq_coverage"] > 0]).mean()
+                        )
+                    if cov_data["combined_coverage"].any():
+                        combined_cov.setdefault(category, {}).setdefault(feature, []).append(
+                            (cov_data["combined_coverage"][cov_data["combined_coverage"] > 0]).mean()
+                        )
                     # raw depth = sum of the read depths over all positions;
                     # in case of a region annotated with more than one feature,
                     # raw depth and depth are divided by number of features
@@ -188,22 +190,15 @@ class CountWriter:
                 )
                 for feature_id in sorted(all_features):
                     feature = db.query_feature(feature_id).name
-                    uc, cc, urd, crd, ud, cd = [
-                        d.get(category_id, {}).get(feature_id)
+                    uc, cc, urd, crd, ud, cd = (
+                        np.sum(d.get(category_id, {}).get(feature_id, (0.0,)))
                         for d in counts
-                    ]
+                    )
 
                     print(
-                        category,
-                        feature,
-                        np.sum(uc) if uc is not None else "NA",
-                        np.sum(cc) if cc is not None else "NA",
-                        np.sum(urd) if urd is not None else "NA",
-                        np.sum(crd) if crd is not None else "NA",
-                        np.sum(ud) if ud is not None else "NA",
-                        np.sum(cd) if cd is not None else "NA",
-                        sep="\t",
-                        file=feat_out,
+                        category, feature,
+                        uc, cc, urd, crd, ud, cd,
+                        sep="\t", file=feat_out,
                     )
 
 
