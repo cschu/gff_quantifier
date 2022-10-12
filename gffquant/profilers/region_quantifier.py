@@ -22,6 +22,7 @@ class RegionQuantifier(FeatureQuantifier):
         calc_coverage=False,
         paired_end_count=1,
         unmarked_orphans=False,
+        reference_type="genome"
     ):
         FeatureQuantifier.__init__(
             self,
@@ -29,7 +30,7 @@ class RegionQuantifier(FeatureQuantifier):
             out_prefix=out_prefix,
             ambig_mode=ambig_mode,
             strand_specific=strand_specific,
-            reference_type="genome",
+            reference_type=reference_type,
             calc_coverage=calc_coverage,
             paired_end_count=paired_end_count,
             unmarked_orphans=unmarked_orphans,

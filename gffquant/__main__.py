@@ -54,6 +54,7 @@ def main():
             calc_coverage=args.calc_coverage,
             paired_end_count=args.paired_end_count,
             unmarked_orphans=args.unmarked_orphans,
+            reference_type=args.mode,
         )
 
     fq.process_bamfile(
