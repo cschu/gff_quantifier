@@ -68,7 +68,7 @@ class FeatureCountCollator:
             src_tab = pd.read_csv(fn, sep="\t", index_col=0)
             merged_tab = merged_tab.merge(src_tab[self.column], left_index=True, right_index=True, how="outer")
             merged_tab.rename(columns={self.column: sample}, inplace=True)
-            merged_tab[sample]["unannotated"] = src_tab["uniq_raw"]["unannotated"]
+            merged_tab[sample]["unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
 
     def _collate_aln_stats(self, files):
