@@ -24,11 +24,11 @@ class CoverageCounter(dict):
         )
 
         for rstart, rend, rcount in chain(*uniq_counts):
-            istart, iend = rstart - start + 1, rend - start + 2  # [start, end)
+            istart, iend = rstart - start + 1, rend - start + 1  # [start, end)
             cov["uniq_coverage"][istart:iend] += rcount
             cov["combined_coverage"][istart:iend] += rcount
         for rstart, rend, rcount in chain(*ambig_counts):
-            istart, iend = rstart - start + 1, rend - start + 2
+            istart, iend = rstart - start + 1, rend - start + 1
             cov["combined_coverage"][istart:iend] += rcount
 
     def dump(self, prefix):
