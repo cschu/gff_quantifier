@@ -43,17 +43,21 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 		install_requires=[
 			"intervaltree",
 			"numpy",
-			"pandas"
+			"pandas",
+			"sqlalchemy",
+			"pysam",
 		],
 		entry_points={
 			"console_scripts": [
 				"gffquant=gffquant.__main__:main",
 				"gffindex=gffquant.gff_indexer:main",
 				"collate_counts=gffquant.bin.collate_counts:main",
-				"split_table=gffquant.bin.split_table:main"
+				"split_table=gffquant.bin.split_table:main",
+				"build_gene_database=gffquant.bin.build_gene_database:main",
+				"build_domain_database=gffquant.bin.build_domain_database:main",
+				"build_bed_database=gffquant.bin.build_bed_database:main",
 			],
 		},
-		# scripts=["nextflow/gffquant.nf"],
 		package_data={},
 		include_package_data=True,
 		data_files=[],
