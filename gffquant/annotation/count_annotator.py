@@ -163,18 +163,19 @@ class CountAnnotator(dict):
             counts[6:8] += ambig_counts[ss_counts]
             counts[10:12] += ambig_counts[as_counts]
 
-        # counts[0:4] are unstranded
+        # the first 4 elements (counts[0:4]) are unstranded:
         # uniq_raw, uniq_norm, combined_raw, combined_norm
+        # 1. each of these fields gets a copy of the unique count sum
+        # 2. add the ambiguous counts to the combined_ elements
+
         if region_counts:
             counts[0:4] = sum(x[2] for x in chain(*uniq_counts) if x is not None)
+            counts[2:4] += sum(x[2] for x in chain(*ambig_counts) if x is not None)
         else:
             counts[0:4] = sum(uniq_counts)
-        # add the ambig counts to combined_raw, combined_norm
-        if region_counts:
-            counts += sum(x[2] for x in chain(*ambig_counts) if x is not None)
-        else:
             counts[2:4] += sum(ambig_counts)
-        # all odd elements are length-normalised
+
+        # 3. all odd elements (including strand-specific) are length-normalised
         counts[1::2] /= float(length)
 
         return counts
