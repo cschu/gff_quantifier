@@ -66,7 +66,10 @@ class FeatureCountCollator:
         merged_tab = pd.DataFrame(index=['unannotated'] + sorted(index.difference({'feature', 'unannotated'})))
         for sample, fn in files:
             src_tab = pd.read_csv(fn, sep="\t", index_col=0)
-            merged_tab = merged_tab.merge(src_tab[self.column], left_index=True, right_index=True, how="outer")
+            try:
+                merged_tab = merged_tab.merge(src_tab[self.column], left_index=True, right_index=True, how="outer")
+            except KeyError as err:
+                raise ValueError(f"Problem parsing file {fn}:\n{str(err)}")
             merged_tab.rename(columns={self.column: sample}, inplace=True)
             # merged_tab[sample]["unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
             merged_tab.loc[sample, "unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
