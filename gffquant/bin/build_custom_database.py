@@ -53,6 +53,10 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, colum
         columns_of_interest = columns.strip().split(",") if columns else header_line[1:]
         logging.info("    Got header: %s", header_line)
         logging.info("    Got columns: %s", columns_of_interest)
+        for col in columns_of_interest:
+            if not col in header_line:
+                logging.error("    column %s is not present in headers", col)
+                raise ValueError(f"column {col} is not present in headers.")
         for n, line in enumerate(_in, start=1):
             line = line.strip()
             if line and line[0] != "#":
@@ -112,10 +116,10 @@ def process_annotations(input_data, db_session, code_map, header=None, columns=N
                 line_d = dict(zip(header_line, line))
                 encoded = []
                 for category in columns_of_interest:
-                    features = line_d.get(category, "").strip().split(",")
+                    features = line_d.get(category, "").strip()
                     if features:
                         enc_category = code_map[category]['key']
-                        enc_features = sorted(code_map[category]['features'][feature] for feature in features)
+                        enc_features = sorted(code_map[category]['features'][feature] for feature in features.split(","))
                         encoded.append((enc_category, ",".join(map(str, enc_features))))
                 encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
 
