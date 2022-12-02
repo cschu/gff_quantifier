@@ -51,7 +51,7 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, colum
             [next(_in) for _ in range(header - 1)]
         header_line = next(_in).strip().strip("#").split(delimiter)
         columns_of_interest = columns.strip().split(",") if columns else header_line[1:]
-        logging.info("    Got header: %", header_line)
+        logging.info("    Got header: %s", header_line)
         logging.info("    Got columns: %s", columns_of_interest)
         for n, line in enumerate(_in, start=1):
             line = line.strip()
