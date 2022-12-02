@@ -32,9 +32,9 @@ export PATH=$PATH:/opt/software/miniconda3/bin:/opt/software/mOTUs
   git clone https://github.com/cschu/gff_quantifier.git
   cd gff_quantifier
   git checkout 9cc61716fc6a58425975181cc2a62780fe2200f4
-  # /opt/software/miniconda3/bin/python setup.py bdist_wheel
-  # /opt/software/miniconda3/bin/pip install --force-reinstall dist/*whl
-  /opt/software/miniconda3/bin/pip install -e .
+  /opt/software/miniconda3/bin/python setup.py bdist_wheel
+  /opt/software/miniconda3/bin/pip install --force-reinstall dist/*whl
+  # /opt/software/miniconda3/bin/pip install -e .
   cd ..
   rm -rf gff_quantifier/
 
