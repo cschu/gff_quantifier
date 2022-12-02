@@ -51,6 +51,8 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, colum
             [next(_in) for _ in range(header - 1)]
         header_line = next(_in).strip().strip("#").split(delimiter)
         columns_of_interest = columns.strip().split(",") if columns else header_line[1:]
+        logging.info("    Got header: %", header_line)
+        logging.info("    Got columns: %s", columns_of_interest)
         for n, line in enumerate(_in, start=1):
             line = line.strip()
             if line and line[0] != "#":
@@ -110,7 +112,7 @@ def process_annotations(input_data, db_session, code_map, header=None, columns=N
                 line_d = dict(zip(header_line, line))
                 encoded = []
                 for category in columns_of_interest:
-                    features = line_d.get(category, "").strip()
+                    features = line_d.get(category, "").strip().split(",")
                     if features:
                         enc_category = code_map[category]['key']
                         enc_features = sorted(code_map[category]['features'][feature] for feature in features)
