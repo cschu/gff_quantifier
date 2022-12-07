@@ -174,7 +174,7 @@ def main():
     if args.extract_map_only:
         return
 
-    process_annotations(args.input_data, db_session, code_map, nseqs, args.emapper_version)
+    process_annotations(args.input_data, db_session, code_map, nseqs)
 
     # https://www.sqlite.org/wal.html
     # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections
