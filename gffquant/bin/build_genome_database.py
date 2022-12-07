@@ -47,11 +47,18 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, field
     logging.info("First pass: gathering category and feature information.")
 
     n = 0
+    n_genes = 0
     with open(input_data, "rt") as _in:
         for n, (line) in enumerate(_in, start=1):
+            if line[0] == "#":
+                continue
+            line = line.strip().split("\t")
+            if line[2] != "gene":
+                continue
+            n_genes += 1
             attribs = dict(
                 item.split("=")
-                for item in line.strip().split("\t")[8].strip(";").split(";")
+                for item in line[8].strip(";").split(";")
             )
             for field in valid_fields:
                 cat_d.setdefault(field, set()).update(set(attribs.get(field, "").split(",")) - {''})
@@ -87,26 +94,31 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, field
 
         json.dump(code_map, _map_out)
 
-    return code_map, n
+    return code_map, n_genes
 
 
 def process_annotations(input_data, db_session, code_map, nseqs):
     logging.info("Second pass: Encoding sequence annotations")
 
+    n_genes = 0
     with open(input_data, "rt") as _in:
         for i, (line) in enumerate(_in, start=1):
+            if line[0] == "#":
+                continue
 
             line = line.strip().split("\t")
             if line[2].lower() != "gene":
                 continue
+
+            n_genes += 1
             
             if i % 10000 == 0:
                 db_session.commit()
 
             if nseqs is not None:
-                logging.info("Processed %s entries. (%s%%)", i, round(i / nseqs * 100, 3))
+                logging.info("Processed %s entries. (%s%%)", nseqs, round(n_genes / nseqs * 100, 3))
             else:
-                logging.info("Processed %s entries.", str(i))            
+                logging.info("Processed %s entries.", str(n_genes))            
 
             attribs = dict(
                 item.split("=")
