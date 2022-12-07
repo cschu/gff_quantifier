@@ -140,8 +140,8 @@ def process_annotations(input_data, db_session, code_map, nseqs):
                 seqid=line[0],
                 featureid=attribs.get("ID"),
                 strand=int(strand == "+") if strand is not None else None,
-                start=int(3),
-                end=int(4),
+                start=int(line[3]),
+                end=int(line[4]),
                 annotation_str=encoded
             )
             db_session.add(db_sequence)
