@@ -99,7 +99,7 @@ class FeatureQuantifier:
 
                 hits = {
                     (sstart, send, rev_strand, cstart, cend)
-                    for (sstart, send), (cstart, cend)
+                    for seqid, (sstart, send), (cstart, cend)
                     in self.adm.get_overlaps(
                         ref, start, end,
                         domain_mode=self.reference_type == "domain",
@@ -118,9 +118,10 @@ class FeatureQuantifier:
 
             else:
                 hits = {(None, None, rev_strand, None, None)}
+                seqid = rid
                 # aln_count = 1 / aln_count
 
-            yield ({rid: hits}, aln_count, 0 if aln_count else 1)
+            yield ({seqid: hits}, aln_count, 0 if aln_count else 1)
 
     def process_counters(self, unannotated_ambig):
         if self.adm is None:

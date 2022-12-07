@@ -42,8 +42,10 @@ class AnnotationDatabaseManager:
     @lru_cache(maxsize=10000)
     def get_interval_tree(self, seqid):
         db_sequences = self.get_db_sequence(seqid)
-        return IntervalTree.from_tuples(
-            sorted((seq.start - 1, seq.end) for seq in db_sequences)
+        coord2seq = {(seq.start - 1, seq.end): (seq.feature_id if seq.feature_id else seq.seqid) for seq in db_sequences}
+        return coord2seq, IntervalTree.from_tuples(
+            # sorted((seq.start - 1, seq.end) for seq in db_sequences)
+            sorted(coord2seq.keys())
         )
 
     @lru_cache(maxsize=10000)
@@ -60,7 +62,7 @@ class AnnotationDatabaseManager:
             if qend < sstart or send < qstart:
                 continue
 
-            yield interval, self.calc_covered_fraction(qstart, qend, sstart, send)
+            yield seqid, interval, self.calc_covered_fraction(qstart, qend, sstart, send)
             # if sstart <= qstart <= qend <= send:
             #     yield interval, (qstart, qend)
             # elif qstart < sstart:
@@ -91,12 +93,16 @@ class AnnotationDatabaseManager:
 
         if domain_mode:
             return self.get_interval_overlaps(seqid, start, end)
+
+        coord2seq, itree = self.get_interval_tree(seqid)
+
         return (
             (
+                coord2seq.get(interval),
                 (interval.begin + 1, interval.end),
                 (self.calc_covered_fraction(start, end, interval.begin, interval.end)) if calc_coverage else (interval.begin + 1, interval.end)
             )
-            for interval in self.get_interval_tree(seqid)[start:end]
+            for interval in itree[start:end]
         )
         #     overlaps = self.get_interval_tree(seqid)[start:end]
         #     covered = (
