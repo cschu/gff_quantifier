@@ -157,7 +157,7 @@ def main():
         with gzip.open(args.code_map, "rt") as _map_in:
             code_map = json.load(_map_in)
     else:
-        code_map, nseqs = gather_category_and_feature_data(args.input_data, args.db_path, db_session=db_session, fields=args.fields.split(",") if args.fields else None)
+        code_map, nseqs = gather_category_and_feature_data(args.input_data, args.db_path, db_session=db_session, fields=args.fields.split(",") if args.fields else [])
 
     if args.extract_map_only:
         return
