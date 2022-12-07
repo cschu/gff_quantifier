@@ -94,7 +94,7 @@ class AnnotationDatabaseManager:
         return (
             (
                 (interval.begin + 1, interval.end),
-                (self.calc_covered_fraction(start, end, interval.begin, interval.end)) if calc_coverage else interval
+                (self.calc_covered_fraction(start, end, interval.begin, interval.end)) if calc_coverage else (interval.begin + 1, interval.end)
             )
             for interval in self.get_interval_tree(seqid)[start:end]
         )
