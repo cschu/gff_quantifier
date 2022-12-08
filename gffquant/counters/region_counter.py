@@ -54,6 +54,7 @@ class UniqueRegionCounter(RegionCounter):
             if aln_count:
                 for rid, hits in counts.items():
                     for hit in hits:
+                        print(hit)
                         self._update_region(
                             rid, *hit, increment=increment
                         )
