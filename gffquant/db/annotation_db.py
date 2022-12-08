@@ -98,7 +98,7 @@ class AnnotationDatabaseManager:
 
         return (
             (
-                coord2seq.get(interval),
+                coord2seq.get((interval.begin, interval.end)),
                 (interval.begin + 1, interval.end),
                 (self.calc_covered_fraction(start, end, interval.begin, interval.end)) if calc_coverage else (interval.begin + 1, interval.end)
             )
