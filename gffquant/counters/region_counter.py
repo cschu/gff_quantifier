@@ -87,9 +87,10 @@ class AmbiguousRegionCounter(RegionCounter):
             if aln_count:
                 inc = self.get_increment(aln_count, increment)
                 for rid, hits in counts.items():
-                    for hit in hits:
+                    for (ostart, oend), rev_strand, (cstart, cend) in hits:
+                        print((ostart, oend), rev_strand, (cstart, cend))
                         self._update_region(
-                            rid, *hit, increment=inc
+                            rid, ostart, oend, rev_strand, cstart, cend, increment=inc
                         )
             else:
                 self.unannotated_reads += unaligned
