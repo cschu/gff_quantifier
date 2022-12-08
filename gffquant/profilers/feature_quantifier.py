@@ -97,15 +97,29 @@ class FeatureQuantifier:
         for rid, start, end, rev_strand in alignments:
             if self.do_overlap_detection:
 
-                hits = {
-                    (sstart, send, rev_strand, cstart, cend)
-                    for seqid, (sstart, send), (cstart, cend)
-                    in self.adm.get_overlaps(
-                        ref, start, end,
-                        domain_mode=self.reference_type == "domain",
-                        calc_coverage=self.calc_coverage,
-                    )
-                }
+                # hits = {
+                #     (sstart, send, rev_strand, cstart, cend)
+                #     for seqid, (sstart, send), (cstart, cend)
+                #     in self.adm.get_overlaps(
+                #         ref, start, end,
+                #         domain_mode=self.reference_type == "domain",
+                #         calc_coverage=self.calc_coverage,
+                #     )
+                # }
+
+                overlap_gen = self.adm.get_overlaps(
+                    ref, start, end,
+                    domain_mode=self.reference_type == "domain",
+                    calc_coverage=self.calc_coverage,
+                )
+
+                hitset = {}
+                for seqid, (sstart, send), (cstart, cend) in overlap_gen:
+                    hitset.setdefault(seqid, set()).add(((sstart, send), rev_strand, (cstart, cend)))
+                for seqid, hits in hitset.items():
+                    # if the alignment overlaps multiple features, each one gets a count
+                    aln_count = int(bool(hits)) * aln_count
+                    yield ({seqid: sorted(hits)}, aln_count, 0 if aln_count else 1)
 
                 # overlaps, coverage = self.adm.get_overlaps(ref, start, end)
                 # hits = {
@@ -114,14 +128,14 @@ class FeatureQuantifier:
                 # }
 
                 # if the alignment overlaps multiple features, each one gets a count
-                aln_count = int(bool(hits)) * aln_count
+                # aln_count = int(bool(hits)) * aln_count
 
             else:
                 hits = {(None, None, rev_strand, None, None)}
                 seqid = rid
                 # aln_count = 1 / aln_count
 
-            yield ({seqid: hits}, aln_count, 0 if aln_count else 1)
+                yield ({seqid: hits}, aln_count, 0 if aln_count else 1)
 
     def process_counters(self, unannotated_ambig):
         if self.adm is None:
