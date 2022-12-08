@@ -53,10 +53,10 @@ class UniqueRegionCounter(RegionCounter):
         for counts, aln_count, unaligned in count_stream:
             if aln_count:
                 for rid, hits in counts.items():
-                    for hit in hits:
-                        print(hit)
+                    for (ostart, oend), rev_strand, (cstart, cend) in hits:
+                        print((ostart, oend), rev_strand, (cstart, cend))
                         self._update_region(
-                            rid, *hit, increment=increment
+                            rid, ostart, oend, rev_strand, cstart, cend, increment=increment
                         )
             else:
                 self.unannotated_reads += unaligned
