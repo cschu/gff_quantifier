@@ -116,10 +116,13 @@ class FeatureQuantifier:
                 hitset = {}
                 for seqid, (sstart, send), (cstart, cend) in overlap_gen:
                     hitset.setdefault(seqid, set()).add(((sstart, send), rev_strand, (cstart, cend)))
-                for seqid, hits in hitset.items():
-                    # if the alignment overlaps multiple features, each one gets a count
-                    aln_count = int(bool(hits)) * aln_count
-                    yield ({seqid: sorted(hits)}, aln_count, 0 if aln_count else 1)
+                if hitset:
+                    for seqid, hits in hitset.items():
+                        # if the alignment overlaps multiple features, each one gets a count
+                        aln_count = int(bool(hits)) * aln_count
+                        yield ({seqid: sorted(hits)}, aln_count, 0 if aln_count else 1)
+                else:
+                    yield ({}, 0, 1)
 
                 # overlaps, coverage = self.adm.get_overlaps(ref, start, end)
                 # hits = {
