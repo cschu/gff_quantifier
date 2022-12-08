@@ -42,7 +42,7 @@ class AnnotationDatabaseManager:
     @lru_cache(maxsize=10000)
     def get_interval_tree(self, seqid):
         db_sequences = self.get_db_sequence(seqid)
-        coord2seq = {(seq.start - 1, seq.end): (seq.feature_id if seq.feature_id else seq.seqid) for seq in db_sequences}
+        coord2seq = {(seq.start - 1, seq.end): (seq.featureid if seq.featureid else seq.seqid) for seq in db_sequences}
         return coord2seq, IntervalTree.from_tuples(
             # sorted((seq.start - 1, seq.end) for seq in db_sequences)
             sorted(coord2seq.keys())
