@@ -157,7 +157,8 @@ class FeatureQuantifier:
 
         count_writer = CountWriter(
             self.out_prefix,
-            has_ambig_counts=self.count_manager.has_ambig_counts(),
+            # has_ambig_counts=self.count_manager.has_ambig_counts(),
+            self.ambig_mode != "unique_only",
             strand_specific=self.strand_specific,
         )
 
