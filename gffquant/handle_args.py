@@ -78,7 +78,7 @@ def handle_args(args):
             Determines how ambiguous alignments should be treated. This setting mimics NGLess' behaviour.
             - 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). This is the default setting.
             - 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to.)
-            - 'primary_only' takes the unique alignments and the primary and alignment of each ambiguous read group.
+            - 'primary_only' takes the unique alignments and the primary alignment of each ambiguous read group.
             - '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to."""
         ),
     )
