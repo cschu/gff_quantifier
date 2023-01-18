@@ -66,13 +66,20 @@ class FeatureCountCollator:
         merged_tab = pd.DataFrame(index=['unannotated'] + sorted(index.difference({'feature', 'unannotated'})))
         for sample, fn in files:
             src_tab = pd.read_csv(fn, sep="\t", index_col=0)
+            colname = self.column
             try:
-                merged_tab = merged_tab.merge(src_tab[self.column], left_index=True, right_index=True, how="outer")
-            except KeyError as err:
-                raise ValueError(f"Problem parsing file {fn}:\n{str(err)}")
-            merged_tab.rename(columns={self.column: sample}, inplace=True)
+                column = src_tab[colname]
+            except KeyError as err:                
+                colname = colname.replace("combined_", "uniq_")
+                try:
+                    column = src_tab[colname]
+                except:
+                    raise ValueError(f"Problem parsing file {fn}:\n{str(err)}")       
+            
+            merged_tab = merged_tab.merge(column, left_index=True, right_index=True, how="outer")
+            merged_tab.rename(columns={colname: sample}, inplace=True)
             # merged_tab[sample]["unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
-            merged_tab.loc[sample, "unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
+            merged_tab.loc["unannotated", sample] = src_tab["uniq_raw"].get("unannotated", "NA")
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
 
     def _collate_aln_stats(self, files):
