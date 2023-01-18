@@ -129,7 +129,7 @@ def main():
         "--emapper_version",
         type=str,
         default="v2",
-        choices=("v1", "v2"),
+        choices=("v1", "v2", "v2.1.2"),
     )
     args = ap.parse_args()
 
