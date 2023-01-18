@@ -14,8 +14,9 @@ logger = logging.getLogger(__name__)
 class CountWriter:
     COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
 
-    def __init__(self, prefix, has_ambig_counts=False, strand_specific=False):
+    def __init__(self, prefix, aln_count, has_ambig_counts=False, strand_specific=False):
         self.out_prefix = prefix
+        self.aln_count = aln_count
         self.has_ambig_counts = has_ambig_counts
         self.strand_specific = strand_specific
 

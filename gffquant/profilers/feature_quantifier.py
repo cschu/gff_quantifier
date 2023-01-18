@@ -122,7 +122,7 @@ class FeatureQuantifier:
 
             yield ({rid: hits}, aln_count, 0 if aln_count else 1)
 
-    def process_counters(self, unannotated_ambig):
+    def process_counters(self, unannotated_ambig, aln_count):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager(self.db)
 
@@ -139,8 +139,9 @@ class FeatureQuantifier:
 
         count_writer = CountWriter(
             self.out_prefix,
+            aln_count,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
-            strand_specific=self.strand_specific,
+            strand_specific=self.strand_specific,            
         )
 
         count_writer.write_feature_counts(
@@ -216,6 +217,6 @@ class FeatureQuantifier:
             print(self.alp.get_alignment_stats_str(table=True), file=aln_stats_out)
 
         if aln_count:
-            self.process_counters(unannotated_ambig)
+            self.process_counters(unannotated_ambig, aln_count)
 
         logger.info("Finished.")
