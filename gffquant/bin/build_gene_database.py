@@ -102,7 +102,7 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
 
         encoded = []
         for category, features in region_annotation[1:]:
-            features.difference_update({"-"})
+            features = set(features).difference({"-"})
             enc_category = code_map[category]['key']
             enc_features = sorted(code_map[category]['features'][feature] for feature in features)
             encoded.append((enc_category, ",".join(map(str, enc_features))))
