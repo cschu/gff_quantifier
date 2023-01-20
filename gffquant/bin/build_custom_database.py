@@ -1,4 +1,4 @@
-# pylint: disable=R0914,C0103
+# pylint: disable=R0914,C0103,R0913,W1514
 # pylint: disable=duplicate-code
 
 """ module docstring """
@@ -47,7 +47,7 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, colum
     n = 0
     with open(input_data, "rt") as _in:
         if header:
-            [next(_in) for _ in range(header - 1)]
+            _ = [next(_in) for _ in range(header - 1)]
         header_line = next(_in).strip().strip("#").split(delimiter)
         columns_of_interest = columns.strip().split(",") if columns else header_line[1:]
         logging.info("    Got header: %s", header_line)
@@ -104,7 +104,7 @@ def process_annotations(input_data, db_session, code_map, header=None, columns=N
 
     with open(input_data, "rt") as _in:
         if header:
-            [next(_in) for _ in range(header - 1)]
+            _ = [next(_in) for _ in range(header - 1)]
         header_line = next(_in).strip().strip("#").split(delimiter)
         columns_of_interest = columns.strip().split(",") if columns else header_line[1:]
         for _, line in enumerate(_in, start=1):
@@ -117,7 +117,10 @@ def process_annotations(input_data, db_session, code_map, header=None, columns=N
                     features = line_d.get(category, "").strip()
                     if features:
                         enc_category = code_map[category]['key']
-                        enc_features = sorted(code_map[category]['features'][feature] for feature in features.split(","))
+                        enc_features = sorted(
+                            code_map[category]['features'][feature]
+                            for feature in features.split(",")
+                        )
                         encoded.append((enc_category, ",".join(map(str, enc_features))))
                 encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
 
@@ -150,12 +153,14 @@ def main():
     if args.initialise_db and not args.extract_map_only:
         initialise_db(engine)
 
-    nseqs = args.nseqs
     if args.code_map:
         with gzip.open(args.code_map, "rt") as _map_in:
             code_map = json.load(_map_in)
     else:
-        code_map, nseqs = gather_category_and_feature_data(args.input_data, args.db_path, db_session=db_session, columns=args.columns, header=args.header, delimiter=args.delimiter)
+        code_map, _ = gather_category_and_feature_data(
+            args.input_data, args.db_path,
+            db_session=db_session, columns=args.columns, header=args.header, delimiter=args.delimiter
+        )
 
     if args.extract_map_only:
         return
