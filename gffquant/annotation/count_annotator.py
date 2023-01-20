@@ -206,7 +206,7 @@ class RegionCountAnnotator(CountAnnotator):
                     (start, end), rev_strand = region
                 else:
                     (start, end), rev_strand = region, None
-                # region_annotation is a tuple of key-value pairs:
+                # the region_annotation is a tuple of key-value pairs:
                 # (strand, func_category1: subcategories, func_category2: subcategories, ...)
                 # the first is the strand, the second is the gene id, the rest are the features
 
