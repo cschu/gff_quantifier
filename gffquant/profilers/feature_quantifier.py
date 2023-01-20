@@ -179,6 +179,7 @@ class FeatureQuantifier:
         )
 
         aln_count = 0
+        read_count = 0
         current_aln_group = None
         for aln_count, aln in enumerate(aln_stream, start=1):
             if self.ambig_mode == "primary_only" and not aln.is_primary():
@@ -190,6 +191,7 @@ class FeatureQuantifier:
                 if current_aln_group is not None:
                     self.process_alignment_group(current_aln_group)
                 current_aln_group = AlignmentGroup()
+                read_count += 1
 
             current_aln_group.add_alignment(aln)
 
@@ -200,16 +202,16 @@ class FeatureQuantifier:
             logger.warning("No alignments present in stream.")
 
         t1 = time.time()
-        logger.info("Processed %s alignments in %s.", aln_count, f"{t1 - t0:.3f}s")
+        logger.info("Processed %s alignments (%s reads) in %s.", aln_count, read_count, f"{t1 - t0:.3f}s")
 
-        return aln_count, 0, None
+        return aln_count, read_count, 0, None
 
     def process_bamfile(self, bamfile, aln_format="sam", min_identity=None, min_seqlen=None):
         """processes one bamfile"""
 
         self.alp = AlignmentProcessor(bamfile, aln_format)
 
-        aln_count, unannotated_ambig, _ = self.process_alignments(
+        aln_count, read_count, unannotated_ambig, _ = self.process_alignments(
             min_identity=min_identity, min_seqlen=min_seqlen
         )
 
@@ -217,6 +219,6 @@ class FeatureQuantifier:
             print(self.alp.get_alignment_stats_str(table=True), file=aln_stats_out)
 
         if aln_count:
-            self.process_counters(unannotated_ambig, aln_count)
+            self.process_counters(unannotated_ambig, read_count)
 
         logger.info("Finished.")
