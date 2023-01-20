@@ -71,7 +71,7 @@ class FeatureCountCollator:
             except KeyError as err:
                 raise ValueError(f"Problem parsing file {fn}:\n{str(err)}")
             merged_tab.rename(columns={self.column: sample}, inplace=True)
-            # merged_tab[sample]["unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
+            # merged_tab[sample]["unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
             merged_tab.loc[sample, "unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
 

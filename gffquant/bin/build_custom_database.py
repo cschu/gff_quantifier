@@ -14,7 +14,6 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 from gffquant.db import initialise_db
 from gffquant.db.models import db
-from gffquant.db.gff_dbm import GffDatabaseManager
 from ..db.models.meta import Base
 
 
@@ -43,7 +42,7 @@ def get_database(db_path):
 
 def gather_category_and_feature_data(input_data, db_path, db_session=None, columns=None, header=None, delimiter="\t"):
     logging.info("First pass: gathering category and feature information.")
-    
+
     cat_d = {}
     n = 0
     with open(input_data, "rt") as _in:
@@ -54,7 +53,7 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, colum
         logging.info("    Got header: %s", header_line)
         logging.info("    Got columns: %s", columns_of_interest)
         for col in columns_of_interest:
-            if not col in header_line:
+            if col not in header_line:
                 logging.error("    column %s is not present in headers", col)
                 raise ValueError(f"column {col} is not present in headers.")
         for n, line in enumerate(_in, start=1):
@@ -65,7 +64,7 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, colum
                     features = line_d.get(category, "").strip()
                     if features:
                         cat_d.setdefault(category, set()).update(features.split(","))
-        
+
         logging.info("    Parsed %s entries.", n)
 
         logging.info("Building code map and dumping category and feature encodings.")
@@ -102,8 +101,7 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, colum
 
 def process_annotations(input_data, db_session, code_map, header=None, columns=None, delimiter="\t"):
     logging.info("Second pass: Encoding sequence annotations")
-    
-    n = 0
+
     with open(input_data, "rt") as _in:
         if header:
             [next(_in) for _ in range(header - 1)]
@@ -132,7 +130,7 @@ def process_annotations(input_data, db_session, code_map, header=None, columns=N
                 db_session.add(db_sequence)
 
         db_session.commit()
-                        
+
 
 def main():
     ap = argparse.ArgumentParser()
