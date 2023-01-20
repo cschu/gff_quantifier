@@ -141,7 +141,7 @@ class FeatureQuantifier:
             self.out_prefix,
             aln_count,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
-            strand_specific=self.strand_specific,            
+            strand_specific=self.strand_specific,
         )
 
         count_writer.write_feature_counts(
