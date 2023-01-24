@@ -89,8 +89,8 @@ class AnnotationDatabaseManager:
         #         return max(start, interval.begin), interval.end
         #     raise ValueError(f"Cannot happen. interval=({interval.begin}, {interval.end}) vs ({start}, {end})")
 
-        if domain_mode:
-            return self.get_interval_overlaps(seqid, start, end)
+        # if domain_mode:
+        #     return self.get_interval_overlaps(seqid, start, end)
         return (
             (
                 (interval.begin + 1, interval.end),
