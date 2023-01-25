@@ -50,7 +50,7 @@ class AnnotationDatabaseManager:
     def get_db_sequence(self, seqid):
         return self.dbsession.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).all()
 
-    def get_interval_overlaps(self, seqid, qstart, qend):
+    def get_interval_overlaps(self, seqid, qstart, qend, calc_coverage=True):
         db_sequences = self.get_db_sequence(seqid)
 
         for seq in db_sequences:
@@ -59,8 +59,9 @@ class AnnotationDatabaseManager:
 
             if qend < sstart or send < qstart:
                 continue
-
-            yield interval, self.calc_covered_fraction(qstart, qend, sstart, send)
+            
+            covered_interval = self.calc_covered_fraction(qstart, qend, sstart, send) if calc_coverage else interval
+            yield interval, covered_interval
             # if sstart <= qstart <= qend <= send:
             #     yield interval, (qstart, qend)
             # elif qstart < sstart:
@@ -89,8 +90,8 @@ class AnnotationDatabaseManager:
         #         return max(start, interval.begin), interval.end
         #     raise ValueError(f"Cannot happen. interval=({interval.begin}, {interval.end}) vs ({start}, {end})")
 
-        # if domain_mode:
-        #     return self.get_interval_overlaps(seqid, start, end)
+        if domain_mode:
+            return self.get_interval_overlaps(seqid, start, end, calc_coverage=calc_coverage)
         return (
             (
                 (interval.begin + 1, interval.end),
