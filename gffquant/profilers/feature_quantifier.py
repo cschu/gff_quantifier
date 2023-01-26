@@ -206,7 +206,7 @@ class FeatureQuantifier:
 
         return aln_count, read_count, 0, None
 
-    def process_bamfile(self, bamfile, aln_format="sam", min_identity=None, min_seqlen=None):
+    def process_bamfile(self, bamfile, aln_format="sam", min_identity=None, min_seqlen=None, external_readcounts=None):
         """processes one bamfile"""
 
         self.alp = AlignmentProcessor(bamfile, aln_format)
@@ -218,7 +218,7 @@ class FeatureQuantifier:
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
             print(self.alp.get_alignment_stats_str(table=True), file=aln_stats_out)
 
-        if aln_count:
-            self.process_counters(unannotated_ambig, read_count)
+        if aln_count:            
+            self.process_counters(unannotated_ambig, external_readcounts if external_readcounts is not None else read_count)
 
         logger.info("Finished.")
