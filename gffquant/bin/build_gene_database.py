@@ -61,6 +61,7 @@ def gather_category_and_feature_data(args, db_session=None):
 
     with gzip.open(args.db_path + ".code_map.json.gz", "wt") as _map_out:
         for category, features in sorted(cat_d.items()):
+            features.difference_update({"-"})
             code_map[category] = {
                 "key": len(code_map),
                 "features": {
@@ -101,6 +102,7 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
 
         encoded = []
         for category, features in region_annotation[1:]:
+            features = set(features).difference({"-"})
             enc_category = code_map[category]['key']
             enc_features = sorted(code_map[category]['features'][feature] for feature in features)
             encoded.append((enc_category, ",".join(map(str, enc_features))))
@@ -129,7 +131,7 @@ def main():
         "--emapper_version",
         type=str,
         default="v2",
-        choices=("v1", "v2"),
+        choices=("v1", "v2", "v2.1.2"),
     )
     args = ap.parse_args()
 
