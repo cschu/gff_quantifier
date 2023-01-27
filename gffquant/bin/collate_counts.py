@@ -98,7 +98,7 @@ def main():
     ap.add_argument("count_dir", type=str)
     ap.add_argument("--out_prefix", "-o", type=str, default="./collated")
     ap.add_argument("--recursive", "-r", action="store_true")
-    ap.add_argument("--column", "-c", type=str, choices=("uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rlnorm", "combined_raw", "combined_lnorm", "combined_scaled", "combined_rlnorm"), default="uniq_raw")
+    ap.add_argument("--column", "-c", type=str, choices=("uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rpkm", "combined_raw", "combined_lnorm", "combined_scaled", "combined_rpkm"), default="uniq_raw")
     args = ap.parse_args()
 
     outdir = os.path.dirname(args.out_prefix)
