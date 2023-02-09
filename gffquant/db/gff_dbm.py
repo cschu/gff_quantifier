@@ -17,6 +17,7 @@ class EmapperFormat:
     def get_category(self, index):
         return self.categories.get(index)
 
+
 EMAPPER_FORMATS = {
     "v1": EmapperFormat(
         0,
@@ -52,18 +53,18 @@ EMAPPER_FORMATS = {
         0,
         (4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,),
         (
-            "eggNOG_OGs", 
-            "COG_cat", 
-            "GOs", 
-            "EC", 
-            "KEGG_ko", 
-            "KEGG_Pathway", 
-            "KEGG_Module", 
-            "KEGG_Reaction", 
-            "KEGG_rclass", 
-            "BRITE", 
-            "KEGG_TC", 
-            "CAZy", 
+            "eggNOG_OGs",
+            "COG_cat",
+            "GOs",
+            "EC",
+            "KEGG_ko",
+            "KEGG_Pathway",
+            "KEGG_Module",
+            "KEGG_Reaction",
+            "KEGG_rclass",
+            "BRITE",
+            "KEGG_TC",
+            "CAZy",
             "BiGG_Reaction",
             "PFAMs",
         ),
