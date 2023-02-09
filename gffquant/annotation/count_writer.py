@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class CountWriter:
-    COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
+    COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled", "rpkm"]
 
-    def __init__(self, prefix, has_ambig_counts=False, strand_specific=False):
+    def __init__(self, prefix, aln_count, has_ambig_counts=False, strand_specific=False):
         self.out_prefix = prefix
+        self.aln_count = aln_count
         self.has_ambig_counts = has_ambig_counts
         self.strand_specific = strand_specific
 
@@ -43,30 +44,30 @@ class CountWriter:
         p, row = 0, []
         # unique counts
         row += tuple(counts[p:p + 2])
-        row += (row[-1] * scaling_factor,)
+        row += (row[-1] * scaling_factor, row[-1] / self.aln_count * 1e9,)
         p += 2
         # ambiguous counts
         if self.has_ambig_counts:
             row += tuple(counts[p:p + 2])
-            row += (row[-1] * ambig_scaling_factor,)
+            row += (row[-1] * ambig_scaling_factor, row[-1] / self.aln_count * 1e9,)
             p += 2
         # sense-strand unique
         if self.strand_specific:
             row += tuple(counts[p:p + 2])
-            row += (row[-1] * scaling_factor,)
+            row += (row[-1] * scaling_factor, row[-1] / self.aln_count * 1e9,)
             p += 2
             # sense-strand ambiguous
             if self.has_ambig_counts:
                 row += tuple(counts[p:p + 2])
-                row += (row[-1] * ambig_scaling_factor,)
+                row += (row[-1] * ambig_scaling_factor, row[-1] / self.aln_count * 1e9,)
                 p += 2
             # antisense-strand unique
             row += tuple(counts[p:p + 2])
-            row += (row[-1] * scaling_factor,)
+            row += (row[-1] * scaling_factor, row[-1] / self.aln_count * 1e9,)
             p += 2
             if self.has_ambig_counts:
                 row += tuple(counts[p:p + 2])
-                row += (row[-1] * ambig_scaling_factor,)
+                row += (row[-1] * ambig_scaling_factor, row[-1] / self.aln_count * 1e9,)
         return row  # + [scaling_factor, ambig_scaling_factor]
 
     def write_feature_counts(self, db, unannotated_reads, featcounts):

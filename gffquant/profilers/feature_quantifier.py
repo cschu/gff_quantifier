@@ -122,7 +122,7 @@ class FeatureQuantifier:
 
             yield ({rid: hits}, aln_count, 0 if aln_count else 1)
 
-    def process_counters(self, unannotated_ambig):
+    def process_counters(self, unannotated_ambig, aln_count):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager(self.db)
 
@@ -139,6 +139,7 @@ class FeatureQuantifier:
 
         count_writer = CountWriter(
             self.out_prefix,
+            aln_count,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
             strand_specific=self.strand_specific,
         )
@@ -178,6 +179,7 @@ class FeatureQuantifier:
         )
 
         aln_count = 0
+        read_count = 0
         current_aln_group = None
         for aln_count, aln in enumerate(aln_stream, start=1):
             if self.ambig_mode == "primary_only" and not aln.is_primary():
@@ -189,6 +191,7 @@ class FeatureQuantifier:
                 if current_aln_group is not None:
                     self.process_alignment_group(current_aln_group)
                 current_aln_group = AlignmentGroup()
+                read_count += 1
 
             current_aln_group.add_alignment(aln)
 
@@ -199,23 +202,23 @@ class FeatureQuantifier:
             logger.warning("No alignments present in stream.")
 
         t1 = time.time()
-        logger.info("Processed %s alignments in %s.", aln_count, f"{t1 - t0:.3f}s")
+        logger.info("Processed %s alignments (%s reads) in %s.", aln_count, read_count, f"{t1 - t0:.3f}s")
 
-        return aln_count, 0, None
+        return aln_count, read_count, 0, None
 
-    def process_bamfile(self, bamfile, aln_format="sam", min_identity=None, min_seqlen=None):
+    def process_bamfile(self, bamfile, aln_format="sam", min_identity=None, min_seqlen=None, external_readcounts=None):
         """processes one bamfile"""
 
         self.alp = AlignmentProcessor(bamfile, aln_format)
 
-        aln_count, unannotated_ambig, _ = self.process_alignments(
+        aln_count, read_count, unannotated_ambig, _ = self.process_alignments(
             min_identity=min_identity, min_seqlen=min_seqlen
         )
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
             print(self.alp.get_alignment_stats_str(table=True), file=aln_stats_out)
 
-        if aln_count:
-            self.process_counters(unannotated_ambig)
+        if aln_count:            
+            self.process_counters(unannotated_ambig, external_readcounts if external_readcounts is not None else read_count)
 
         logger.info("Finished.")
