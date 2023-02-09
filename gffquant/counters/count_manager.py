@@ -114,8 +114,10 @@ class CountManager:
             # pylint: disable=R1720
             if strand_specific:
                 raise NotImplementedError
-            else:
+            elif self.calc_coverage:
                 return [uniq_counter.get(seqid, [])], [ambig_counter.get(seqid, [])]
+            else:
+                return [uniq_counter[seqid]], [ambig_counter[seqid]]
 
         else:
             uniq_counter, ambig_counter = self.uniq_seqcounts, self.ambig_seqcounts

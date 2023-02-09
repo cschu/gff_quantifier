@@ -134,6 +134,12 @@ def handle_args(args):
     )
 
     ap.add_argument(
+        "--import_readcounts",
+        type=int,
+        help="Import externally derived readcounts to allow readcount-based normalisation for prefiltered bam files.",
+    )
+
+    ap.add_argument(
         "--version", "-v", action="version", version="%(prog)s " + __version__
     )
     ap.add_argument("--debug", action="store_true")

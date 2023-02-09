@@ -1,4 +1,4 @@
-# pylint: disable=R0914,C0103,W1514,R0913
+# pylint: disable=R0914,C0103,R0913,W1514
 # pylint: disable=duplicate-code
 
 """ module docstring """
@@ -118,7 +118,8 @@ def process_annotations(input_data, db_session, code_map, header=None, columns=N
                     if features:
                         enc_category = code_map[category]['key']
                         enc_features = sorted(
-                            code_map[category]['features'][feature] for feature in features.split(",")
+                            code_map[category]['features'][feature]
+                            for feature in features.split(",")
                         )
                         encoded.append((enc_category, ",".join(map(str, enc_features))))
                 encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
