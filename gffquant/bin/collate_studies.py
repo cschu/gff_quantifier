@@ -28,7 +28,7 @@ class CollationCollator:
             if basename and self.prefix[-1] != ".":
                 self.prefix += "."
             
-            table_file = f"{self.prefix}{fn}.txt.gz"
+            table_file = f"{self.prefix}{fn}"
             index = set()
             for fn in files:
                 with gzip.open(fn, "rt") as _in:
