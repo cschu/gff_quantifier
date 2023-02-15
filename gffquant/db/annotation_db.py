@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 
 class AnnotationDatabaseManager:
     def __init__(self, db_path):
-        _, self.dbsession = get_database(db_path)
+        if isinstance(db_path, str):
+            _, self.dbsession = get_database(db_path)
+        else:
+            self.dbsession = db_path
 
     def query_sequence(self, seqid, start=None, end=None):
         if start is not None and end is not None:

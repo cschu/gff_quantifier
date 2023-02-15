@@ -38,7 +38,7 @@ class RegionQuantifier(FeatureQuantifier):
         self.adm = AnnotationDatabaseManager(self.db)
 
     def process_alignment_group(self, aln_group):
-        logger.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
+        # logger.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
         ambig_counts = list(aln_group.get_ambig_align_counts())
         if any(ambig_counts) and self.require_ambig_bookkeeping:
             all_hits = []
