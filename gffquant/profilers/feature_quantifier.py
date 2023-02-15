@@ -3,7 +3,9 @@
 """ module docstring """
 
 import gzip
+import json
 import logging
+import os
 import time
 
 from gffquant.db.annotation_db import AnnotationDatabaseManager
@@ -124,7 +126,7 @@ class FeatureQuantifier:
 
     def process_counters(self, unannotated_ambig, aln_count):
         if self.adm is None:
-            self.adm = AnnotationDatabaseManager(self.db)
+            self.adm = AnnotationDatabaseManager.from_db(self.db)
 
         self.count_manager.dump_raw_counters(self.out_prefix, self.alp)
 
@@ -193,6 +195,9 @@ class FeatureQuantifier:
                 current_aln_group = AlignmentGroup()
                 read_count += 1
 
+                if read_count and read_count % 100000 == 0:
+                    logger.info("Processed %s reads.", read_count)
+
             current_aln_group.add_alignment(aln)
 
         if current_aln_group is not None:
@@ -218,7 +223,23 @@ class FeatureQuantifier:
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
             print(self.alp.get_alignment_stats_str(table=True), file=aln_stats_out)
 
+        # pylint: disable=W0703
+        # need to figure out what exceptions to catch...
         if aln_count:            
-            self.process_counters(unannotated_ambig, external_readcounts if external_readcounts is not None else read_count)
+            if external_readcounts is not None:
+                if os.path.isfile(external_readcounts):
+                    try:
+                        read_count = json.load(open(external_readcounts)).get("n_reads")
+                        logger.info("Using pre-filter readcounts (%s).", read_count)
+                    except Exception as err:
+                        print(f"Error accessing readcounts: {err}")
+                        logger.warn("Could not access pre-filter readcounts. Using post-filter readcounts(%s).", read_count)
+                else:
+                    read_count = int(external_readcounts)
+            
+            self.process_counters(
+                unannotated_ambig,
+                aln_count=read_count
+            )
 
         logger.info("Finished.")

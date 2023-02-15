@@ -35,7 +35,7 @@ class RegionQuantifier(FeatureQuantifier):
             paired_end_count=paired_end_count,
             unmarked_orphans=unmarked_orphans,
         )
-        self.adm = AnnotationDatabaseManager(self.db)
+        self.adm = AnnotationDatabaseManager.from_db(self.db)
 
     def process_alignment_group(self, aln_group):
         # logger.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())

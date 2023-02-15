@@ -4,30 +4,37 @@
 
 import logging
 
+from abc import ABC, abstractmethod
 from functools import lru_cache
 
 from intervaltree import IntervalTree
 
 from gffquant.db import get_database
 from gffquant.db.models import db
+from gffquant.db.db_import import GqDatabaseImporter
 
 logger = logging.getLogger(__name__)
 
 
-class AnnotationDatabaseManager:
-    def __init__(self, db_path):
+class AnnotationDatabaseManager(ABC):
+    def __init__(self):
+        ...
+
+    @classmethod
+    def from_db(cls, db_path):
         if isinstance(db_path, str):
-            _, self.dbsession = get_database(db_path)
-        else:
-            self.dbsession = db_path
+            return SQL_ADM(get_database(db_path)[1])
+        if isinstance(db_path, GqDatabaseImporter):
+            return Dict_ADM(db_path)
+        return SQL_ADM(db_path)
+
+    @abstractmethod
+    def query_sequence_internal(self, seqid, start=None, end=None):
+        ...
 
     def query_sequence(self, seqid, start=None, end=None):
-        if start is not None and end is not None:
-            db_sequence = self.dbsession.query(db.AnnotatedSequence) \
-                .filter(db.AnnotatedSequence.seqid == seqid) \
-                .filter((db.AnnotatedSequence.start == start) & (db.AnnotatedSequence.end == end)).one_or_none()
-        else:
-            db_sequence = self.dbsession.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).one_or_none()
+        db_sequence = self.query_sequence_internal(seqid, start=start, end=end)
+
         if db_sequence is None:
             return None
         categories = tuple()
@@ -36,11 +43,13 @@ class AnnotationDatabaseManager:
             categories += ((category, tuple(feature.strip() for feature in features.split(",") if feature.strip())),)
         return db_sequence.strand, db_sequence.featureid, categories
 
+    @abstractmethod
     def query_feature(self, feature_id):
-        return self.dbsession.query(db.Feature).filter(db.Feature.id == feature_id).join(db.Category, db.Feature.category_id == db.Category.id).one_or_none()
+        ...
 
+    @abstractmethod
     def query_category(self, category_id):
-        return self.dbsession.query(db.Category).filter(db.Category.id == category_id).one_or_none()
+        ...
 
     @lru_cache(maxsize=10000)
     def get_interval_tree(self, seqid):
@@ -49,9 +58,9 @@ class AnnotationDatabaseManager:
             sorted((seq.start - 1, seq.end) for seq in db_sequences)
         )
 
-    @lru_cache(maxsize=10000)
+    @abstractmethod
     def get_db_sequence(self, seqid):
-        return self.dbsession.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).all()
+        ...
 
     def get_interval_overlaps(self, seqid, qstart, qend, calc_coverage=True):
         db_sequences = self.get_db_sequence(seqid)
@@ -62,7 +71,7 @@ class AnnotationDatabaseManager:
 
             if qend < sstart or send < qstart:
                 continue
-            
+
             covered_interval = self.calc_covered_fraction(qstart, qend, sstart, send) if calc_coverage else interval
             yield interval, covered_interval
             # if sstart <= qstart <= qend <= send:
@@ -113,3 +122,51 @@ class AnnotationDatabaseManager:
     def clear_caches(self):
         logger.info("%s", self.get_interval_tree.cache_info())
         self.get_interval_tree.cache_clear()
+
+
+class SQL_ADM(AnnotationDatabaseManager):
+    def __init__(self, db_path):
+        super().__init__()
+        self.db_session = db_path
+
+    def query_sequence_internal(self, seqid, start=None, end=None):
+        if start is not None and end is not None:
+            db_sequence = self.db_session.query(db.AnnotatedSequence) \
+                .filter(db.AnnotatedSequence.seqid == seqid) \
+                .filter((db.AnnotatedSequence.start == start) & (db.AnnotatedSequence.end == end)).one_or_none()
+        else:
+            db_sequence = self.db_session.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).one_or_none()
+
+        return db_sequence
+
+    def query_feature(self, feature_id):
+        return self.db_session.query(db.Feature).filter(db.Feature.id == feature_id).join(db.Category, db.Feature.category_id == db.Category.id).one_or_none()
+
+    def query_category(self, category_id):
+        return self.db_session.query(db.Category).filter(db.Category.id == category_id).one_or_none()
+
+    @lru_cache(maxsize=10000)
+    def get_db_sequence(self, seqid):
+        return self.db_session.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).all()
+
+
+class Dict_ADM(AnnotationDatabaseManager):
+    def __init__(self, db_path):
+        super().__init__()
+        self.db = db_path
+
+    def query_sequence_internal(self, seqid, start=None, end=None):
+        if start is not None and end is not None:
+            seqs = [seq for seq in self.db.annotations.get(seqid, [None]) if seq.start == start and seq.end == end]
+            return seqs[0]
+        return self.db.annotations.get(seqid, [None])[0]
+
+    def query_feature(self, feature_id):
+        return self.db.features.get(int(feature_id))
+
+    def query_category(self, category_id):
+        return self.db.categories.get(int(category_id))
+
+    @lru_cache(maxsize=10000)
+    def get_db_sequence(self, seqid):
+        return self.db.annotations.get(seqid, [])
