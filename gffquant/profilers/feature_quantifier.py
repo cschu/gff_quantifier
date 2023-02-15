@@ -225,18 +225,22 @@ class FeatureQuantifier:
 
         # pylint: disable=W0703
         # need to figure out what exceptions to catch...
-        if aln_count:            
+        if aln_count:
             if external_readcounts is not None:
                 if os.path.isfile(external_readcounts):
                     try:
-                        read_count = json.load(open(external_readcounts)).get("n_reads")
+                        with open(external_readcounts, encoding="UTF-8") as json_in:
+                            read_count = json.load(json_in).get("n_reads")
                         logger.info("Using pre-filter readcounts (%s).", read_count)
                     except Exception as err:
                         print(f"Error accessing readcounts: {err}")
-                        logger.warn("Could not access pre-filter readcounts. Using post-filter readcounts(%s).", read_count)
+                        logger.warning(
+                            "Could not access pre-filter readcounts. Using post-filter readcounts(%s).",
+                            read_count
+                        )
                 else:
                     read_count = int(external_readcounts)
-            
+
             self.process_counters(
                 unannotated_ambig,
                 aln_count=read_count

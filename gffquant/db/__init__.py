@@ -23,7 +23,7 @@ def get_writable_database():
     db_session = session()
 
     return engine, db_session
-    
+
 
 def get_database(db_path, in_memory=True):
 

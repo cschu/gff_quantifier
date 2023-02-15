@@ -139,7 +139,7 @@ def process_annotations(input_data, db_session, code_map, nseqs):
             logging.info("Processed %s entries. (%s%%)", i, round(i / nseqs * 100, 3))
         else:
             logging.info("Processed %s entries.", str(i))
-            
+
         db_session.commit()
 
 
