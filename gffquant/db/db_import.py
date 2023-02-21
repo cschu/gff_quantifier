@@ -85,6 +85,8 @@ class GqDatabaseImporter(ABC):
 
         _open = GqDatabaseImporter.get_open_function(input_data)
 
+        single_category = getattr(self, "single_category") if hasattr(self, "single_category") else "domain"
+
         with _open(input_data, "rt") as _in:
             annotation_data = self.parse_annotations(_in)
 
@@ -97,8 +99,8 @@ class GqDatabaseImporter(ABC):
                         self.logger.info("    Loaded %s entries.", str(i))
 
                 encoded = []
-                enc_category = self.code_map["domain"]['key']
-                enc_features = sorted(self.code_map["domain"]['features'][feature] for feature in features)
+                enc_category = self.code_map[single_category]['key']
+                enc_features = sorted(self.code_map[single_category]['features'][feature] for feature in features)
                 encoded.append((enc_category, ",".join(map(str, enc_features))))
                 encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
 

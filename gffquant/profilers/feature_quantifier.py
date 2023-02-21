@@ -1,4 +1,4 @@
-# pylint: disable=C0103
+# pylint: disable=C0103,R0914
 
 """ module docstring """
 
@@ -7,6 +7,9 @@ import json
 import logging
 import os
 import time
+
+from abc import ABC, abstractmethod
+from collections import Counter
 
 from gffquant.db.annotation_db import AnnotationDatabaseManager
 from gffquant.counters import CountManager
@@ -18,7 +21,7 @@ from gffquant.alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 logger = logging.getLogger(__name__)
 
 
-class FeatureQuantifier:
+class FeatureQuantifier(ABC):
     # pylint: disable=R0902,R0913
     TRUE_AMBIG_MODES = ("dist1", "1overN")
 
@@ -31,8 +34,8 @@ class FeatureQuantifier:
         strand_specific=False,
         calc_coverage=False,
         paired_end_count=1,
-        unmarked_orphans=False,
     ):
+        self.aln_counter = Counter()
         self.db = db
         self.adm = None
         self.do_overlap_detection = reference_type in ("genome", "domain")
@@ -43,11 +46,11 @@ class FeatureQuantifier:
             strand_specific=strand_specific and reference_type not in ("genome", "domain"),
             calc_coverage=calc_coverage,
             paired_end_count=paired_end_count,
-            unmarked_orphans=unmarked_orphans,
         )
         self.out_prefix = out_prefix
         self.ambig_mode = ambig_mode
         self.bamfile = None
+        self.reference_manager = {}
         self.alp = None
         self.strand_specific = strand_specific
         self.calc_coverage = calc_coverage
@@ -124,26 +127,40 @@ class FeatureQuantifier:
 
             yield ({rid: hits}, aln_count, 0 if aln_count else 1)
 
-    def process_counters(self, unannotated_ambig, aln_count):
+    def process_counters(
+        self,
+        unannotated_ambig,
+        aln_count,
+        restrict_reports=None,
+        report_category=True,
+        report_unannotated=True,
+        dump_counters=True,
+    ):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager.from_db(self.db)
 
-        self.count_manager.dump_raw_counters(self.out_prefix, self.alp)
+        if dump_counters:
+            self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
 
         cov_ctr = CoverageCounter() if self.calc_coverage else None
 
+        report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
+
         if self.do_overlap_detection:
-            count_annotator = RegionCountAnnotator(self.strand_specific)
-            count_annotator.annotate(self.alp, self.adm, self.count_manager, coverage_counter=cov_ctr)
+            count_annotator = RegionCountAnnotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
+            count_annotator.annotate(self.reference_manager, self.adm, self.count_manager, coverage_counter=cov_ctr)
         else:
-            count_annotator = GeneCountAnnotator(self.strand_specific)
-            count_annotator.annotate(self.alp, self.adm, self.count_manager)
+            count_annotator = GeneCountAnnotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
+            count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
 
         count_writer = CountWriter(
             self.out_prefix,
             aln_count,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
             strand_specific=self.strand_specific,
+            restrict_reports=restrict_reports,
+            report_category=report_category,
+            report_unannotated=report_unannotated,
         )
 
         count_writer.write_feature_counts(
@@ -164,21 +181,34 @@ class FeatureQuantifier:
 
         self.adm.clear_caches()
 
-    # pylint: disable=W0613
-    def process_alignment_group(self, aln_group):
+    def register_reference(self, rid, aln_reader):
+        known_ref = self.reference_manager.get(rid)
+        new_ref = aln_reader.get_reference(rid)
+
+        if known_ref is None or new_ref == known_ref:
+            self.reference_manager[rid] = new_ref
+        else:
+            raise ValueError(f"Reference clash {rid} points to old_ref={known_ref} and new_ref={new_ref}.")
+
+        return new_ref[0]
+
+    @abstractmethod
+    def process_alignment_group(self, aln_group, aln_reader):
         ...
 
-    def process_alignments(self, min_identity=None, min_seqlen=None):
+    def process_alignments(self, aln_reader, min_identity=None, min_seqlen=None, unmarked_orphans=False):
         # pylint: disable=R0914
         t0 = time.time()
 
-        aln_stream = self.alp.get_alignments(
+        aln_stream = aln_reader.get_alignments(
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             allow_multiple=self.allow_ambiguous_alignments(),
             allow_unique=True,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
         )
+
+        self.count_manager.toggle_single_read_handling(unmarked_orphans)
 
         aln_count = 0
         read_count = 0
@@ -191,7 +221,7 @@ class FeatureQuantifier:
 
             if current_aln_group is None or current_aln_group.qname != aln.qname:
                 if current_aln_group is not None:
-                    self.process_alignment_group(current_aln_group)
+                    self.process_alignment_group(current_aln_group, aln_reader)
                 current_aln_group = AlignmentGroup()
                 read_count += 1
 
@@ -201,7 +231,7 @@ class FeatureQuantifier:
             current_aln_group.add_alignment(aln)
 
         if current_aln_group is not None:
-            self.process_alignment_group(current_aln_group)
+            self.process_alignment_group(current_aln_group, aln_reader)
 
         if aln_count == 0:
             logger.warning("No alignments present in stream.")
@@ -211,39 +241,151 @@ class FeatureQuantifier:
 
         return aln_count, read_count, 0, None
 
-    def process_bamfile(self, bamfile, aln_format="sam", min_identity=None, min_seqlen=None, external_readcounts=None):
+    @staticmethod
+    def get_readcount(internal_readcounts, external_readcounts, verbose=True):
+        # pylint: disable=W0703
+        # need to figure out what exceptions to catch...
+        read_count = internal_readcounts
+        if os.path.isfile(external_readcounts):
+            try:
+                with open(external_readcounts, encoding="UTF-8") as read_counts_in:
+                    read_count = json.load(read_counts_in)["n_reads"]
+                if verbose:
+                    logger.info("Found pre-filter readcounts (%s).", read_count)
+            except Exception as err:
+                print(f"Error accessing readcounts: {err}")
+                logger.warning(
+                    "Could not access pre-filter readcounts. Using post-filter readcounts (%s).",
+                    read_count
+                )
+        else:
+            read_count = int(external_readcounts)
+
+        return read_count
+
+    def count_alignments(
+        self,
+        aln_stream,
+        aln_format="sam",
+        min_identity=None,
+        min_seqlen=None,
+        external_readcounts=None,
+        unmarked_orphans=False,
+    ):
+        aln_reader = AlignmentProcessor(aln_stream, aln_format)
+
+        aln_count, read_count, unannotated_ambig, _ = self.process_alignments(
+            aln_reader,
+            min_identity=min_identity,
+            min_seqlen=min_seqlen,
+            unmarked_orphans=unmarked_orphans,
+        )
+        filtered_readcount = read_count
+
+        try:
+            full_readcount = FeatureQuantifier.get_readcount(0, f"{self.out_prefix}.all.readcount.json", verbose=False)
+        except FileNotFoundError:
+            full_readcount = filtered_readcount
+
+        if external_readcounts is not None:
+            read_count = FeatureQuantifier.get_readcount(read_count, external_readcounts)
+
+        self.aln_counter.update(
+            {
+                "aln_count": aln_count,
+                "read_count": read_count,
+                "unannotated_ambig": unannotated_ambig,
+                "full_read_count": full_readcount,
+                "filtered_read_count": filtered_readcount,
+            }
+        )
+
+        self.aln_counter.update(aln_reader.get_alignment_stats_dict())
+
+    def finalise(
+        self,
+        restrict_reports=None,
+        report_category=False,
+        report_unannotated=False,
+        dump_counters=False,
+    ):
+
+        with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
+            print(
+                AlignmentProcessor.get_alignment_stats_str(
+                    [
+                        v
+                        for k, v in self.aln_counter.items()
+                        if k.startswith("pysam_") and not k.endswith("total")
+                    ],
+                    table=True,
+                ),
+                file=aln_stats_out
+            )
+
+        # try to access externally specified readcounts
+        if self.aln_counter.get("aln_count"):
+            self.process_counters(
+                self.aln_counter["unannotated_ambig"],
+                aln_count=self.aln_counter["read_count"],
+                restrict_reports=restrict_reports,
+                report_category=report_category,
+                report_unannotated=report_unannotated,
+                dump_counters=dump_counters,
+            )
+
+            for metric, value in self.aln_counter.items():
+                logger.info("%s: %s", metric, value)
+
+            logger.info(
+                "Alignment rate: %s%%, Filtered: %s%%",
+                round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+                round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+            )
+
+        logger.info("Finished.")
+
+    def process_bamfile_old(
+        self,
+        bamfile,
+        aln_format="sam",
+        min_identity=None,
+        min_seqlen=None,
+        external_readcounts=None,
+        restrict_reports=None,
+        report_category=False,
+        report_unannotated=False,
+        dump_counters=False,
+        unmarked_orphans=False,
+    ):
+        # default: specific report rows are disabled
+        # otherwise specific tools have too many confusing user-exposed parameters
         """processes one bamfile"""
 
         self.alp = AlignmentProcessor(bamfile, aln_format)
 
         aln_count, read_count, unannotated_ambig, _ = self.process_alignments(
-            min_identity=min_identity, min_seqlen=min_seqlen
+            self.alp,
+            min_identity=min_identity,
+            min_seqlen=min_seqlen,
+            unmarked_orphans=unmarked_orphans,
         )
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
-            print(self.alp.get_alignment_stats_str(table=True), file=aln_stats_out)
+            print(self.alp.get_alignment_stats_str(self.alp.get_alignment_stats(), table=True), file=aln_stats_out)
 
-        # pylint: disable=W0703
-        # need to figure out what exceptions to catch...
+        # try to access externally specified readcounts
         if aln_count:
             if external_readcounts is not None:
-                if os.path.isfile(external_readcounts):
-                    try:
-                        with open(external_readcounts, encoding="UTF-8") as json_in:
-                            read_count = json.load(json_in).get("n_reads")
-                        logger.info("Using pre-filter readcounts (%s).", read_count)
-                    except Exception as err:
-                        print(f"Error accessing readcounts: {err}")
-                        logger.warning(
-                            "Could not access pre-filter readcounts. Using post-filter readcounts(%s).",
-                            read_count
-                        )
-                else:
-                    read_count = int(external_readcounts)
+                read_count = FeatureQuantifier.get_readcount(read_count, external_readcounts)
 
             self.process_counters(
                 unannotated_ambig,
-                aln_count=read_count
+                aln_count=read_count,
+                restrict_reports=restrict_reports,
+                report_category=report_category,
+                report_unannotated=report_unannotated,
+                dump_counters=dump_counters,
             )
 
         logger.info("Finished.")

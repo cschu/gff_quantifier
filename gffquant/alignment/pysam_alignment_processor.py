@@ -25,21 +25,30 @@ class AlignmentProcessor:
     def get_alignment_stats(self):
         return self.stat_counter
 
-    def get_alignment_stats_str(self, table=True):
+    def get_alignment_stats_dict(self):
+        return dict(
+            zip(
+                ("pysam_total", "pysam_passed", "pysam_seqid_filt", "pysam_len_filt"),
+                [sum(self.stat_counter), ] + self.stat_counter
+            )
+        )
+
+    @staticmethod
+    def get_alignment_stats_str(stat_counter, table=True):
         # pylint: disable=R1705
         if table:
             return "\n".join(
                 "\t".join(s)
                 for s in zip(
                     ("Total", "Passed", "Seqid", "Length"),
-                    (str(v) for v in (sum(self.stat_counter),) + tuple(self.stat_counter))
+                    (str(v) for v in (sum(stat_counter),) + tuple(stat_counter))
                 )
             )
         else:
-            return f"Total:{sum(self.stat_counter)} " + \
-                f"Passed filters: {self.stat_counter[0]} " + \
-                f"Filtered(seqid): {self.stat_counter[1]} " + \
-                f"Filtered(length): {self.stat_counter[2]}"
+            return f"Total:{sum(stat_counter)} " + \
+                f"Passed filters: {stat_counter[0]} " + \
+                f"Filtered(seqid): {stat_counter[1]} " + \
+                f"Filtered(length): {stat_counter[2]}"
 
     # pylint: disable=R0913,W0613
     def get_alignments(

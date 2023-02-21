@@ -21,8 +21,7 @@ class RegionQuantifier(FeatureQuantifier):
         strand_specific=False,
         calc_coverage=False,
         paired_end_count=1,
-        unmarked_orphans=False,
-        reference_type="genome"
+        reference_type="genome",
     ):
         FeatureQuantifier.__init__(
             self,
@@ -33,17 +32,16 @@ class RegionQuantifier(FeatureQuantifier):
             reference_type=reference_type,
             calc_coverage=calc_coverage,
             paired_end_count=paired_end_count,
-            unmarked_orphans=unmarked_orphans,
         )
         self.adm = AnnotationDatabaseManager.from_db(self.db)
 
-    def process_alignment_group(self, aln_group):
+    def process_alignment_group(self, aln_group, aln_reader):
         # logger.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
         ambig_counts = list(aln_group.get_ambig_align_counts())
         if any(ambig_counts) and self.require_ambig_bookkeeping:
             all_hits = []
             for aln in aln_group.get_alignments():
-                current_ref = self.alp.get_reference(aln.rid)[0]
+                current_ref = self.register_reference(aln.rid, aln_reader)
                 # how many other positons does this read align to?
                 # this is needed in 1overN to scale down counts of multiple alignments
                 ambig_count = ambig_counts[aln.is_second()]
@@ -67,7 +65,7 @@ class RegionQuantifier(FeatureQuantifier):
                 pair=aln_group.is_paired()
             )
         elif aln_group.is_aligned_pair():
-            current_ref = self.alp.get_reference(aln_group.primaries[0].rid)[0]
+            current_ref = self.register_reference(aln_group.primaries[0].rid, aln_reader)
             hits = self.process_alignments_sameref(
                 current_ref,
                 (
@@ -80,7 +78,7 @@ class RegionQuantifier(FeatureQuantifier):
             )
         else:
             for aln in aln_group.get_alignments():
-                current_ref = self.alp.get_reference(aln.rid)[0]
+                current_ref = self.register_reference(aln.rid, aln_reader)
                 hits = self.process_alignments_sameref(
                     current_ref, (aln.shorten(),)
                 )

@@ -33,32 +33,34 @@ def main():
             exist_ok=True, parents=True
         )
 
+    kwargs = {}
     if args.mode in ("gene", "genes"):
-
-        fq = GeneQuantifier(
-            db=args.annotation_db,
-            out_prefix=args.out_prefix,
-            ambig_mode=args.ambig_mode,
-            strand_specific=args.strand_specific,
-            paired_end_count=args.paired_end_count,
-            unmarked_orphans=args.unmarked_orphans,
-        )
-
+        qtype = GeneQuantifier
     else:
+        qtype, kwargs["reference_type"] = RegionQuantifier, args.mode
 
-        fq = RegionQuantifier(
-            db=args.annotation_db,
-            out_prefix=args.out_prefix,
-            ambig_mode=args.ambig_mode,
-            strand_specific=args.strand_specific,
-            calc_coverage=args.calc_coverage,
-            paired_end_count=args.paired_end_count,
-            unmarked_orphans=args.unmarked_orphans,
-            reference_type=args.mode,
-        )
+    fq = qtype(
+        db=args.annotation_db,
+        out_prefix=args.out_prefix,
+        ambig_mode=args.ambig_mode,
+        strand_specific=args.strand_specific,
+        paired_end_count=args.paired_end_count,
+        **kwargs,
+    )
 
-    fq.process_bamfile(
-        args.bam_file, aln_format=args.format, min_identity=args.min_identity, min_seqlen=args.min_seqlen, external_readcounts=args.import_readcounts,
+    fq.count_alignments(
+        args.bam_file,
+        aln_format=args.format,
+        min_identity=args.min_identity,
+        min_seqlen=args.min_seqlen,
+        external_readcounts=args.import_readcounts,
+        unmarked_orphans=args.unmarked_orphans,
+    )
+
+    fq.finalise(
+        report_category=True,
+        report_unannotated=args.mode == "genome",
+        dump_counters=args.debug,
     )
 
 

@@ -14,6 +14,27 @@ class CountManager:
     # and not the forward-strandness
     PLUS_STRAND, MINUS_STRAND = False, True
 
+    def toggle_single_read_handling(self, unmarked_orphans):
+        # precalculate count-increment for single-end, paired-end reads
+        # for mixed input (i.e., paired-end data with single-end reads = orphans from preprocessing),
+        # properly attribute fractional counts to the orphans
+        # Increments:
+        # alignment from single end library read: 1
+        # alignment from paired-end library read: 0.5 / mate (pe_count = 1) or 1 / mate (pe_count = 2)
+        # alignment from paired-end library orphan: 0.5 (pe_count = 1) or 1 (pe_count = 2)
+
+        # old code:
+        # increment = 1 if (not pair or self.paired_end_count == 2) else 0.5
+
+        # if pair:
+        #     increment = 1 if self.paired_end_count == 2 else 0.5
+        # else:
+        #     increment = 0.5 if self.unmarked_orphans else 1
+        self.increments = [
+            (self.paired_end_count / 2.0) if unmarked_orphans else 1.0,
+            self.paired_end_count / 2.0
+        ]
+
     def __init__(
         # pylint: disable=W0613,R0913
         self,
@@ -22,22 +43,12 @@ class CountManager:
         strand_specific=False,
         calc_coverage=False,
         paired_end_count=1,
-        unmarked_orphans=False,
     ):
         self.distribution_mode = distribution_mode
         self.strand_specific = strand_specific
         self.calc_coverage = calc_coverage
-        # precalculate count-increment for single-end, paired-end reads
-        # for mixed input (i.e., paired-end data with single-end reads = orphans from preprocessing),
-        # properly attribute fractional counts to the orphans
-        # Increments:
-        # alignment from single end library read: 1
-        # alignment from paired-end library read: 0.5 / mate (pe_count = 1) or 1 / mate (pe_count = 2)
-        # alignment from paired-end library orphan: 0.5 (pe_count = 1) or 1 (pe_count = 2)
-        self.increments = [
-            (paired_end_count / 2.0) if unmarked_orphans else 1.0,
-            paired_end_count / 2.0
-        ]
+        self.increments = [1.0, 1.0]
+        self.paired_end_count = paired_end_count
 
         self.uniq_seqcounts, self.ambig_seqcounts = None, None
         self.uniq_regioncounts, self.ambig_regioncounts = None, None
@@ -69,27 +80,20 @@ class CountManager:
 
         increment = self.increments[pair]
 
-        # increment = 1 if (not pair or self.paired_end_count == 2) else 0.5
-
-        # if pair:
-        #     increment = 1 if self.paired_end_count == 2 else 0.5
-        # else:
-        #     increment = 0.5 if self.unmarked_orphans else 1
-
         if seq_counter is not None:
             seq_counter.update_counts(count_stream, increment=increment)
         elif region_counter is not None:
             region_counter.update_counts(count_stream, increment=increment)
 
-    def dump_raw_counters(self, prefix, bam):
+    def dump_raw_counters(self, prefix, refmgr):
         if self.uniq_seqcounts is not None:
-            self.uniq_seqcounts.dump(prefix, bam)
+            self.uniq_seqcounts.dump(prefix, refmgr)
         if self.ambig_seqcounts is not None:
-            self.ambig_seqcounts.dump(prefix, bam)
+            self.ambig_seqcounts.dump(prefix, refmgr)
         if self.uniq_regioncounts is not None:
-            self.uniq_regioncounts.dump(prefix, bam)
+            self.uniq_regioncounts.dump(prefix, refmgr)
         if self.ambig_regioncounts is not None:
-            self.ambig_regioncounts.dump(prefix, bam)
+            self.ambig_regioncounts.dump(prefix, refmgr)
 
     def get_unannotated_reads(self):
         unannotated_reads = 0
