@@ -17,6 +17,7 @@ from gffquant.annotation import GeneCountAnnotator, RegionCountAnnotator, CountW
 from gffquant.counters.coverage_counter import CoverageCounter
 from gffquant.alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 
+from .. import __toolname__
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class FeatureQuantifier(ABC):
     def __init__(
         self,
         db=None,
-        out_prefix="gffquant",
+        out_prefix=__toolname__,
         ambig_mode="unique_only",
         reference_type="genome",
         strand_specific=False,
@@ -50,8 +51,8 @@ class FeatureQuantifier(ABC):
         self.out_prefix = out_prefix
         self.ambig_mode = ambig_mode
         self.bamfile = None
-        self.reference_manager = {}
         self.alp = None
+        self.reference_manager = {}
         self.strand_specific = strand_specific
         self.calc_coverage = calc_coverage
 
@@ -263,6 +264,7 @@ class FeatureQuantifier(ABC):
 
         return read_count
 
+    # pylint: disable=W0613
     def count_alignments(
         self,
         aln_stream,
@@ -274,21 +276,14 @@ class FeatureQuantifier(ABC):
     ):
         aln_reader = AlignmentProcessor(aln_stream, aln_format)
 
-        aln_count, read_count, unannotated_ambig, _ = self.process_alignments(
+        aln_count, _, unannotated_ambig, _ = self.process_alignments(
             aln_reader,
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             unmarked_orphans=unmarked_orphans,
         )
-        filtered_readcount = read_count
 
-        try:
-            full_readcount = FeatureQuantifier.get_readcount(0, f"{self.out_prefix}.all.readcount.json", verbose=False)
-        except FileNotFoundError:
-            full_readcount = filtered_readcount
-
-        if external_readcounts is not None:
-            read_count = FeatureQuantifier.get_readcount(read_count, external_readcounts)
+        full_readcount, read_count, filtered_readcount = aln_reader.read_counter
 
         self.aln_counter.update(
             {
@@ -323,7 +318,6 @@ class FeatureQuantifier(ABC):
                 file=aln_stats_out
             )
 
-        # try to access externally specified readcounts
         if self.aln_counter.get("aln_count"):
             self.process_counters(
                 self.aln_counter["unannotated_ambig"],

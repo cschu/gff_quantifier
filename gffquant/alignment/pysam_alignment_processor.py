@@ -9,6 +9,9 @@ class AlignmentProcessor:
     PASS_FILTER = 0
     SEQID_FILTERED = 1
     LENGTH_FILTERED = 2
+    TOTAL_READS = 0
+    TOTAL_ALIGNED_READS = 1
+    TOTAL_PASSED_READS = 2
 
     def __init__(self, aln_source="-", aln_type="bam"):
         aln_type = aln_type.lower()
@@ -18,6 +21,7 @@ class AlignmentProcessor:
         # pylint: disable=E1101
         self.aln_stream = pysam.AlignmentFile(aln_source, "rb" if aln_type == "bam" else "r")
         self.stat_counter = [0, 0, 0]
+        self.read_counter = [0, 0, 0]
 
     def get_reference(self, rid):
         return self.used_refs.get(rid, (None, None))
@@ -61,8 +65,22 @@ class AlignmentProcessor:
         required_flags=0,
         verbose=True,
     ):
+        last_read, last_passed_read = None, None
+
         with self.aln_stream:
             for pysam_aln in self.aln_stream:
+
+                read_unmapped = SamFlags.is_unmapped(pysam_aln.flag)
+
+                if last_read is None or pysam_aln.qname != last_read:
+                    last_read = pysam_aln.qname
+                    self.read_counter[AlignmentProcessor.TOTAL_READS] += 1
+
+                    if not read_unmapped:
+                        self.read_counter[AlignmentProcessor.TOTAL_ALIGNED_READS] += 1
+
+                if read_unmapped:
+                    continue
 
                 aln = BamAlignment(
                     pysam_aln.qname,
@@ -77,9 +95,6 @@ class AlignmentProcessor:
                     pysam_aln.alen,
                     dict(pysam_aln.tags)
                 )
-
-                if SamFlags.is_unmapped(aln.flag):
-                    continue
 
                 if aln.flag & filter_flags:
                     continue
@@ -106,4 +121,9 @@ class AlignmentProcessor:
                 self.used_refs[aln.rid] = rname, self.aln_stream.get_reference_length(rname)
 
                 self.stat_counter[AlignmentProcessor.PASS_FILTER] += 1
+
+                if last_passed_read is None or pysam_aln.qname != last_passed_read:
+                    last_passed_read = pysam_aln.qname
+                    self.read_counter[AlignmentProcessor.TOTAL_PASSED_READS] += 1
+
                 yield aln
