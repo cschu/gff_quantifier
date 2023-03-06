@@ -9,9 +9,10 @@ from functools import lru_cache
 
 from intervaltree import IntervalTree
 
-from gffquant.db import get_database
-from gffquant.db.models import db
-from gffquant.db.db_import import GqDatabaseImporter
+from . import get_database
+from .models import db
+from .db_import import GqDatabaseImporter
+
 
 logger = logging.getLogger(__name__)
 

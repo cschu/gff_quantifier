@@ -11,13 +11,14 @@ import time
 from abc import ABC, abstractmethod
 from collections import Counter
 
-from gffquant.db.annotation_db import AnnotationDatabaseManager
-from gffquant.counters import CountManager
-from gffquant.annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
-from gffquant.counters.coverage_counter import CoverageCounter
-from gffquant.alignment import AlignmentGroup, AlignmentProcessor, SamFlags
+from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
+from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
+from ..counters.coverage_counter import CoverageCounter
+from ..counters import CountManager
+from ..db.annotation_db import AnnotationDatabaseManager
 
 from .. import __tool__
+
 
 logger = logging.getLogger(__name__)
 
