@@ -17,7 +17,7 @@ from gffquant.annotation import GeneCountAnnotator, RegionCountAnnotator, CountW
 from gffquant.counters.coverage_counter import CoverageCounter
 from gffquant.alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 
-from .. import __toolname__
+from .. import __tool__
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class FeatureQuantifier(ABC):
     def __init__(
         self,
         db=None,
-        out_prefix=__toolname__,
+        out_prefix=__tool__,
         ambig_mode="unique_only",
         reference_type="genome",
         strand_specific=False,
