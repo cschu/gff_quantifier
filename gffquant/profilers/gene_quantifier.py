@@ -36,16 +36,15 @@ class GeneQuantifier(FeatureQuantifier):
         # logger.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
         ambig_counts = aln_group.get_ambig_align_counts()
         if any(ambig_counts) and self.require_ambig_bookkeeping:
-            for aln in aln_group.get_alignments():
-                if aln is not None:
-                    current_ref = self.register_reference(aln.rid, aln_reader)
-                    ambig_count = ambig_counts[aln.is_second()]
-                    hits = self.process_alignments_sameref(
-                        current_ref, (aln.shorten(),), aln_count=ambig_count
-                    )
-                    self.count_manager.update_counts(
-                        hits, ambiguous_counts=True, pair=aln_group.is_paired()
-                    )
+            for aln in aln_group.get_alignments():                
+                current_ref = self.register_reference(aln.rid, aln_reader)
+                ambig_count = ambig_counts[aln.is_second()]
+                hits = self.process_alignments_sameref(
+                    current_ref, (aln.shorten(),), aln_count=ambig_count
+                )
+                self.count_manager.update_counts(
+                    hits, ambiguous_counts=True, pair=aln_group.is_paired(), pe_library=aln_group.pe_library,
+                )
         elif aln_group.is_aligned_pair():
             current_ref = self.register_reference(aln_group.primaries[0].rid, aln_reader)
             hits = self.process_alignments_sameref(
@@ -56,7 +55,7 @@ class GeneQuantifier(FeatureQuantifier):
                 )
             )
             self.count_manager.update_counts(
-                hits, ambiguous_counts=False, pair=True
+                hits, ambiguous_counts=False, pair=True, pe_library=aln_group.pe_library,
             )
         else:
             for aln in aln_group.get_alignments():
@@ -65,5 +64,5 @@ class GeneQuantifier(FeatureQuantifier):
                     current_ref, (aln.shorten(),)
                 )
                 self.count_manager.update_counts(
-                    hits, ambiguous_counts=not aln.is_unique(), pair=aln_group.is_paired()
+                    hits, ambiguous_counts=not aln.is_unique(), pair=aln_group.is_paired(), pe_library=aln_group.pe_library,
                 )

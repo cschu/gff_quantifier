@@ -64,7 +64,8 @@ class RegionQuantifier(FeatureQuantifier):
                     for aln, hit, unaligned in all_hits
                 ),
                 ambiguous_counts=True,
-                pair=aln_group.is_paired()
+                pair=aln_group.is_paired(),
+                pe_library=aln_group.pe_library,
             )
         elif aln_group.is_aligned_pair():
             current_ref = self.register_reference(aln_group.primaries[0].rid, aln_reader)
@@ -76,7 +77,7 @@ class RegionQuantifier(FeatureQuantifier):
                 )
             )
             self.count_manager.update_counts(
-                hits, ambiguous_counts=False, pair=True
+                hits, ambiguous_counts=False, pair=True, pe_library=aln_group.pe_library,
             )
         else:
             for aln in aln_group.get_alignments():
@@ -86,5 +87,6 @@ class RegionQuantifier(FeatureQuantifier):
                 )
                 self.count_manager.update_counts(
                     hits, ambiguous_counts=not aln.is_unique(),
-                    pair=aln_group.is_paired()
+                    pair=aln_group.is_paired(),
+                    pe_library=aln_group.pe_library,
                 )
