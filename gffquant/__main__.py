@@ -61,6 +61,7 @@ def main():
         report_category=True,
         report_unannotated=args.mode == "genome",
         dump_counters=args.debug,
+        restrict_reports=("raw", "lnorm", "scaled"),
     )
 
 
