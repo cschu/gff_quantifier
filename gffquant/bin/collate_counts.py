@@ -64,7 +64,8 @@ class FeatureCountCollator:
             with gzip.open(fn, "rt") as _in:
                 index.update(row.strip().split("\t")[0] for row in _in if row.strip())
         merged_tab = pd.DataFrame(index=['unannotated'] + sorted(index.difference({'feature', 'unannotated'})))
-        for sample, fn in files:
+        print(f"Collating {len(files)} category '{category}' files.", flush=True)
+        for i, (sample, fn) in enumerate(files, start=1):
             src_tab = pd.read_csv(fn, sep="\t", index_col=0)
             colname = self.column
             try:
@@ -80,6 +81,7 @@ class FeatureCountCollator:
             merged_tab.rename(columns={colname: sample}, inplace=True)
             # merged_tab[sample]["unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
             merged_tab.loc["unannotated", sample] = src_tab["uniq_raw"].get("unannotated", "NA")
+            print(f"{i}/{len(files)} files finished ({i/len(files) * 100:.1f}%)", flush=True)
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
 
     def _collate_aln_stats(self, files):
