@@ -38,7 +38,11 @@ class CountWriter:
             self.publish_reports.append("unannotated")
 
     def get_header(self):
-        reports = self.publish_reports
+        reports = [
+            report
+            for report in self.publish_reports
+            if report in CountWriter.COUNT_HEADER_ELEMENTS
+        ]
         header = []
         header += (f"uniq_{element}" for element in reports)
         if self.has_ambig_counts:
