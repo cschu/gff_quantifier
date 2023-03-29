@@ -1,5 +1,6 @@
 import argparse
 import csv
+import gzip
 import os
 
 from sqlalchemy import create_engine
@@ -59,8 +60,9 @@ def main():
 			db_session.add(db_sample)
 			db_session.commit()
 		
+		f_open = gzip.open if f.endswith(".gz") else open
 
-		with open(os.path.join(dirpath, f), "rt") as _in:
+		with f_open(os.path.join(dirpath, f), "rt") as _in:
 			for row in csv.DictReader(_in, delimiter="\t"):
 				if not "unannotated" in row:
 					db_feature = db_session.query(db.Feature.name == row["feature"]).one_or_none()
