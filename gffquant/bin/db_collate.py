@@ -52,15 +52,15 @@ def main():
 		if db_category is None:
 			db_category = db.Category(name=category)
 			db_session.add(db_category)
-			db_session.commit()
+			# db_session.commit()
 
 		db_sample = db_session.query(db.Sample.name == sample).one_or_none()
 		if db_sample is None:
 			db_sample = db.Sample(name=sample)
 			db_session.add(db_sample)
-			db_session.commit()
+			# db_session.commit()
 
-		print(db_sample, db_sample.__dict__)
+		
 		
 		f_open = gzip.open if f.endswith(".gz") else open
 
@@ -71,15 +71,16 @@ def main():
 					if db_feature is None:
 						db_feature = db.Feature(name=row["feature"], category_id=category)
 						db_session.add(db_feature)
-						db_session.commit()
+						# db_session.commit()
 					db_observation = db.Observation(
 						metric=args.column,
 						value=float(row[args.column]),
 						category_id=db_category.id,
-						sample_id=db_sample.id
+						sample_id=db_sample.id,
+						feature_id=db_feature.id,
 					)
 					db_session.add(db_observation)
-					db_session.commit()
+		db_session.commit()
 
 
 
