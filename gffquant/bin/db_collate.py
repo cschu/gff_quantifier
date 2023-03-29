@@ -67,7 +67,7 @@ def main():
 				if not "unannotated" in row:
 					db_feature = db_session.query(db.Feature.name == row["feature"]).one_or_none()
 					if db_feature is None:
-						db_feature = db.Feature(name=row["feature"], category=category)
+						db_feature = db.Feature(name=row["feature"], category_id=category)
 						db_session.add(db_feature)
 						db_session.commit()
 					db_observation = db.Observation(
