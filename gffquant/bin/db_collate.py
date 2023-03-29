@@ -81,14 +81,14 @@ def main():
 						feature_id = db_feature.id
 						db_session.add(db_feature)
 						db_session.commit()
-					else:
-						feature_id = db_feature.id
+					# else:
+					# 	feature_id = db_feature.id
 					db_observation = db.Observation(
 						metric=args.column,
 						value=float(row[args.column]),
 						category_id=db_category.id,
 						sample_id=db_sample.id,
-						feature_id=feature_id,
+						feature_id=db_feature.id,
 					)
 					db_session.add(db_observation)
 					db_session.commit()
