@@ -32,7 +32,7 @@ def main():
 	ap.add_argument("--input_dir", "-i", type=str, default=".")
 	ap.add_argument("--output_dir", "-o", type=str, default="collated")
 	ap.add_argument("--column", "-c", type=str)
-	ap.add_argument("--dbpath", type=str, default="observations.sqlite3")
+	ap.add_argument("--db_path", type=str, default="observations.sqlite3")
 	
 	args = ap.parse_args()
 
