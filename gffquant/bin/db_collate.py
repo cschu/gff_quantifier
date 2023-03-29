@@ -51,16 +51,21 @@ def main():
 		db_category = db_session.query(db.Category.name == category).one_or_none()
 		if db_category is None:
 			db_category = db.Category(name=category)
+			category_id = db_category.id
 			db_session.add(db_category)
-			# db_session.commit()
+			db_session.commit()
+		else:
+			category_id = db_category.id
+		
 
 		db_sample = db_session.query(db.Sample.name == sample).one_or_none()
 		if db_sample is None:
 			db_sample = db.Sample(name=sample)
+			sample_id = db_sample.id
 			db_session.add(db_sample)
-			# db_session.commit()
-
-		
+			db_session.commit()
+		else:
+			sample_id = db_sample.id		
 		
 		f_open = gzip.open if f.endswith(".gz") else open
 
@@ -69,18 +74,21 @@ def main():
 				if not "unannotated" in row:
 					db_feature = db_session.query(db.Feature.name == row["feature"]).one_or_none()
 					if db_feature is None:
-						db_feature = db.Feature(name=row["feature"], category_id=category)
+						db_feature = db.Feature(name=row["feature"], category_id=category_id)
+						feature_id = db_feature.id
 						db_session.add(db_feature)
-						# db_session.commit()
+						db_session.commit()
+					else:
+						feature_id = db_feature.id
 					db_observation = db.Observation(
 						metric=args.column,
 						value=float(row[args.column]),
-						category_id=db_category.id,
-						sample_id=db_sample.id,
-						feature_id=db_feature.id,
+						category_id=category_id,
+						sample_id=sample_id,
+						feature_id=feature_id,
 					)
 					db_session.add(db_observation)
-		db_session.commit()
+					db_session.commit()
 
 
 
