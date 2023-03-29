@@ -48,7 +48,7 @@ def main():
 		*sample, category = fname.split(".")
 		sample = ".".join(sample)
 
-		db_category = db_session.query(db.Category.name == category)
+		db_category = db_session.query(db.Category.name == category).one_or_none()
 		if db_category is None:
 			db_category = db.Category(name=category)
 			db_session.add(db_category)

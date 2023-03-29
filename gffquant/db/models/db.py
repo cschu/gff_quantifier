@@ -57,6 +57,7 @@ class Observation(Base):
     metric = Column(String)
     value = Column(Float)    
 
+    feature_id = Column(Integer, ForeignKey("feature.id"))
     category_id = Column(Integer, ForeignKey("category.id"))
     sample_id = Column(Integer, ForeignKey("sample.id"))
 
