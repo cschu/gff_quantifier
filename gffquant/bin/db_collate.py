@@ -59,6 +59,8 @@ def main():
 			db_sample = db.Sample(name=sample)
 			db_session.add(db_sample)
 			db_session.commit()
+
+		print(db_sample, db_sample.__dict__)
 		
 		f_open = gzip.open if f.endswith(".gz") else open
 
@@ -72,7 +74,7 @@ def main():
 						db_session.commit()
 					db_observation = db.Observation(
 						metric=args.column,
-						value=row[args.column],
+						value=float(row[args.column]),
 						category_id=db_category.id,
 						sample_id=db_sample.id
 					)
