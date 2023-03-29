@@ -38,7 +38,7 @@ def main():
 
 	dirpath, _, files = next(os.walk(args.input_dir))
 
-	engine, db_session = get_database(args.db_path) if not args.extract_map_only else (None, None)
+	engine, db_session = get_database(args.db_path)
 	initialise_db(engine)
 
 
