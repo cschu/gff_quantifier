@@ -2,6 +2,9 @@ import argparse
 import csv
 import gzip
 import os
+import sqlite3
+
+import pandas as pd
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -31,7 +34,7 @@ def get_database(db_path):
 def main():
 	ap = argparse.ArgumentParser()
 	ap.add_argument("--input_dir", "-i", type=str, default=".")
-	ap.add_argument("--output_dir", "-o", type=str, default="collated")
+	ap.add_argument("--output_prefix", "-o", type=str, default="collated")
 	ap.add_argument("--column", "-c", type=str)
 	ap.add_argument("--db_path", type=str, default="observations.sqlite3")
 	
@@ -94,8 +97,26 @@ def main():
 					db_session.commit()
 
 
+	con = sqlite3.connect(args.db_path)
+	df = pd.read_sql_query(
+		"select sample.name as sample_id, "
+		"feature.name as feature_id, "
+		"observation.value "
+		"from observation "
+		"join sample on sample.id = observation.sample_id "
+		"join feature on feature.id = observation.feature_id",
+		con
+	)
 
-
+	df = df.pivot(index="feature_id", columns="sample_id")
+	df.columns = [x[1] for x in df.columns]
+	df.index.name = ""
+	df.to_csv(
+		f"{args.output_prefix}.{category}.{args.column}.txt.gz",
+		sep="\t",
+		na_rep="NA",
+	)
+	# collated.CAZy.uniq_scaled.txt.gz
 
 
 	
