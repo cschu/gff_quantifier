@@ -3,6 +3,7 @@ import csv
 import gzip
 import logging
 import os
+import pathlib
 import sqlite3
 import sys
 import time
@@ -48,6 +49,10 @@ def main():
 	ap.add_argument("--db_path", type=str, default="observations.sqlite3")
 	
 	args = ap.parse_args()
+
+	outdir = os.path.dirname(args.output_prefix)
+	if outdir and outdir != ".":
+		pathlib.Path(outdir).mkdir(exist_ok=True, parents=True)
 
 	dirpath, _, files = next(os.walk(args.input_dir))
 
