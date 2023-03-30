@@ -3,6 +3,7 @@ import csv
 import gzip
 import os
 import sqlite3
+import sys
 
 import pandas as pd
 
@@ -46,7 +47,8 @@ def main():
 	initialise_db(engine)
 
 
-	for f in files:
+	for i, f in enumerate(files, start=1):
+		print(f"Processing file {i}/{len(files)}: {f}", file=sys.stderr)
 		fname = os.path.basename(f).replace(".txt.gz", "")
 		*sample, category = fname.split(".")
 		sample = ".".join(sample)
@@ -80,8 +82,8 @@ def main():
 					db_feature = db_session.query(db.Feature)\
 						.filter(db.Feature.name == row["feature"]).one_or_none()
 					if db_feature is None:
-						db_feature = db.Feature(name=row["feature"], category_id=db_category.id)
-						feature_id = db_feature.id
+						db_feature = db.Feature(name=row.get("feature", row.get("gene")), category_id=db_category.id)
+						# feature_id = db_feature.id
 						db_session.add(db_feature)
 						db_session.commit()
 					# else:
@@ -97,6 +99,7 @@ def main():
 					db_session.commit()
 
 
+	print("Converting database to count matrix...", file=sys.stderr)
 	con = sqlite3.connect(args.db_path)
 	df = pd.read_sql_query(
 		"select sample.name as sample_id, "
