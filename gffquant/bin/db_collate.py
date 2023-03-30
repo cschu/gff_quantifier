@@ -48,7 +48,7 @@ def main():
 
 
 	for i, f in enumerate(files, start=1):
-		print(f"Processing file {i}/{len(files)}: {f}", file=sys.stderr)
+		print(f"Processing file {i}/{len(files)}: {f}", file=sys.stderr, flush=True)
 		fname = os.path.basename(f).replace(".txt.gz", "")
 		*sample, category = fname.split(".")
 		sample = ".".join(sample)
@@ -100,7 +100,7 @@ def main():
 					db_session.commit()
 
 
-	print("Converting database to count matrix...", file=sys.stderr)
+	print("Converting database to count matrix...", file=sys.stderr, flush=True)
 	con = sqlite3.connect(args.db_path)
 	df = pd.read_sql_query(
 		"select sample.name as sample_id, "
@@ -115,6 +115,7 @@ def main():
 	df = df.pivot(index="feature_id", columns="sample_id")
 	df.columns = [x[1] for x in df.columns]
 	df.index.name = "feature"
+	print("Saving database...", file=sys.stderr, flush=True)
 	df.to_csv(
 		f"{args.output_prefix}.{category}.{args.column}.txt.gz",
 		sep="\t",
