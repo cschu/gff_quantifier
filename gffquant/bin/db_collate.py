@@ -101,7 +101,7 @@ def main():
 					feature_id = features_d.get(feature_name)
 					if feature_id is None:
 						feature_id = features_d[feature_name] = len(features_d)
-						db_feature = db.Feature(name=feature_name, category_id=db_category.id)
+						db_feature = db.Feature(id=feature_id, name=feature_name, category_id=db_category.id)
 						# feature_id = db_feature.id
 						db_session.add(db_feature)
 						db_session.commit()
