@@ -110,7 +110,8 @@ def main():
 	logging.info(f"Finished in {time.time() - t0}s.")	
 
 	db_session.commit()
-					
+	
+	features_d.clear()
 		
 
 	logging.info("Converting database to count matrix...")
