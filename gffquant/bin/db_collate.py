@@ -100,6 +100,7 @@ def main():
 				)
 				db_session.add(db_observation)
 
+		db_session.commit()
 		logging.info(f"Finished in {time.time() - t0}s.")	
 
 
@@ -109,9 +110,10 @@ def main():
 		# logging.info(f"    {feature_name} -> {feature_id}")
 		db_feature = db.Feature(id=feature_id, name=feature_name, category_id=0)
 		db_session.add(db_feature)
-	logging.info(f"Finished in {time.time() - t0}s.")	
 
 	db_session.commit()
+	logging.info(f"Finished in {time.time() - t0}s.")	
+
 	
 	features_d.clear()
 		
