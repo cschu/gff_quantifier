@@ -74,6 +74,7 @@ def main():
 		if category_id is None:
 			db_category = db.Category(id=0, name=category)
 			db_session.add(db_category)
+			category_id = db_category.id
 		
 		db_sample = db.Sample(name=sample)
 		db_session.add(db_sample)
