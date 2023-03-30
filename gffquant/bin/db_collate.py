@@ -79,10 +79,11 @@ def main():
 		with f_open(os.path.join(dirpath, f), "rt") as _in:
 			for row in csv.DictReader(_in, delimiter="\t"):
 				if not "unannotated" in row:
+					feature_id = row.get("feature", row.get("gene", ""))
 					db_feature = db_session.query(db.Feature)\
-						.filter(db.Feature.name == row["feature"]).one_or_none()
+						.filter(db.Feature.name == feature_id).one_or_none()
 					if db_feature is None:
-						db_feature = db.Feature(name=row.get("feature", row.get("gene")), category_id=db_category.id)
+						db_feature = db.Feature(name=feature_id, category_id=db_category.id)
 						# feature_id = db_feature.id
 						db_session.add(db_feature)
 						db_session.commit()
