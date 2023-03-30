@@ -1,9 +1,11 @@
 import argparse
 import csv
 import gzip
+import logging
 import os
 import sqlite3
 import sys
+import time
 
 import pandas as pd
 
@@ -13,6 +15,12 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from ..db import initialise_db
 from ..db.models import db
 from ..db.models.meta import Base
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(message)s'
+)
 
 
 def get_database(db_path):
@@ -47,8 +55,13 @@ def main():
 	initialise_db(engine)
 
 
+	features_d = {}
+	
+
 	for i, f in enumerate(files, start=1):
-		print(f"Processing file {i}/{len(files)}: {f}", file=sys.stderr, flush=True)
+		logging.info(f"Processing file {i}/{len(files)}: {f}")
+
+		t0 = time.time()
 		fname = os.path.basename(f).replace(".txt.gz", "")
 		*sample, category = fname.split(".")
 		sample = ".".join(sample)
@@ -79,10 +92,10 @@ def main():
 		with f_open(os.path.join(dirpath, f), "rt") as _in:
 			for row in csv.DictReader(_in, delimiter="\t"):
 				if not "unannotated" in row:
-					feature_id = row.get("feature", row.get("gene", ""))
-					db_feature = db_session.query(db.Feature)\
-						.filter(db.Feature.name == feature_id).one_or_none()
-					if db_feature is None:
+					feature_name = row.get("feature", row.get("gene", ""))
+					feature_id = features_d.get(feature_name)
+					if feature_id is None:
+						feature_id = features_d[feature_name] = len(features_d)
 						db_feature = db.Feature(name=feature_id, category_id=db_category.id)
 						# feature_id = db_feature.id
 						db_session.add(db_feature)
@@ -94,13 +107,15 @@ def main():
 						value=float(row[args.column]),
 						category_id=db_category.id,
 						sample_id=db_sample.id,
-						feature_id=db_feature.id,
+						feature_id=feature_id,
 					)
 					db_session.add(db_observation)
 					db_session.commit()
 
+		logging.info(f"Finished in {time.time() - t0}s.")
 
-	print("Converting database to count matrix...", file=sys.stderr, flush=True)
+
+	logging.info("Converting database to count matrix...", file=sys.stderr, flush=True)
 	con = sqlite3.connect(args.db_path)
 	df = pd.read_sql_query(
 		"select sample.name as sample_id, "
@@ -115,7 +130,7 @@ def main():
 	df = df.pivot(index="feature_id", columns="sample_id")
 	df.columns = [x[1] for x in df.columns]
 	df.index.name = "feature"
-	print("Saving database...", file=sys.stderr, flush=True)
+	logging.info("Saving database...")
 	df.to_csv(
 		f"{args.output_prefix}.{category}.{args.column}.txt.gz",
 		sep="\t",
