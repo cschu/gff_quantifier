@@ -90,37 +90,38 @@ def main():
 			db_session.add(db_sample)
 			db_session.commit()
 		# else:
-		# 	sample_id = db_sample.id		
+		# 	sample_id = db_sample.id
+
+		counts = pd.read_csv(
+			os.path.join(dirpath, f),
+			delimiter="\t",
+			index_col=0,
+			usecols=(("feature", "gene")[category == "gene_counts"], args.column),
+		)
 		
-		f_open = gzip.open if f.endswith(".gz") else open
-
-		with f_open(os.path.join(dirpath, f), "rt") as _in:
-			for row in csv.DictReader(_in, delimiter="\t"):
-				if not "unannotated" in row:
-					feature_name = row.get("feature", row.get("gene", ""))
-					feature_id = features_d.get(feature_name)
-					if feature_id is None:
-						feature_id = features_d[feature_name] = len(features_d)
-						db_feature = db.Feature(id=feature_id, name=feature_name, category_id=db_category.id)
-						# feature_id = db_feature.id
-						db_session.add(db_feature)
-						db_session.commit()
-					# else:
-					# 	feature_id = db_feature.id
-					db_observation = db.Observation(
-						metric=args.column,
-						value=float(row[args.column]),
-						category_id=db_category.id,
-						sample_id=db_sample.id,
-						feature_id=feature_id,
-					)
-					db_session.add(db_observation)
+		for _, row in counts.iterrows():
+			if row.name != "unannotated":
+				feature_name = row.name
+				feature_id = features_d.get(feature_name)
+				if feature_id is None:
+					feature_id = features_d[feature_name] = len(features_d)
+					db_feature = db.Feature(id=feature_id, name=feature_name, category_id=db_category.id)
+					db_session.add(db_feature)
 					db_session.commit()
-
+				db_observation = db.Observation(
+					metric=args.column,
+					value=float(row[0]),
+					category_id=db_category.id,
+					sample_id=db_sample.id,
+					feature_id=feature_id,
+				)
+				db_session.add(db_observation)
+				db_session.commit()
+					
 		logging.info(f"Finished in {time.time() - t0}s.")
 
-
 	logging.info("Converting database to count matrix...")
+	t0 = time.time()
 	con = sqlite3.connect(args.db_path)
 	df = pd.read_sql_query(
 		"select sample.name as sample_id, "
@@ -135,13 +136,15 @@ def main():
 	df = df.pivot(index="feature_id", columns="sample_id")
 	df.columns = [x[1] for x in df.columns]
 	df.index.name = "feature"
+	logging.info(f"Finished in {time.time() - t0}s.")
 	logging.info("Saving database...")
+	t0 = time.time()
 	df.to_csv(
 		f"{args.output_prefix}.{category}.{args.column}.txt.gz",
 		sep="\t",
 		na_rep="NA",
 	)
-	# collated.CAZy.uniq_scaled.txt.gz
+	logging.info(f"Finished in {time.time() - t0}s.")
 
 
 	
