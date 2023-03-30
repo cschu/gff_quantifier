@@ -120,7 +120,7 @@ def main():
 		logging.info(f"Finished in {time.time() - t0}s.")
 
 
-	logging.info("Converting database to count matrix...", file=sys.stderr, flush=True)
+	logging.info("Converting database to count matrix...")
 	con = sqlite3.connect(args.db_path)
 	df = pd.read_sql_query(
 		"select sample.name as sample_id, "
