@@ -61,7 +61,7 @@ def main():
 
 
 	features_d = {}
-	
+	category_id = None
 
 	for i, f in enumerate(files, start=1):
 		logging.info(f"Processing file {i}/{len(files)}: {f}")
@@ -71,35 +71,19 @@ def main():
 		*sample, category = fname.split(".")
 		sample = ".".join(sample)
 
-		db_category = db_session.query(db.Category)\
-			.filter(db.Category.name == category).one_or_none()
-		if db_category is None:
-			db_category = db.Category(name=category)
-			# category_id = db_category.id
+		if category_id is None:
+			db_category = db.Category(id=0, name=category)
 			db_session.add(db_category)
-			db_session.commit()
-		# else:
-		# 	category_id = db_category.id
 		
-
-		db_sample = db_session.query(db.Sample)\
-			.filter(db.Sample.name == sample).one_or_none()
-		if db_sample is None:
-			db_sample = db.Sample(name=sample)
-			# sample_id = db_sample.id
-			db_session.add(db_sample)
-			db_session.commit()
-		# else:
-		# 	sample_id = db_sample.id
-
+		db_sample = db.Sample(name=sample)
+		db_session.add(db_sample)
+		
 		counts = pd.read_csv(
 			os.path.join(dirpath, f),
 			delimiter="\t",
 			index_col=0,
 			usecols=(("feature", "gene")[category == "gene_counts"], args.column),
 		)
-
-
 		
 		for _, row in counts.iterrows():
 			if row.name != "unannotated":
@@ -109,17 +93,19 @@ def main():
 				db_observation = db.Observation(
 					metric=args.column,
 					value=float(row[0]),
-					category_id=db_category.id,
+					category_id=0,
 					sample_id=db_sample.id,
 					feature_id=feature_id,
 				)
 				db_session.add(db_observation)
 
+		logging.info(f"Finished in {time.time() - t0}s.")	
+
 
 	logging.info(f"Adding {len(features_d)} features to database...")
 	t0 = time.time()
 	for feature_name, feature_id in features_d.items():
-		db_feature = db.Feature(id=feature_id, name=feature_name, category_id=db_category.id)
+		db_feature = db.Feature(id=feature_id, name=feature_name, category_id=0)
 		db_session.add(db_feature)
 	logging.info(f"Finished in {time.time() - t0}s.")	
 
