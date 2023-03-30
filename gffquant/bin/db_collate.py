@@ -98,16 +98,14 @@ def main():
 			index_col=0,
 			usecols=(("feature", "gene")[category == "gene_counts"], args.column),
 		)
+
+
 		
 		for _, row in counts.iterrows():
 			if row.name != "unannotated":
 				feature_name = row.name
-				feature_id = features_d.get(feature_name)
-				if feature_id is None:
-					feature_id = features_d[feature_name] = len(features_d)
-					db_feature = db.Feature(id=feature_id, name=feature_name, category_id=db_category.id)
-					db_session.add(db_feature)
-					db_session.commit()
+				feature_id = features_d.setdefault(feature_name, len(features_d))
+				
 				db_observation = db.Observation(
 					metric=args.column,
 					value=float(row[0]),
@@ -116,9 +114,18 @@ def main():
 					feature_id=feature_id,
 				)
 				db_session.add(db_observation)
-				db_session.commit()
+
+
+	logging.info(f"Adding {len(features_d)} features to database...")
+	t0 = time.time()
+	for feature_name, feature_id in features_d.items():
+		db_feature = db.Feature(id=feature_id, name=feature_name, category_id=db_category.id)
+		db_session.add(db_feature)
+	logging.info(f"Finished in {time.time() - t0}s.")	
+
+	db_session.commit()
 					
-		logging.info(f"Finished in {time.time() - t0}s.")
+		
 
 	logging.info("Converting database to count matrix...")
 	t0 = time.time()
