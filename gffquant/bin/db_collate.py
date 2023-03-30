@@ -110,7 +110,7 @@ def main():
 
 	df = df.pivot(index="feature_id", columns="sample_id")
 	df.columns = [x[1] for x in df.columns]
-	df.index.name = ""
+	df.index.name = "feature"
 	df.to_csv(
 		f"{args.output_prefix}.{category}.{args.column}.txt.gz",
 		sep="\t",
