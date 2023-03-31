@@ -111,7 +111,7 @@ def main():
 		db_session.commit()
 		logging.info(f"Finished loading {f} in {time.time() - t0}s.")
 	
-	logging.info(f"Finished loading all files in {time.time() - t0}s.")
+	logging.info(f"Finished loading all files in {time.time() - t00}s.")
 
 
 	logging.info(f"Adding {len(features_d)} features to database...")
