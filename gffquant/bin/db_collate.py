@@ -63,7 +63,8 @@ def main():
 	samples_d = {}
 	category_id = 0	
 
-	t00 = time.time()
+
+	t000, t00 = time.time()
 	for i, f in enumerate(files, start=1):
 		logging.info(f"Processing file {i}/{len(files)}: {f}")
 
@@ -167,6 +168,7 @@ def main():
 	)
 	logging.info(f"Finished in {time.time() - t0}s.")
 
+	logging.info(f"Collation complete in {time.time() - t000}s.")
 
 	
 	
