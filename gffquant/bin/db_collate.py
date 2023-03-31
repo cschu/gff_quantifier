@@ -60,8 +60,10 @@ def main():
 	initialise_db(engine)
 
 	features_d = {}
-	category_id = None
+	samples_d = {}
+	category_id = 0	
 
+	t00 = time.time()
 	for i, f in enumerate(files, start=1):
 		logging.info(f"Processing file {i}/{len(files)}: {f}")
 
@@ -70,37 +72,45 @@ def main():
 		*sample, category = fname.split(".")
 		sample = ".".join(sample)
 
-		if category_id is None:
-			db_category = db.Category(id=0, name=category)
-			db_session.add(db_category)
-			category_id = db_category.id
-		
-		db_sample = db.Sample(name=sample)
-		db_session.add(db_sample)
-		
+		sample_id = samples_d.setdefault(sample, len(samples_d))
+
 		counts = pd.read_csv(
 			os.path.join(dirpath, f),
 			delimiter="\t",
 			index_col=0,
 			usecols=(("feature", "gene")[category == "gene_counts"], args.column),
 		)
-		
+
+		observations = []
 		for _, row in counts.iterrows():
 			if row.name != "unannotated":
 				feature_name = row.name
 				feature_id = features_d.setdefault(feature_name, len(features_d))
-				
-				db_observation = db.Observation(
-					metric=args.column,
-					value=float(row[0]),
-					category_id=0,
-					sample_id=db_sample.id,
-					feature_id=feature_id,
+
+				observations.append(
+					{
+						"value": float(row[0]),
+						"category_id": 0,
+						"sample_id": sample_id,
+						"feature_id": feature_id,
+					}	
 				)
-				db_session.add(db_observation)
+
+				# db_observation = db.Observation(
+				# 	metric=args.column,
+				# 	value=float(row[0]),
+				# 	category_id=0,
+				# 	sample_id=sample_id,
+				# 	feature_id=feature_id,
+				# )
+				# db_session.add(db_observation)
+		
+		db.Observation.__table__.insert().execute(observations)
 
 		db_session.commit()
-		logging.info(f"Finished in {time.time() - t0}s.")
+		logging.info(f"Finished loading {f} in {time.time() - t0}s.")
+	
+	logging.info(f"Finished loading all files in {time.time() - t0}s.")
 
 
 	logging.info(f"Adding {len(features_d)} features to database...")
