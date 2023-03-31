@@ -59,7 +59,6 @@ def main():
 	engine, db_session = get_database(args.db_path)
 	initialise_db(engine)
 
-
 	features_d = {}
 	category_id = None
 
@@ -101,7 +100,7 @@ def main():
 				db_session.add(db_observation)
 
 		db_session.commit()
-		logging.info(f"Finished in {time.time() - t0}s.")	
+		logging.info(f"Finished in {time.time() - t0}s.")
 
 
 	logging.info(f"Adding {len(features_d)} features to database...")
@@ -114,9 +113,7 @@ def main():
 	db_session.commit()
 	logging.info(f"Finished in {time.time() - t0}s.")	
 
-	
 	features_d.clear()
-		
 
 	logging.info("Converting database to count matrix...")
 	t0 = time.time()
