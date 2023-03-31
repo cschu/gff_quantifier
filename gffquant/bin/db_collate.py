@@ -74,9 +74,9 @@ def main():
 		sample = ".".join(sample)
 
 		sample_id = samples_d.setdefault(sample, len(samples_d))
-		db_session.add(
-			db.Sample(id=sample_id, name=sample)
-		)
+		# db_session.add(
+		# 	db.Sample(id=sample_id, name=sample)
+		# )
 
 		counts = pd.read_csv(
 			os.path.join(dirpath, f),
@@ -137,8 +137,25 @@ def main():
 		]
 	)
 
-	db_session.commit()
 	logging.info(f"Finished in {time.time() - t0}s.")	
+
+	logging.info(f"Adding {len(samples_d)} samples to database...")
+	t0 = time.time()
+	
+	db_session.execute(
+		insert(db.Sample),
+		[
+			{
+				"id": sample_id,
+				"name": sample_name,				
+			} 
+			for sample_id, sample_name in features_d.items()
+		]
+	)
+
+	logging.info(f"Finished in {time.time() - t0}s.")	
+	
+	db_session.commit()
 
 	features_d.clear()
 
