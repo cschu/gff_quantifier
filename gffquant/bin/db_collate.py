@@ -116,10 +116,22 @@ def main():
 
 	logging.info(f"Adding {len(features_d)} features to database...")
 	t0 = time.time()
-	for feature_name, feature_id in features_d.items():
-		# logging.info(f"    {feature_name} -> {feature_id}")
-		db_feature = db.Feature(id=feature_id, name=feature_name, category_id=0)
-		db_session.add(db_feature)
+	# for feature_name, feature_id in features_d.items():
+	# 	# logging.info(f"    {feature_name} -> {feature_id}")
+	# 	db_feature = db.Feature(id=feature_id, name=feature_name, category_id=0)
+	# 	db_session.add(db_feature)
+	
+	db_session.execute(
+		insert(db.Feature),
+		[
+			{
+				"id": feature_id,
+				"name": feature_name,
+				"category_id": 0
+			} 
+			for feature_name, feature_id in features_d.items()
+		]
+	)
 
 	db_session.commit()
 	logging.info(f"Finished in {time.time() - t0}s.")	
