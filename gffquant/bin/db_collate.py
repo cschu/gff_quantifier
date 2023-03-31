@@ -149,7 +149,7 @@ def main():
 				"id": sample_id,
 				"name": sample_name,				
 			} 
-			for sample_name, sample_id in features_d.items()
+			for sample_name, sample_id in samples_d.items()
 		]
 	)
 
