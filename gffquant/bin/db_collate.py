@@ -106,7 +106,7 @@ def main():
 				# db_session.add(db_observation)
 		
 		# db.Observation.__table__.insert().execute(observations)
-		db_session.execute(insert, observations)
+		db_session.execute(insert(db.Observation), observations)
 
 		db_session.commit()
 		logging.info(f"Finished loading {f} in {time.time() - t0}s.")
