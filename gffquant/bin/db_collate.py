@@ -73,6 +73,9 @@ def main():
 		sample = ".".join(sample)
 
 		sample_id = samples_d.setdefault(sample, len(samples_d))
+		db_session.add(
+			db.Sample(id=sample_id, name=sample)
+		)
 
 		counts = pd.read_csv(
 			os.path.join(dirpath, f),
@@ -127,7 +130,7 @@ def main():
 			{
 				"id": feature_id,
 				"name": feature_name,
-				"category_id": 0
+				"category_id": 0,
 			} 
 			for feature_name, feature_id in features_d.items()
 		]
