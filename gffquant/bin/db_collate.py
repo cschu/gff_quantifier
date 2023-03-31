@@ -64,7 +64,7 @@ def main():
 	category_id = 0	
 
 
-	t000, t00 = time.time()
+	t000 = t00 = time.time()
 	for i, f in enumerate(files, start=1):
 		logging.info(f"Processing file {i}/{len(files)}: {f}")
 
