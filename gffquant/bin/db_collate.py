@@ -10,7 +10,7 @@ import time
 
 import pandas as pd
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, insert
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from ..db import initialise_db
@@ -105,7 +105,8 @@ def main():
 				# )
 				# db_session.add(db_observation)
 		
-		db.Observation.__table__.insert().execute(observations)
+		# db.Observation.__table__.insert().execute(observations)
+		db_session.execute(insert, observations)
 
 		db_session.commit()
 		logging.info(f"Finished loading {f} in {time.time() - t0}s.")
