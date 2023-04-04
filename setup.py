@@ -58,6 +58,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 				"build_bed_database=gffquant.bin.build_bed_database:main",
 				"build_custom_database=gffquant.bin.build_custom_database:main",
 				"collate_studies=gffquant.bin.collate_studies:main",
+				"db_collate=gffquant.bin.db_collate:main",
 			],
 		},
 		package_data={},

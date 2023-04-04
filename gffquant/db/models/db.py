@@ -2,7 +2,7 @@
 
 """ module docstring """
 
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Float
 from sqlalchemy.orm import relationship
 
 from .meta import Base
@@ -39,3 +39,28 @@ class Feature(Base):
     category_id = Column(Integer, ForeignKey("category.id"))
 
     category = relationship("Category", back_populates="features")
+
+
+class Sample(Base):
+    __tablename__ = "sample"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+
+    observations = relationship("Observation", back_populates="sample")
+
+
+class Observation(Base):
+    __tablename__ = "observation"
+
+    id = Column(Integer, primary_key=True)
+    metric = Column(String)
+    value = Column(Float)    
+
+    feature_id = Column(Integer, ForeignKey("feature.id"))
+    category_id = Column(Integer, ForeignKey("category.id"))
+    sample_id = Column(Integer, ForeignKey("sample.id"))
+
+    sample = relationship("Sample", back_populates="observations")
+
+    
