@@ -1,4 +1,4 @@
-# pylint: disable=R0914,C0103,C0301,R0913
+# pylint: disable=R0914,C0103,C0301,R0913,R0903
 """ module docstring """
 
 import argparse
@@ -21,13 +21,13 @@ class CollationCollator:
     def _collect_count_files(self):
         for fn in glob.glob(os.path.join(self.count_dir, self.pattern)):
             self.files.setdefault(os.path.basename(fn), []).append(fn)
-    
+
     def collate(self):
         for fn, files in sorted(self.files.items()):
             basename = os.path.basename(self.prefix)
             if basename and self.prefix[-1] != ".":
                 self.prefix += "."
-            
+
             table_file = f"{self.prefix}{fn}"
             index = set()
             for fn in files:
@@ -37,7 +37,7 @@ class CollationCollator:
             for fn in sorted(files):
                 src_tab = pd.read_csv(fn, sep="\t", index_col=0)
                 merged_tab = merged_tab.merge(src_tab, left_index=True, right_index=True, how="outer")
-            merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")    
+            merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
 
 
 def main():

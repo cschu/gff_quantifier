@@ -12,9 +12,9 @@ import sqlite3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from gffquant.db import initialise_db
-from gffquant.db.models import db
-from gffquant.db.gff_dbm import GffDatabaseManager
+from ..db import initialise_db
+from ..db.models import db
+from ..db.gff_dbm import GffDatabaseManager
 from ..db.models.meta import Base
 
 

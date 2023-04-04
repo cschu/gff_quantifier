@@ -6,11 +6,12 @@ import logging
 import textwrap
 
 from . import __version__
+from . import __tool__
 
 
 def handle_args(args):
 
-    log_ap = argparse.ArgumentParser(prog="gffquant", add_help=False)
+    log_ap = argparse.ArgumentParser(prog=__tool__, add_help=False)
     log_ap.add_argument("-l", "--log_level", type=int, choices=range(1, 5), default=logging.INFO)
     log_args, _ = log_ap.parse_known_args(args)
 
@@ -23,7 +24,7 @@ def handle_args(args):
         raise ValueError(f"Invalid log level: {log_args.log_level}") from invalid_loglevel_err
 
     ap = argparse.ArgumentParser(
-        prog="gffquant",
+        prog=__tool__,
         formatter_class=argparse.RawTextHelpFormatter,
         parents=(log_ap,),
     )
@@ -65,7 +66,7 @@ def handle_args(args):
         "--out_prefix",
         "-o",
         type=str,
-        default="gffquant",
+        default=__tool__,
         help="Prefix for output files.",
     )
     ap.add_argument(
