@@ -59,15 +59,22 @@ class FeatureCountCollator:
 
     def _collate_category(self, category, files):
         table_file = f"{self.prefix}.{category}.{self.column}.txt.gz"
+
+        # gather all features / gene ids to establish nrows of final matrix
         index = set()
         for _, fn in files:
             with gzip.open(fn, "rt") as _in:
                 index.update(row.strip().split("\t")[0] for row in _in if row.strip())
         merged_tab = pd.DataFrame(index=['unannotated'] + sorted(index.difference({'feature', 'unannotated'})))
+        
         print(f"Collating {len(files)} category '{category}' files.", flush=True)
         for i, (sample, fn) in enumerate(files, start=1):
+            # load the source table
+            # (maybe should only load the pivot column here -- but this is still not super fast, s. db_collate.py)
             src_tab = pd.read_csv(fn, sep="\t", index_col=0)
             colname = self.column
+
+            # extract the pivot column and deal with non-existing `combined`-columns (legacy-support or `uniq_only` runs)
             try:
                 column = src_tab[colname]
             except KeyError:
@@ -77,9 +84,11 @@ class FeatureCountCollator:
                 except KeyError as err:
                     raise ValueError(f"Problem parsing file {fn}:\n{str(err)}") from err
 
+            # merge the pivot column into the final dataframe and rename it to `sample_id`
             merged_tab = merged_tab.merge(column, left_index=True, right_index=True, how="outer")
             merged_tab.rename(columns={colname: sample}, inplace=True)
             # merged_tab[sample]["unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
+            # pull in unannotated counts (only located in `uniq_raw` column) -- genome-mode
             merged_tab.loc["unannotated", sample] = src_tab["uniq_raw"].get("unannotated", "NA")
             print(f"{i}/{len(files)} files finished ({i/len(files) * 100:.1f}%)", flush=True)
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
