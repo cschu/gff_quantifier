@@ -6,3 +6,4 @@ channels:
 dependencies:
   - python>=3.7
   - nextflow>=21.10.4
+  - datatable>=0.11.1

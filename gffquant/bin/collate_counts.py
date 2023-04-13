@@ -94,7 +94,7 @@ class FeatureCountCollator:
             merged_tab.names = {colname : sample}
             print(f"{i}/{len(files)} files finished ({i/len(files) * 100:.1f}%)", flush=True)
         merged_tab = merged_tab.to_pandas()
-        merged_tab.set_index('gene')
+        merged_tab.set_index('gene', inplace = True)
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
 
     def _collate_aln_stats(self, files):
