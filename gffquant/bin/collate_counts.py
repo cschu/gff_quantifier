@@ -6,6 +6,9 @@ import gzip
 import os
 import pathlib
 
+import datatable as dt
+dt.options.nthreads=1
+
 import pandas as pd
 
 
@@ -58,9 +61,6 @@ class FeatureCountCollator:
                 self._collate_category(category, sorted(files))
 
     def _collate_category(self, category, files):
-        import time
-        import datatable as dt
-        dt.options.nthreads=1
         table_file = f"{self.prefix}.{category}.{self.column}.txt.gz"
         
         # gather all features / gene ids to establish nrows of final matrix
@@ -75,19 +75,11 @@ class FeatureCountCollator:
         merged_tab.key = 'gene'
         
         print(f"Collating {len(files)} category '{category}' files.", flush=True)
-        startAll = time.time()
         for i, (sample, fn) in enumerate(files, start=1):
-            start = time.time()
             colname = self.column
 
             try:
                 src_tab = pd.read_csv(fn, sep = "\t")
-                # for later
-                #uni_raw = src_tab["uniq_raw"]
-                #uni_raw.index = uni_raw['gene']
-                #uni_raw = src_tab["uniq_raw"].get("unannotated", "NA")
-                #print(uni_raw)
-                #asdadssd
                 src_tab = src_tab.loc[:, ['gene', self.column]]
                 src_tab = dt.Frame(src_tab)
                 src_tab.key = 'gene'
@@ -100,12 +92,9 @@ class FeatureCountCollator:
             # merge the pivot column into the final dataframe and rename it to `sample_id`
             merged_tab = merged_tab[:, :, dt.join(src_tab)]
             merged_tab.names = {colname : sample}
-            # ugh...
-            #merged_tab[[True if ge == "unannotated" else False for ge in merged_tab.to_pandas()['gene']], sample] = 10000
-            print(time.time() - start)
             print(f"{i}/{len(files)} files finished ({i/len(files) * 100:.1f}%)", flush=True)
         merged_tab = merged_tab.to_pandas()
-        # TODO: Bring unassigned back up
+        merged_tab.set_index('gene')
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
 
     def _collate_aln_stats(self, files):
