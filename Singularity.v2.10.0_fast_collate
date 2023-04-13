@@ -33,7 +33,7 @@ export PATH=$PATH:/opt/software/miniconda3/bin:/opt/software/mOTUs
   cd gff_quantifier
   git checkout feature/faster_collate_20230413
 
-  /opt/software/miniconda3/bin/pip https://h2o-release.s3.amazonaws.com/datatable/dev/datatable-1.1.0a2231/datatable-1.1.0a2231-cp310-cp310-manylinux_2_17_x86_64.whl#sha256=dad17386c8d68845faf1d82e1dddca9201fe4d09daa3e71042d830baec8d068a
+  /opt/software/miniconda3/bin/pip install https://h2o-release.s3.amazonaws.com/datatable/dev/datatable-1.1.0a2231/datatable-1.1.0a2231-cp310-cp310-manylinux_2_17_x86_64.whl#sha256=dad17386c8d68845faf1d82e1dddca9201fe4d09daa3e71042d830baec8d068a
   /opt/software/miniconda3/bin/pip install .
 
   # /opt/software/miniconda3/bin/python setup.py bdist_wheel
