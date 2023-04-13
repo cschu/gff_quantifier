@@ -58,39 +58,54 @@ class FeatureCountCollator:
                 self._collate_category(category, sorted(files))
 
     def _collate_category(self, category, files):
+        import time
+        import datatable as dt
+        dt.options.nthreads=1
         table_file = f"{self.prefix}.{category}.{self.column}.txt.gz"
-
+        
         # gather all features / gene ids to establish nrows of final matrix
         index = set()
         for _, fn in files:
+            print(fn)
             with gzip.open(fn, "rt") as _in:
                 index.update(row.strip().split("\t")[0] for row in _in if row.strip())
-        merged_tab = pd.DataFrame(index=['unannotated'] + sorted(index.difference({'feature', 'unannotated'})))
+        #merged_tab = pd.DataFrame(index=['unannotated'] + sorted(index.difference({'feature', 'unannotated'})))
+        merged_tab = pd.DataFrame({'gene' : ['unannotated'] + sorted(index.difference({'feature', 'unannotated'}))})
+        merged_tab = dt.Frame(merged_tab)
+        merged_tab.key = 'gene'
         
         print(f"Collating {len(files)} category '{category}' files.", flush=True)
+        startAll = time.time()
         for i, (sample, fn) in enumerate(files, start=1):
-            # load the source table
-            # (maybe should only load the pivot column here -- but this is still not super fast, s. db_collate.py)
-            src_tab = pd.read_csv(fn, sep="\t", index_col=0)
+            start = time.time()
             colname = self.column
 
-            # extract the pivot column and deal with non-existing `combined`-columns (legacy-support or `uniq_only` runs)
             try:
-                column = src_tab[colname]
+                src_tab = pd.read_csv(fn, sep = "\t")
+                # for later
+                #uni_raw = src_tab["uniq_raw"]
+                #uni_raw.index = uni_raw['gene']
+                #uni_raw = src_tab["uniq_raw"].get("unannotated", "NA")
+                #print(uni_raw)
+                #asdadssd
+                src_tab = src_tab.loc[:, ['gene', self.column]]
+                src_tab = dt.Frame(src_tab)
+                src_tab.key = 'gene'
             except KeyError:
                 colname = colname.replace("combined_", "uniq_")
                 try:
                     column = src_tab[colname]
                 except KeyError as err:
                     raise ValueError(f"Problem parsing file {fn}:\n{str(err)}") from err
-
             # merge the pivot column into the final dataframe and rename it to `sample_id`
-            merged_tab = merged_tab.merge(column, left_index=True, right_index=True, how="outer")
-            merged_tab.rename(columns={colname: sample}, inplace=True)
-            # merged_tab[sample]["unannotated"] = src_tab["uniq_raw"].get("unannotated", "NA")
-            # pull in unannotated counts (only located in `uniq_raw` column) -- genome-mode
-            merged_tab.loc["unannotated", sample] = src_tab["uniq_raw"].get("unannotated", "NA")
+            merged_tab = merged_tab[:, :, dt.join(src_tab)]
+            merged_tab.names = {colname : sample}
+            # ugh...
+            #merged_tab[[True if ge == "unannotated" else False for ge in merged_tab.to_pandas()['gene']], sample] = 10000
+            print(time.time() - start)
             print(f"{i}/{len(files)} files finished ({i/len(files) * 100:.1f}%)", flush=True)
+        merged_tab = merged_tab.to_pandas()
+        # TODO: Bring unassigned back up
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="feature")
 
     def _collate_aln_stats(self, files):
