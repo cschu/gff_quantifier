@@ -71,7 +71,11 @@ class CountAnnotator(dict):
             for feature in category_counts:
                 self.add_counts(category, feature, counts)
 
-            self.add_counts(category, f"cat:::{category}", counts)
+            if category_counts:
+                # eggnog-mapper annotation tables in v2.1.2 (maybe earlier?) have '-' instead of empty cells
+                # category counts may be empty in case a non-patched db based on such tables is used
+                # in that case we're adding counts of non-existing features to the category without checking for empty cat counts!
+                self.add_counts(category, f"cat:::{category}", counts)
 
     def add_counts(self, category, feature, counts):
         """ Increments feature counts by input count vector """
