@@ -18,7 +18,6 @@ class GeneQuantifier(FeatureQuantifier):
         out_prefix=__tool__,
         ambig_mode="uniq_only",
         strand_specific=False,
-        calc_coverage=False,
         paired_end_count=1,
     ):
         FeatureQuantifier.__init__(
@@ -28,7 +27,6 @@ class GeneQuantifier(FeatureQuantifier):
             ambig_mode=ambig_mode,
             strand_specific=strand_specific,
             reference_type="gene",
-            calc_coverage=calc_coverage and False,  # TODO: figure out, but nobody wants it anyway
             paired_end_count=paired_end_count,
         )
 

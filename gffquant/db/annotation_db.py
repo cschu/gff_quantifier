@@ -63,7 +63,7 @@ class AnnotationDatabaseManager(ABC):
     def get_db_sequence(self, seqid):
         ...
 
-    def get_interval_overlaps(self, seqid, qstart, qend, calc_coverage=True):
+    def get_interval_overlaps(self, seqid, qstart, qend):
         db_sequences = self.get_db_sequence(seqid)
 
         for seq in db_sequences:
@@ -73,8 +73,7 @@ class AnnotationDatabaseManager(ABC):
             if qend < sstart or send < qstart:
                 continue
 
-            covered_interval = self.calc_covered_fraction(qstart, qend, sstart, send) if calc_coverage else interval
-            yield interval, covered_interval
+            yield interval
             # if sstart <= qstart <= qend <= send:
             #     yield interval, (qstart, qend)
             # elif qstart < sstart:
@@ -92,7 +91,7 @@ class AnnotationDatabaseManager(ABC):
             return (max(qstart, sstart), send)
         raise ValueError(f"Cannot happen. interval=({sstart}, {send}) vs ({qstart}, {qend})")
 
-    def get_overlaps(self, seqid, start, end, domain_mode=False, calc_coverage=False):
+    def get_overlaps(self, seqid, start, end, domain_mode=False):
 
         # def calc_covered_fraction(start, end, interval):
         #     if interval.begin <= start <= end <= interval.end:
@@ -104,12 +103,9 @@ class AnnotationDatabaseManager(ABC):
         #     raise ValueError(f"Cannot happen. interval=({interval.begin}, {interval.end}) vs ({start}, {end})")
 
         if domain_mode:
-            return self.get_interval_overlaps(seqid, start, end, calc_coverage=calc_coverage)
-        return (
-            (
-                (interval.begin + 1, interval.end),
-                (self.calc_covered_fraction(start, end, interval.begin, interval.end) if calc_coverage else (interval.begin + 1, interval.end))
-            )
+            return self.get_interval_overlaps(seqid, start, end)
+        return (            
+            (interval.begin + 1, interval.end)            
             for interval in self.get_interval_tree(seqid)[start:end]
         )
         #     overlaps = self.get_interval_tree(seqid)[start:end]
