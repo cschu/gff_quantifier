@@ -103,19 +103,22 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
         encoded = []
         for category, features in region_annotation[1:]:
             features = set(features).difference({"-"})
-            enc_category = code_map[category]['key']
-            enc_features = sorted(code_map[category]['features'][feature] for feature in features)
-            encoded.append((enc_category, ",".join(map(str, enc_features))))
-        encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
+            if features:
+                enc_category = code_map[category]['key']
+                enc_features = sorted(code_map[category]['features'][feature] for feature in features)
+                encoded.append((enc_category, ",".join(map(str, enc_features))))
 
-        _, strand = region_annotation[0]
-        db_sequence = db.AnnotatedSequence(
-            seqid=ref,
-            featureid=None,
-            strand=int(strand == "+") if strand is not None else None,
-            annotation_str=encoded
-        )
-        db_session.add(db_sequence)
+        if encoded:
+            encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
+
+            _, strand = region_annotation[0]
+            db_sequence = db.AnnotatedSequence(
+                seqid=ref,
+                featureid=None,
+                strand=int(strand == "+") if strand is not None else None,
+                annotation_str=encoded
+            )
+            db_session.add(db_sequence)
     db_session.commit()
 
 
