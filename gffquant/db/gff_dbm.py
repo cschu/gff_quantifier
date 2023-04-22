@@ -34,7 +34,7 @@ class EmapperFormat:
                     if features:
                         categories.append((category, features))
         if categories:
-            return line[self.query_field], ("strand", None) + tuple(categories)
+            return line[self.query_field], (("strand", None),) + tuple(categories)
 
         return None
 
