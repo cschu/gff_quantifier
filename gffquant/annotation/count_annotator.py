@@ -315,6 +315,6 @@ class GeneCountAnnotator(CountAnnotator):
                 _, _, region_annotation = region_annotation
                 self.distribute_feature_counts(counts, region_annotation)
             else:
-                self.unannotated_counts += counts
+                self.unannotated_counts += counts[:4]
 
         self.calculate_scaling_factors()

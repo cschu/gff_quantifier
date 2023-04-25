@@ -120,7 +120,7 @@ class CountWriter:
                     scaling_factors = total_counts[0::2] / total_counts[1::2]
 
                     out_row = self.compile_output_row(
-                        featcounts.unannotated_counts,
+                        total_counts,
                         scaling_factor=scaling_factors[0],
                         ambig_scaling_factor=scaling_factors[1],
                     )
