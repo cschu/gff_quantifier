@@ -114,6 +114,25 @@ class CountWriter:
                 if "unannotated" in self.publish_reports:
                     print("unannotated", unannotated_reads, sep="\t", file=feat_out)
 
+                if True:
+                    
+                    total_counts = featcounts.total_counts + featcounts.unannotated_counts
+                    scaling_factors = total_counts[0::2] / total_counts[1::2]
+
+                    out_row = self.compile_output_row(
+                        featcounts.unannotated_counts,
+                        scaling_factor=scaling_factors[0],
+                        ambig_scaling_factor=scaling_factors[1],
+                    )
+
+                    print(
+                        "total",
+                        *(f"{c:.5f}" for c in out_row),
+                        flush=True,
+                        sep="\t",
+                        file=feat_out,
+                        )
+
                 if "category" in self.publish_reports:
                     cat_counts = counts.get(f"cat:::{category_id}")
                     if cat_counts is not None:
