@@ -17,7 +17,7 @@ class CountWriter:
     def __init__(
         self,
         prefix,
-        aln_count,
+        aln_counter,
         has_ambig_counts=False,
         strand_specific=False,
         restrict_reports=None,
@@ -25,7 +25,7 @@ class CountWriter:
         report_unannotated=True,
     ):
         self.out_prefix = prefix
-        self.aln_count = aln_count
+        self.aln_counter = aln_counter
         self.has_ambig_counts = has_ambig_counts
         self.strand_specific = strand_specific
         self.publish_reports = [
@@ -68,7 +68,7 @@ class CountWriter:
             return (raw, lnorm,) + tuple(lnorm * factor for factor in scaling_factors)
 
         p, row = 0, []
-        rpkm_factor = 1e9 / self.aln_count
+        rpkm_factor = 1e9 / self.aln_counter["read_count"]
         # unique counts
         row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
         p += 2
@@ -116,14 +116,18 @@ class CountWriter:
 
                 if True:
                     
-                    total_counts = featcounts.total_counts + featcounts.unannotated_counts
-                    scaling_factors = total_counts[0::2] / total_counts[1::2]
+                    # total_counts = np.zeros(4) 
+                    # total_counts[0::2] += self.aln_counter["filtered_read_count"]
+                    # # scaling_factors = total_counts[0::2] / total_counts[1::2]
+                    # scaling_factors = 1, 1
 
-                    out_row = self.compile_output_row(
-                        total_counts,
-                        scaling_factor=scaling_factors[0],
-                        ambig_scaling_factor=scaling_factors[1],
-                    )
+                    # out_row = self.compile_output_row(
+                    #     total_counts,
+                    #     scaling_factor=scaling_factors[0],
+                    #     ambig_scaling_factor=scaling_factors[1],
+                    # )
+                    out_row = np.zeros(6)
+                    out_row[0::2] += self.aln_counter["filtered_read_count"]
 
                     print(
                         "total",
