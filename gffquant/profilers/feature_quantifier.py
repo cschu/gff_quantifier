@@ -160,7 +160,7 @@ class FeatureQuantifier(ABC):
             restrict_reports=restrict_reports,
             report_category=report_category,
             total_readcount=self.aln_counter["full_read_count"],
-            filtered_read_count=self.aln_counter["filtered_read_count"],         
+            filtered_readcount=self.aln_counter["filtered_read_count"],         
         )
 
         count_writer.write_feature_counts(
