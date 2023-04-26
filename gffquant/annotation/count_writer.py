@@ -24,7 +24,6 @@ class CountWriter:
         report_category=True,
         total_readcount=None,
         filtered_readcount=None,
-        unannotated_count=None,
     ):
         self.out_prefix = prefix
         self.has_ambig_counts = has_ambig_counts
@@ -35,17 +34,13 @@ class CountWriter:
         ]
         if report_category:
             self.publish_reports.append("category")
-        if unannotated_count:
-            self.publish_reports.append("unannotated")
         if total_readcount:
             self.publish_reports.append("total_readcount")
         if filtered_readcount:
             self.publish_reports.append("filtered_readcount")
 
         self.total_readcount = total_readcount
-        self.filtered_readcount = filtered_readcount
-        self.unannotated_count = unannotated_count
-
+        self.filtered_readcount = filtered_readcount        
 
     def get_header(self):
         reports = [
@@ -78,7 +73,7 @@ class CountWriter:
             return (raw, lnorm,) + tuple(lnorm * factor for factor in scaling_factors)
 
         p, row = 0, []
-        rpkm_factor = 1e9 / self.full_readcount
+        rpkm_factor = 1e9 / self.total_readcount
         # unique counts
         row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
         p += 2
@@ -112,7 +107,7 @@ class CountWriter:
     def write_row(header, data, stream=sys.stdout):
         print(header, *(f"{c:.5f}" for c in data), flush=True, sep="\t", file=stream)
 
-    def write_feature_counts(self, db, unannotated_reads, featcounts):
+    def write_feature_counts(self, db, featcounts, unannotated_reads=None):
         for category_id, counts in sorted(featcounts.items()):
             scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
                 category_id
@@ -127,7 +122,7 @@ class CountWriter:
                 header = self.get_header()
                 print("feature", *header, sep="\t", file=feat_out)
                 
-                if "unannotated" in self.publish_reports:
+                if unannotated_reads is not None" in self.publish_reports:
                     print("unannotated", unannotated_reads, sep="\t", file=feat_out)
 
                 if "total_readcount" in self.publish_reports:
