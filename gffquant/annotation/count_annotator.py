@@ -44,6 +44,7 @@ class CountAnnotator(dict):
         # [uniq_raw, uniq_normed, combined_raw, combined_normed]
         self.total_counts = np.zeros(4)
         self.total_gene_counts = np.zeros(4)
+        self.unannotated_counts = np.zeros(4)
         # holds total_counts-like vectors for feature-wise scaling factor calculation
         self.feature_count_sums = {}
         self.scaling_factors = {}
@@ -71,7 +72,11 @@ class CountAnnotator(dict):
             for feature in category_counts:
                 self.add_counts(category, feature, counts)
 
-            self.add_counts(category, f"cat:::{category}", counts)
+            if category_counts:
+                # eggnog-mapper annotation tables in v2.1.2 (maybe earlier?) have '-' instead of empty cells
+                # category counts may be empty in case a non-patched db based on such tables is used
+                # in that case we're adding counts of non-existing features to the category without checking for empty cat counts!
+                self.add_counts(category, f"cat:::{category}", counts)
 
     def add_counts(self, category, feature, counts):
         """ Increments feature counts by input count vector """
@@ -303,5 +308,7 @@ class GeneCountAnnotator(CountAnnotator):
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
                 self.distribute_feature_counts(counts, region_annotation)
+            else:
+                self.unannotated_counts += counts[:4]
 
         self.calculate_scaling_factors()

@@ -120,8 +120,6 @@ class FeatureQuantifier(ABC):
 
     def process_counters(
         self,
-        unannotated_ambig,
-        aln_count,
         restrict_reports=None,
         report_category=True,
         report_unannotated=True,
@@ -144,18 +142,18 @@ class FeatureQuantifier(ABC):
 
         count_writer = CountWriter(
             self.out_prefix,
-            aln_count,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
             report_category=report_category,
-            report_unannotated=report_unannotated,
+            total_readcount=self.aln_counter["full_read_count"],
+            filtered_readcount=self.aln_counter["filtered_read_count"],         
         )
 
         count_writer.write_feature_counts(
             self.adm,
-            self.count_manager.get_unannotated_reads() + unannotated_ambig,
             count_annotator,
+            (None, self.count_manager.get_unannotated_reads() + self.aln_counter["unannotated_ambig"])[report_unannotated],            
         )
 
         count_writer.write_gene_counts(
@@ -304,8 +302,6 @@ class FeatureQuantifier(ABC):
 
         if self.aln_counter.get("aln_count"):
             self.process_counters(
-                self.aln_counter["unannotated_ambig"],
-                aln_count=self.aln_counter["read_count"],
                 restrict_reports=restrict_reports,
                 report_category=report_category,
                 report_unannotated=report_unannotated,
