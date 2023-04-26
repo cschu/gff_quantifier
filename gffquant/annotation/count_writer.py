@@ -98,6 +98,10 @@ class CountWriter:
 
         return out_row
 
+    @staticmethod
+    def write_row(header, data, stream=sys.stdout):
+        print(header, *(f"{c:.5f}" for c in data), flush=True, sep="\t", file=stream)
+
     def write_feature_counts(self, db, unannotated_reads, featcounts):
         for category_id, counts in sorted(featcounts.items()):
             scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
@@ -111,31 +115,32 @@ class CountWriter:
                 )
             with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
                 print("feature", *self.get_header(), sep="\t", file=feat_out)
+                
                 if "unannotated" in self.publish_reports:
                     print("unannotated", unannotated_reads, sep="\t", file=feat_out)
 
-                if True:
+                # if True:
                     
-                    # total_counts = np.zeros(4) 
-                    # total_counts[0::2] += self.aln_counter["filtered_read_count"]
-                    # # scaling_factors = total_counts[0::2] / total_counts[1::2]
-                    # scaling_factors = 1, 1
+                #     # total_counts = np.zeros(4) 
+                #     # total_counts[0::2] += self.aln_counter["filtered_read_count"]
+                #     # # scaling_factors = total_counts[0::2] / total_counts[1::2]
+                #     # scaling_factors = 1, 1
 
-                    # out_row = self.compile_output_row(
-                    #     total_counts,
-                    #     scaling_factor=scaling_factors[0],
-                    #     ambig_scaling_factor=scaling_factors[1],
-                    # )
-                    out_row = np.zeros(6)
-                    out_row[0::2] += self.aln_counter["filtered_read_count"]
+                #     # out_row = self.compile_output_row(
+                #     #     total_counts,
+                #     #     scaling_factor=scaling_factors[0],
+                #     #     ambig_scaling_factor=scaling_factors[1],
+                #     # )
+                #     out_row = np.zeros(6)
+                #     out_row[0::2] += self.aln_counter["filtered_read_count"]
 
-                    print(
-                        "total",
-                        *(f"{c:.5f}" for c in out_row),
-                        flush=True,
-                        sep="\t",
-                        file=feat_out,
-                        )
+                #     print(
+                #         "total",
+                #         *(f"{c:.5f}" for c in out_row),
+                #         flush=True,
+                #         sep="\t",
+                #         file=feat_out,
+                #         )
 
                 if "category" in self.publish_reports:
                     cat_counts = counts.get(f"cat:::{category_id}")
@@ -145,13 +150,26 @@ class CountWriter:
                             scaling_factor=featcounts.scaling_factors["total_uniq"],
                             ambig_scaling_factor=featcounts.scaling_factors["total_ambi"],
                         )
-                        print(
-                            "category",
-                            *(f"{c:.5f}" for c in out_row),
-                            flush=True,
-                            sep="\t",
-                            file=feat_out,
+
+                        write_row(
+                            "total_reads",
+                            np.zeros(len(out_row)) + self.aln_counter["full_read_count"],
+                            stream=feat_out,
                         )
+                        write_row(
+                            "filtered_reads",
+                            np.zeros(len(out_row)) + self.aln_counter["filtered_read_count"],
+                            stream=feat_out,
+                        )
+                        write_row("category", out_row, stream=feat_out)
+
+                        # print(
+                        #     "category",
+                        #     *(f"{c:.5f}" for c in out_row),
+                        #     flush=True,
+                        #     sep="\t",
+                        #     file=feat_out,
+                        # )
 
                 for feature_id, f_counts in sorted(counts.items()):
                     if feature_id.startswith("cat:::"):
@@ -162,13 +180,14 @@ class CountWriter:
                         scaling_factor=scaling_factor,
                         ambig_scaling_factor=ambig_scaling_factor,
                     )
-                    print(
-                        feature,
-                        *(f"{c:.5f}" for c in out_row),
-                        flush=True,
-                        sep="\t",
-                        file=feat_out,
-                    )
+                    write_row(feature, out_row, stream=feat_out)
+                    # print(
+                    #     feature,
+                    #     *(f"{c:.5f}" for c in out_row),
+                    #     flush=True,
+                    #     sep="\t",
+                    #     file=feat_out,
+                    # )
 
     def write_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
         if "scaled" in self.publish_reports:
@@ -182,7 +201,8 @@ class CountWriter:
                     scaling_factor=uniq_scaling_factor,
                     ambig_scaling_factor=ambig_scaling_factor
                 )
-                print(gene, *(f"{c:.5f}" for c in out_row), flush=True, sep="\t", file=gene_out)
+                # print(gene, *(f"{c:.5f}" for c in out_row), flush=True, sep="\t", file=gene_out)
+                write_row(gene, out_row, stream=gene_out)
 
     # pylint: disable=R0914
     def write_coverage(self, db, coverage_counts):
