@@ -155,18 +155,18 @@ class FeatureQuantifier(ABC):
 
         count_writer = CountWriter(
             self.out_prefix,
-            self.aln_counter,
             has_ambig_counts=self.count_manager.has_ambig_counts(),
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
             report_category=report_category,
-            report_unannotated=report_unannotated,
+            total_readcount=self.aln_counter["full_read_count"],
+            filtered_read_count=self.aln_counter["filtered_read_count"],         
         )
 
         count_writer.write_feature_counts(
             self.adm,
-            self.count_manager.get_unannotated_reads() + self.aln_counter["unannotated_ambig"],
             count_annotator,
+            (None, self.count_manager.get_unannotated_reads() + self.aln_counter["unannotated_ambig"])[report_unannotated],            
         )
 
         count_writer.write_gene_counts(

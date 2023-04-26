@@ -18,15 +18,15 @@ class CountWriter:
     def __init__(
         self,
         prefix,
-        aln_counter,
         has_ambig_counts=False,
         strand_specific=False,
         restrict_reports=None,
         report_category=True,
-        report_unannotated=True,
+        total_readcount=None,
+        filtered_readcount=None,
+        unannotated_count=None,
     ):
         self.out_prefix = prefix
-        self.aln_counter = aln_counter
         self.has_ambig_counts = has_ambig_counts
         self.strand_specific = strand_specific
         self.publish_reports = [
@@ -35,8 +35,17 @@ class CountWriter:
         ]
         if report_category:
             self.publish_reports.append("category")
-        if report_unannotated:
+        if unannotated_count:
             self.publish_reports.append("unannotated")
+        if total_readcount:
+            self.publish_reports.append("total_readcount")
+        if filtered_readcount:
+            self.publish_reports.append("filtered_readcount")
+
+        self.total_readcount = total_readcount
+        self.filtered_readcount = filtered_readcount
+        self.unannotated_count = unannotated_count
+
 
     def get_header(self):
         reports = [
@@ -69,7 +78,7 @@ class CountWriter:
             return (raw, lnorm,) + tuple(lnorm * factor for factor in scaling_factors)
 
         p, row = 0, []
-        rpkm_factor = 1e9 / self.aln_counter["read_count"]
+        rpkm_factor = 1e9 / self.full_readcount
         # unique counts
         row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
         p += 2
@@ -115,62 +124,35 @@ class CountWriter:
                     category, scaling_factor, ambig_scaling_factor
                 )
             with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
-                print("feature", *self.get_header(), sep="\t", file=feat_out)
+                header = self.get_header()
+                print("feature", *header, sep="\t", file=feat_out)
                 
                 if "unannotated" in self.publish_reports:
                     print("unannotated", unannotated_reads, sep="\t", file=feat_out)
 
-                # if True:
-                    
-                #     # total_counts = np.zeros(4) 
-                #     # total_counts[0::2] += self.aln_counter["filtered_read_count"]
-                #     # # scaling_factors = total_counts[0::2] / total_counts[1::2]
-                #     # scaling_factors = 1, 1
+                if "total_readcount" in self.publish_reports:
+                    CountWriter.write_row(
+                        "total_reads",
+                        np.zeros(len(header)) + self.total_readcount,
+                        stream=feat_out,
+                    )
 
-                #     # out_row = self.compile_output_row(
-                #     #     total_counts,
-                #     #     scaling_factor=scaling_factors[0],
-                #     #     ambig_scaling_factor=scaling_factors[1],
-                #     # )
-                #     out_row = np.zeros(6)
-                #     out_row[0::2] += self.aln_counter["filtered_read_count"]
-
-                #     print(
-                #         "total",
-                #         *(f"{c:.5f}" for c in out_row),
-                #         flush=True,
-                #         sep="\t",
-                #         file=feat_out,
-                #         )
-
+                if "filtered_readcounts" in self.publish_reports:
+                    CountWriter.write_row(
+                        "filtered_reads",
+                        np.zeros(len(header)) + self.filtered_readcount,
+                        stream=feat_out,
+                    )                
+                
                 if "category" in self.publish_reports:
                     cat_counts = counts.get(f"cat:::{category_id}")
                     if cat_counts is not None:
-                        out_row = self.compile_output_row(
+                        cat_row = self.compile_output_row(
                             cat_counts,
                             scaling_factor=featcounts.scaling_factors["total_uniq"],
                             ambig_scaling_factor=featcounts.scaling_factors["total_ambi"],
                         )
-
-                        CountWriter.write_row(
-                            "total_reads",
-                            np.zeros(len(out_row)) + self.aln_counter["full_read_count"],
-                            stream=feat_out,
-                        )
-                        CountWriter.write_row(
-                            "filtered_reads",
-                            np.zeros(len(out_row)) + self.aln_counter["filtered_read_count"],
-                            stream=feat_out,
-                        )
-                        CountWriter.write_row("category", out_row, stream=feat_out)
-
-                        # print(
-                        #     "category",
-                        #     *(f"{c:.5f}" for c in out_row),
-                        #     flush=True,
-                        #     sep="\t",
-                        #     file=feat_out,
-                        # )
+                    CountWriter.write_row("category", cat_row, stream=feat_out)
 
                 for feature_id, f_counts in sorted(counts.items()):
                     if feature_id.startswith("cat:::"):
@@ -182,13 +164,6 @@ class CountWriter:
                         ambig_scaling_factor=ambig_scaling_factor,
                     )
                     CountWriter.write_row(feature, out_row, stream=feat_out)
-                    # print(
-                    #     feature,
-                    #     *(f"{c:.5f}" for c in out_row),
-                    #     flush=True,
-                    #     sep="\t",
-                    #     file=feat_out,
-                    # )
 
     def write_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
         if "scaled" in self.publish_reports:
