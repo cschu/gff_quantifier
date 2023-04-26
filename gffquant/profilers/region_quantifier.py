@@ -20,7 +20,6 @@ class RegionQuantifier(FeatureQuantifier):
         out_prefix=__tool__,
         ambig_mode="uniq_only",
         strand_specific=False,
-        calc_coverage=False,
         paired_end_count=1,
         reference_type="genome",
     ):
@@ -31,7 +30,6 @@ class RegionQuantifier(FeatureQuantifier):
             ambig_mode=ambig_mode,
             strand_specific=strand_specific,
             reference_type=reference_type,
-            calc_coverage=calc_coverage,
             paired_end_count=paired_end_count,
         )
 

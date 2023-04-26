@@ -107,7 +107,7 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
                 enc_category = code_map[category]['key']
                 enc_features = sorted(code_map[category]['features'][feature] for feature in features)
                 encoded.append((enc_category, ",".join(map(str, enc_features))))
-        
+
         if encoded:
             encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
 
