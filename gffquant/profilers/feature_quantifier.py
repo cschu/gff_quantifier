@@ -133,12 +133,9 @@ class FeatureQuantifier(ABC):
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
-        if self.do_overlap_detection:
-            count_annotator = RegionCountAnnotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
-            count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
-        else:
-            count_annotator = GeneCountAnnotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
-            count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
+        annotator_type = (GeneCountAnnotator, RegionCountAnnotator)[self.do_overlap_detection]
+        count_annotator = annotator_type(self.strand_specific, report_scaling_factors=report_scaling_factors)
+        count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)            
 
         count_writer = CountWriter(
             self.out_prefix,
