@@ -92,7 +92,7 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
     logging.info("Second pass: Encoding sequence annotations")
     gffdbm = GffDatabaseManager(input_data, "genes", emapper_version=emapper_version)
     for i, (ref, region_annotation) in enumerate(gffdbm.iterate(bufsize=4000000000), start=1):
-        if i % 10000 == 0:
+        if i and i % 10000 == 0:
             db_session.commit()
 
             if nseqs is not None:
