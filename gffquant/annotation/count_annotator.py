@@ -44,6 +44,7 @@ class CountAnnotator(dict):
         # [uniq_raw, uniq_normed, combined_raw, combined_normed]
         self.total_counts = np.zeros(4)
         self.total_gene_counts = np.zeros(4)
+        self.unannotated_counts = np.zeros(4)
         # holds total_counts-like vectors for feature-wise scaling factor calculation
         self.feature_count_sums = {}
         self.scaling_factors = {}
@@ -313,5 +314,7 @@ class GeneCountAnnotator(CountAnnotator):
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
                 self.distribute_feature_counts(counts, region_annotation)
+            else:
+                self.unannotated_counts += counts[:4]
 
         self.calculate_scaling_factors()
