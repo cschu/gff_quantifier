@@ -152,17 +152,17 @@ class CountWriter:
                             ambig_scaling_factor=featcounts.scaling_factors["total_ambi"],
                         )
 
-                        write_row(
+                        CountWriter.write_row(
                             "total_reads",
                             np.zeros(len(out_row)) + self.aln_counter["full_read_count"],
                             stream=feat_out,
                         )
-                        write_row(
+                        CountWriter.write_row(
                             "filtered_reads",
                             np.zeros(len(out_row)) + self.aln_counter["filtered_read_count"],
                             stream=feat_out,
                         )
-                        write_row("category", out_row, stream=feat_out)
+                        CountWriter.write_row("category", out_row, stream=feat_out)
 
                         # print(
                         #     "category",
@@ -181,7 +181,7 @@ class CountWriter:
                         scaling_factor=scaling_factor,
                         ambig_scaling_factor=ambig_scaling_factor,
                     )
-                    write_row(feature, out_row, stream=feat_out)
+                    CountWriter.write_row(feature, out_row, stream=feat_out)
                     # print(
                     #     feature,
                     #     *(f"{c:.5f}" for c in out_row),
@@ -203,7 +203,7 @@ class CountWriter:
                     ambig_scaling_factor=ambig_scaling_factor
                 )
                 # print(gene, *(f"{c:.5f}" for c in out_row), flush=True, sep="\t", file=gene_out)
-                write_row(gene, out_row, stream=gene_out)
+                CountWriter.write_row(gene, out_row, stream=gene_out)
 
     # pylint: disable=R0914
     def write_coverage(self, db, coverage_counts):
