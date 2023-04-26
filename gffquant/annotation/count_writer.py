@@ -122,7 +122,7 @@ class CountWriter:
                 header = self.get_header()
                 print("feature", *header, sep="\t", file=feat_out)
                 
-                if unannotated_reads is not None" in self.publish_reports:
+                if unannotated_reads is not None:
                     print("unannotated", unannotated_reads, sep="\t", file=feat_out)
 
                 if "total_readcount" in self.publish_reports:
