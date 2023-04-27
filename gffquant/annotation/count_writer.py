@@ -132,7 +132,7 @@ class CountWriter:
                         stream=feat_out,
                     )
 
-                if "filtered_readcounts" in self.publish_reports:
+                if "filtered_readcount" in self.publish_reports:
                     CountWriter.write_row(
                         "filtered_reads",
                         np.zeros(len(header)) + self.filtered_readcount,
