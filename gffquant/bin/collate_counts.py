@@ -146,6 +146,7 @@ class FeatureCountCollator:
             col_buffer[i % col_buffer_size] = pd.Series(
                 index=index,
                 data=data[self.column],
+                name=sample,
             )
 
             elapsed = time.time() - t0
