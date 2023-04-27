@@ -181,6 +181,7 @@ class FeatureCountCollator:
         sum_time += elapsed
 
         t0 = time.time()
+        merged_tab.columns = [sample for sample, _ in files]
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label=feature_label)
         elapsed = time.time() - t0
         sum_time += elapsed
