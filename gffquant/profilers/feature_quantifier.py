@@ -143,7 +143,7 @@ class FeatureQuantifier(ABC):
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
             report_category=report_category,
-            total_readcount=self.aln_counter["full_read_count"],
+            total_readcount=self.aln_counter["read_count"],
             filtered_readcount=self.aln_counter["filtered_read_count"],         
         )
 
