@@ -90,9 +90,20 @@ class FeatureCountCollator:
             print(f"Using existing index file `{index_file}`.", flush=True)
             index = {line.strip() for line in get_lines_from_chunks(index_file)}
 
-        has_unannotated = "unannotated" in index
-        index = sorted(index.difference(("unannotated", feature_label))) + (["unannotated"] if has_unannotated else [])
+        index_header = []
+        if "total_reads" in index:
+            index_header.append("total_reads")
+        if "filtered_reads" in index:
+            index_header.append("filtered_reads")
+        if "category" in index:
+            index_header.append("category")
+        if "unannotated" in index:
+            index_header.append("unannotated")
 
+        index = index_header + sorted(
+            index.difference(("unannotated", feature_label, "total_reads", "filtered_reads", "category"))
+        )
+        
         merged_tab = None
 
         t00 = time.time()
