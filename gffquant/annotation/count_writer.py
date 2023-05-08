@@ -73,7 +73,7 @@ class CountWriter:
             return (raw, lnorm,) + tuple(lnorm * factor for factor in scaling_factors)
 
         p, row = 0, []
-        rpkm_factor = 1e9 / self.total_readcount
+        rpkm_factor = 1e9 / self.filtered_readcount
         # unique counts
         row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
         p += 2
