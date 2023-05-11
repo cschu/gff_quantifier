@@ -135,6 +135,13 @@ def handle_args(args):
     )
 
     ap.add_argument(
+        "--restrict_metrics",
+        type=str,
+        help="Restrict reported metrics. Comma-separated list of `raw`, `lnorm`, `scaled`, `rpkm`.",
+        default="raw,lnorm,scaled",
+    )
+
+    ap.add_argument(
         "--version", "-v", action="version", version="%(prog)s " + __version__
     )
     ap.add_argument("--debug", action="store_true")
