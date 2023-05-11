@@ -32,8 +32,8 @@ export PATH=$PATH:/opt/software/miniconda3/bin:/opt/software/mOTUs
   git clone https://github.com/cschu/gff_quantifier.git
   cd gff_quantifier
   git checkout fix/reenable_readcounts_20230511
-  /opt/software/miniconda3/bin/python setup.py bdist_wheel
-  /opt/software/miniconda3/bin/pip install --force-reinstall dist/*whl
+  # /opt/software/miniconda3/bin/python setup.py bdist_wheel
+  /opt/software/miniconda3/bin/pip install .
   cd ..
   rm -rf gff_quantifier/
 
