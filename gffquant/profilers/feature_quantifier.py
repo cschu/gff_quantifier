@@ -265,7 +265,8 @@ class FeatureQuantifier(ABC):
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter
 
         if external_readcounts is not None:
-            full_read_count = FeatureQuantifier.get_readcount(full_read_count, external_readcounts)
+            full_readcount = external_readcounts
+            # FeatureQuantifier.get_readcount(full_read_count, external_readcounts)
 
         self.aln_counter.update(
             {
