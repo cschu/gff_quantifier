@@ -235,7 +235,7 @@ class FeatureQuantifier(ABC):
             except Exception as err:
                 print(f"Error accessing readcounts: {err}")
                 logger.warning(
-                    "Could not access pre-filter readcounts. Using post-filter readcounts (%s).",
+                    "Could not access pre-filter readcounts. Using post-filter readcounts (%s).\nThis should result in an alignment-rate of 100%.",
                     read_count
                 )
         else:
@@ -263,6 +263,9 @@ class FeatureQuantifier(ABC):
         )
 
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter
+
+        if external_readcounts is not None:
+            full_read_count = FeatureQuantifier.get_readcount(full_read_count, external_readcounts)
 
         self.aln_counter.update(
             {
