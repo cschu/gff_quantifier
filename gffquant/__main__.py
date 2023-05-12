@@ -31,7 +31,7 @@ def main():
     restrict_metrics = args.restrict_metrics
     if restrict_metrics:
         restrict_metrics = set(restrict_metrics.split(","))
-        invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rkpm'))
+        invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
         if invalid:
             raise ValueError(f"Invalid column(s) in `--restrict_reports`: {str(invalid)}")
         restrict_metrics = tuple(restrict_metrics)
