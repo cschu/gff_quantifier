@@ -8,6 +8,7 @@ import pathlib
 import sys
 
 # pylint: disable=W0611
+from gffquant.db.db_import import DomainBedDatabaseImporter
 from gffquant.profilers import GeneQuantifier, RegionQuantifier
 from . import __version__
 from .handle_args import handle_args
@@ -43,13 +44,19 @@ def main():
         )
 
     kwargs = {}
+    annotation_db = args.annotation_db
     if args.mode in ("gene", "genes"):
-        qtype = GeneQuantifier
+        quantifier = GeneQuantifier
     else:
-        qtype, kwargs["reference_type"] = RegionQuantifier, args.mode
+        quantifier, kwargs["reference_type"] = RegionQuantifier, args.mode
+        if args.mode == "domain":
+            annotation_db = DomainBedDatabaseImporter(
+                logger, args.annotation_db, single_category="cazy"
+            )
+            logger.info("Finished loading database.")
 
-    fq = qtype(
-        db=args.annotation_db,
+    fq = quantifier(
+        db=annotation_db,
         out_prefix=args.out_prefix,
         ambig_mode=args.ambig_mode,
         strand_specific=args.strand_specific,
