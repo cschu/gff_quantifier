@@ -82,19 +82,7 @@ class AlignmentProcessor:
                 if read_unmapped:
                     continue
 
-                aln = BamAlignment(
-                    pysam_aln.qname,
-                    pysam_aln.flag,
-                    pysam_aln.reference_id,
-                    pysam_aln.pos,
-                    pysam_aln.mapq,
-                    [(y, x) for x, y in pysam_aln.cigar],
-                    pysam_aln.rnext,
-                    pysam_aln.pnext,
-                    pysam_aln.tlen,
-                    pysam_aln.alen,
-                    dict(pysam_aln.tags)
-                )
+                aln = BamAlignment.from_pysam_alignment(pysam_aln)
 
                 if aln.flag & filter_flags:
                     continue

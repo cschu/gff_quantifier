@@ -28,6 +28,15 @@ def main():
     if not os.path.exists(args.annotation_db):
         raise ValueError("annotation database does not exist", args.annotation_db)
 
+    restrict_metrics = args.restrict_metrics
+    if restrict_metrics:
+        restrict_metrics = set(restrict_metrics.split(","))
+        invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
+        if invalid:
+            raise ValueError(f"Invalid column(s) in `--restrict_reports`: {str(invalid)}")
+        restrict_metrics = tuple(restrict_metrics)
+
+
     if os.path.dirname(args.out_prefix):
         pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(
             exist_ok=True, parents=True
@@ -61,7 +70,7 @@ def main():
         report_category=True,
         report_unannotated=args.mode == "genome",
         dump_counters=args.debug,
-        restrict_reports=("raw", "lnorm", "scaled"),
+        restrict_reports=restrict_metrics,
     )
 
 

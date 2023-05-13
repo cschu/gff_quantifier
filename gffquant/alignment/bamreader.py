@@ -98,6 +98,22 @@ class BamAlignment:
     def is_second(self):
         return self.flag & SamFlags.SECOND_IN_PAIR == SamFlags.SECOND_IN_PAIR
 
+    @classmethod
+    def from_pysam_alignment(cls, pysam_aln):
+        return cls(
+            pysam_aln.qname,
+            pysam_aln.flag,
+            pysam_aln.reference_id,
+            pysam_aln.pos,
+            pysam_aln.mapq,
+            [(y, x) for x, y in pysam_aln.cigar],
+            pysam_aln.rnext,
+            pysam_aln.pnext,
+            pysam_aln.tlen,
+            pysam_aln.alen,
+            dict(pysam_aln.tags)
+        )
+
     def __init__(
         self,
         qname=None,
