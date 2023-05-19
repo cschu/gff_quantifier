@@ -133,14 +133,14 @@ class FeatureCountCollator:
                 data = pd.read_csv(
                     fn, sep="\t", index_col=0, usecols=(feature_label, self.column)
                 )
-            except KeyError:
+            except (KeyError, ValueError):
                 prev_col = self.column
                 self.column = self.column.replace("combined_", "uniq_")
                 try:
-                    data = data = pd.read_csv(
+                    data = pd.read_csv(
                         fn, sep="\t", index_col=0, usecols=(feature_label, self.column)
                     )
-                except KeyError as err:
+                except (KeyError, ValueError) as err:
                     raise KeyError(f"Cannot find fallback-column `{self.column}` (from `{prev_col}` in file `{fn}`. Aborting.") from err
 
             col_buffer[i % col_buffer_size] = pd.Series(
