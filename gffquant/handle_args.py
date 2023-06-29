@@ -3,10 +3,61 @@
 
 import argparse
 import logging
+import os
 import textwrap
 
 from . import __version__
 from . import __tool__
+
+
+logger = logging.getLogger(__name__)
+
+
+"""
+def gq_output = "-o profiles/${sample}/${sample}"
+
+			def gq_params = "-m ${params.gq_mode} --ambig_mode ${params.gq_ambig_mode}"
+			gq_params += (params.gq_strand_specific) ? " --strand_specific" : ""
+			gq_params += (params.gq_min_seqlen) ? (" --min_seqlen " + params.gq_min_seqlen) : ""
+			gq_params += (params.gq_min_identity) ? (" --min_identity " + params.gq_min_identity) : ""
+			gq_params += (params.gq_restrict_metrics) ? " --restrict_metrics ${params.gq_restrict_metrics}" : ""
+	
+			def gq_cmd = "gffquant ${gq_output} ${gq_params} --db gq_db.sqlite3 --reference ${reference} --aligner ${params.gq_aligner} --fastq *.fastq.gz"
+"""
+
+
+def validate_args(args):
+
+    if not os.path.isfile(args.annotation_db):
+        raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
+    if (args.aligner == "bwa" and False) or (args.aligner == "minimap" and False):
+        raise ValueError(f"Cannot find reference index at `{args.reference}`.")
+
+    if tuple(map(bool, (args.bam, args.sam, args.fastq))).count(True) != 1:
+        raise ValueError(f"Need exactly one type of input: bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(args.fastq)}.")
+
+    args.input_files = None
+    for input_type in ("bam", "sam", "fastq"):
+        args.input_files = input_files or getattr(args, input_type)
+        if args.input_files:
+            args.input_type = input_type
+            break
+    
+    if (args.reference or args.aligner) and not args.fastq:
+        raise ValueError(f"--reference/--aligner are not needed with alignment input (bam, sam).")
+    if bool(args.reference and args.aligner) != bool(args.fastq)
+        raise ValueError(f"--fastq requires --reference and --aligner to be set.")
+
+    if args.restrict_metrics:
+        restrict_metrics = set(args.restrict_metrics.split(","))
+        invalid = args.restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
+        if invalid:
+            raise ValueError(f"Invalid column(s) in `--restrict_metrics`: {str(invalid)}")
+        args.restrict_metrics = tuple(restrict_metrics)
+
+    return args
+    
+    
 
 
 def handle_args(args):
@@ -29,7 +80,9 @@ def handle_args(args):
         parents=(log_ap,),
     )
     ap.add_argument(
-        "annotation_db",
+        "--db",
+        dest="annotation_db",
+        required=True,
         type=str,
         help=textwrap.dedent(
             """\
@@ -37,15 +90,80 @@ def handle_args(args):
 			"""
         ),
     )
+    # ap.add_argument(
+    #     "--bed4",
+    #     dest="annotation_bed4",
+    #     type=str,
+    #     help=textwrap.dedent(
+    #         """\
+    #         Path to a bed4 file containing the reference annotation.
+	# 		"""
+    #     ),
+    # )
+    
     ap.add_argument(
-        "bam_file",
+        "--reference",
         type=str,
         help=textwrap.dedent(
             """\
-            Path to a name-sorted sam or bam (s. --format) file. Ambiguous alignments need to be flagged as secondary
+            Path to a (BWA, minimap) reference index.
+			"""
+        ),
+    )
+
+    ap.add_argument(
+        "--aligner",
+        type=str,
+        help=textwrap.dedent(
+            """\
+            Select aligner to map fastq files against a reference index.
+			"""
+        ),
+        choices=("bwa", "minimap2"),        
+    )
+    # ap.add_argument(
+    #     "input_files",
+    #     type=str,
+    #     nargs="+",
+    #     help=textwrap.dedent(
+    #         """\
+    #         Path to a name-sorted sam or bam (s. --format) file. Ambiguous alignments need to be flagged as secondary
+    #         alignments with the same read id as their primary alignment.
+    #         (e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0.
+    #         Input from STDOUT can be used with '-'."""
+    #     ),
+    # )
+    ap.add_argument(
+        "--bam",
+        type=str,
+        nargs="+",
+        help=textwrap.dedent(
+            """\
+            Path to one or more name-sorted BAM file(s). Ambiguous alignments need to be flagged as secondary
             alignments with the same read id as their primary alignment.
             (e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0.
-            Input from STDOUT can be used with '-'."""
+            Input from STDIN can be specified with '-'."""
+        ),
+    )
+    ap.add_argument(
+        "--sam",
+        type=str,
+        nargs="+",
+        help=textwrap.dedent(
+            """\
+            Path to one or more name-sorted SAM file(s). Ambiguous alignments need to be flagged as secondary
+            alignments with the same read id as their primary alignment.
+            (e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0.
+            Input from STDIN can be specified with '-'."""
+        ),
+    )
+    ap.add_argument(
+        "--fastq",
+        type=str,
+        nargs="+",
+        help=textwrap.dedent(
+            """\
+            Path to one or more fastq file(s). Input from STDIN can be specified with '-'."""
         ),
     )
     ap.add_argument(
@@ -73,7 +191,7 @@ def handle_args(args):
         "--ambig_mode",
         type=str,
         choices=("unique_only", "all1", "primary_only", "1overN"),
-        default="unique_only",
+        default="1overN",
         help=textwrap.dedent(
             """\
             Determines how ambiguous alignments should be treated. This setting mimics NGLess' behaviour.
@@ -103,15 +221,7 @@ def handle_args(args):
         type=int,
         default=45,
         help="Minimum read length [bp] for an alignment to be considered.",
-    )
-
-    ap.add_argument(
-        "--format",
-        type=str,
-        choices=("sam", "bam", "SAM", "BAM"),
-        default="sam",
-        help="Format of the alignment input. Supported: sam, bam.",
-    )
+    )    
 
     ap.add_argument(
         "--paired_end_count",
@@ -146,4 +256,4 @@ def handle_args(args):
     )
     ap.add_argument("--debug", action="store_true")
 
-    return ap.parse_args(args)
+    return validate_args(ap.parse_args(args))
