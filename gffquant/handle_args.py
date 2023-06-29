@@ -24,28 +24,37 @@ def gq_output = "-o profiles/${sample}/${sample}"
 	
 			def gq_cmd = "gffquant ${gq_output} ${gq_params} --db gq_db.sqlite3 --reference ${reference} --aligner ${params.gq_aligner} --fastq *.fastq.gz"
 """
+def check_bwa_index(prefix):
+    """ docstring """
+    suffixes = (".amb", ".ann", ".bwt", ".pac", ".sa")
+    return all(os.path.isfile(prefix + suffix) for suffix in suffixes)
+
 
 
 def validate_args(args):
 
     if not os.path.isfile(args.annotation_db):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
-    if (args.aligner == "bwa" and False) or (args.aligner == "minimap" and False):
+    if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and False):
         raise ValueError(f"Cannot find reference index at `{args.reference}`.")
 
     if tuple(map(bool, (args.bam, args.sam, args.fastq))).count(True) != 1:
         raise ValueError(f"Need exactly one type of input: bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(args.fastq)}.")
 
-    args.input_files = None
+    args.input_files = []
     for input_type in ("bam", "sam", "fastq"):
-        args.input_files = input_files or getattr(args, input_type)
+        args.input_files = args.input_files or getattr(args, input_type)
         if args.input_files:
             args.input_type = input_type
             break
+    for f in args.input_files:
+        if f != "-" and not os.path.isfile(f):
+            raise ValueError(f"Cannot find input file {f}")
+
     
     if (args.reference or args.aligner) and not args.fastq:
         raise ValueError(f"--reference/--aligner are not needed with alignment input (bam, sam).")
-    if bool(args.reference and args.aligner) != bool(args.fastq)
+    if bool(args.reference and args.aligner) != bool(args.fastq):
         raise ValueError(f"--fastq requires --reference and --aligner to be set.")
 
     if args.restrict_metrics:
@@ -54,6 +63,9 @@ def validate_args(args):
         if invalid:
             raise ValueError(f"Invalid column(s) in `--restrict_metrics`: {str(invalid)}")
         args.restrict_metrics = tuple(restrict_metrics)
+
+    if os.path.isdir(os.path.dirname(args.output_prefix)) and not args.force_overwrite:
+        raise ValueError(f"Output directory exists {os.path.dirname(args.output_prefix)}. Specify -f to overwrite.")
 
     return args
     
@@ -249,6 +261,19 @@ def handle_args(args):
         type=str,
         help="Restrict reported metrics. Comma-separated list of `raw`, `lnorm`, `scaled`, `rpkm`.",
         default="raw,lnorm,scaled",
+    )
+
+    ap.add_argument(
+        "--force_overwrite",
+        "-f",
+        action="store_true",
+        help="Overwrite existing output."
+    )
+
+    ap.add_argument(
+        "--cpus_for_alignment", "-t",
+        type=int, default=1,
+        help="",
     )
 
     ap.add_argument(
