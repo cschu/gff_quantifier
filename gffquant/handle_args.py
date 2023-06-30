@@ -139,7 +139,8 @@ def handle_args(args):
     )
 
     ap.add_argument(
-        "alignment_file",
+        "keep_alignment_file",
+        dest="alignment_file",
         type=str,
         help="Save alignments in sam format to file."
     )
