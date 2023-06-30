@@ -78,6 +78,7 @@ def run_alignment(
     single_end_reads=False,
     blocksize=10000000,
     sample_id="sample_x",
+    alignment_file=None,
 ):
     """ docstring """
 
@@ -126,13 +127,9 @@ def run_alignment(
 	# minimap2 ${mm_options} --split-prefix ${sample.id}_split ${reference} ${reads} > ${sample.id}/${sample.id}.sam
 	# """
 
-    commands = (
-        align_cmd,
-        #f"cat {input_files} ",
-        #f"bwa mem -p -v 1 -a -t {cpus_for_alignment} -R {read_group}"
-        #f"-K {blocksize} {bwa_index} -",
-    )
-    
+    commands = [align_cmd]
+    if alignment_file is not None:
+        commands.append(f"tee {alignment_file}")    
 
     commands = " | ".join(commands)
 
@@ -207,6 +204,7 @@ def main():
                 min_seqlen=args.min_seqlen,
                 single_end_reads=input_type != "orphan",
                 sample_id=os.path.basename(args.output_prefix),  
+                alignment_file=args.alignment_file,
             )
 
         # run_alignment(

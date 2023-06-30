@@ -137,6 +137,12 @@ def handle_args(args):
         ),
         choices=("bwa", "minimap2"),        
     )
+
+    ap.add_argument(
+        "alignment_file",
+        type=str,
+        help="Save alignments in sam format to file."
+    )
     # ap.add_argument(
     #     "input_files",
     #     type=str,
