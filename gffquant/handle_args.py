@@ -37,19 +37,23 @@ def validate_args(args):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
     if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and False):
         raise ValueError(f"Cannot find reference index at `{args.reference}`.")
+    
+    has_fastq = any(map(lambda x:x is not None, (getattr(args, arg) for arg in args if arg[:5] == "fastq")))
+    
 
-    if tuple(map(bool, (args.bam, args.sam, args.fastq))).count(True) != 1:
-        raise ValueError(f"Need exactly one type of input: bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(args.fastq)}.")
+    if tuple(map(bool, (has_fastq, args.bam, args.sam))).count(True) != 1:    
+        raise ValueError(f"Need exactly one type of input: bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(has_fastq)}.")
 
-    args.input_files = []
-    for input_type in ("bam", "sam", "fastq"):
-        args.input_files = args.input_files or getattr(args, input_type)
-        if args.input_files:
-            args.input_type = input_type
-            break
-    for f in args.input_files:
-        if f != "-" and not os.path.isfile(f):
-            raise ValueError(f"Cannot find input file {f}")
+    # args.input_files = []
+    # for input_type in ("bam", "sam", "fastq"):
+    #     args.input_files = args.input_files or getattr(args, input_type)
+    #     if args.input_files:
+    #         args.input_type = input_type
+    #         break
+    # for f in args.input_files:
+    #     if f != "-" and not os.path.isfile(f):
+    #         raise ValueError(f"Cannot find input file {f}")
+
 
     
     if (args.reference or args.aligner) and not args.fastq:
@@ -169,14 +173,45 @@ def handle_args(args):
             Input from STDIN can be specified with '-'."""
         ),
     )
+    # ap.add_argument(
+    #     "--fastq",
+    #     type=str,
+    #     nargs="+",
+    #     help=textwrap.dedent(
+    #         """\
+    #         Path to one or more fastq file(s). Input from STDIN can be specified with '-'."""
+    #     ),
+    # )
     ap.add_argument(
-        "--fastq",
-        type=str,
+        "--fastq-r1",
+        dest="reads1",
         nargs="+",
-        help=textwrap.dedent(
-            """\
-            Path to one or more fastq file(s). Input from STDIN can be specified with '-'."""
-        ),
+        type=str,
+        help="A comma-delimited string of forward/R1 read fastq files."
+    )
+
+    ap.add_argument(
+        "--fastq-r2",
+        dest="reads2",
+        nargs="+",
+        type=str,
+        help="A comma-delimited string of reverse/R2 read fastq files."
+    )
+
+    ap.add_argument(
+        "--fastq-singles", "-s",
+        dest="singles",
+        nargs="+",
+        type=str,
+        help="A comma-delimited string of single-end read fastq files."
+    )
+
+    ap.add_argument(
+        "--fastq-orphans",
+        dest="orphans",
+        nargs="+",
+        type=str,
+        help="A comma-delimited string of orphan read fastq files."
     )
     ap.add_argument(
         "--mode",
