@@ -86,7 +86,7 @@ def run_alignment(
     # def read_group = "'@RG\\tID:${read_group_id}\\tSM:${sample.id}'"
     # -R ${read_group}
 
-    read_group = f"'@RG\tID:{1 if single_end_reads else 2}\tSM:{sample_id}'"
+    read_group = f"'@RG\\tID:{1 if single_end_reads else 2}\\tSM:{sample_id}'"
 
     common_args = [
         f"-t {cpus_for_alignment}",
@@ -116,7 +116,7 @@ def run_alignment(
     else:
         raise ValueError(f"Aligner `{aligner}` is not supported.")
     
-    align_cmd = f"{align_call} {' '.join(common_args)} {' '.join(aligner_args)} {ref_index} {input_files}"
+    align_cmd = f"{align_call} {' '.join(common_args)} {' '.join(aligner_args)} {ref_index} {' '.join(input_files)}"
 
 
     # script:
@@ -129,7 +129,7 @@ def run_alignment(
 
     commands = [align_cmd]
     if alignment_file is not None:
-        commands.append(f"tee {alignment_file}")    
+        commands.append(f"tee -a {alignment_file}")
 
     commands = " | ".join(commands)
 
@@ -198,13 +198,14 @@ def main():
             run_alignment(
                 profiler,
                 reads,
+                args.aligner,
                 args.reference,
                 cpus_for_alignment=args.cpus_for_alignment,
                 min_identity=args.min_identity,
                 min_seqlen=args.min_seqlen,
                 single_end_reads=input_type != "orphan",
-                sample_id=os.path.basename(args.output_prefix),  
-                alignment_file=args.alignment_file,
+                sample_id=os.path.basename(args.out_prefix),
+                alignment_file=args.keep_alignment_file,
             )
 
         # run_alignment(
@@ -215,7 +216,7 @@ def main():
         #     args.min_identity,
         #     args.min_seqlen,
         #     single_end_reads=not args.unmarked_orphans,
-        #     sample_id=os.path.basename(args.output_prefix),
+        #     sample_id=os.path.basename(args.out_prefix),
         # )
 
     else :
