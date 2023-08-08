@@ -33,16 +33,26 @@ def check_bwa_index(prefix):
 
 def validate_args(args):
 
+    logger.info(f"args: {args.__dict__}")
+
     if not os.path.isfile(args.annotation_db):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
     if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and False):
         raise ValueError(f"Cannot find reference index at `{args.reference}`.")
     
-    has_fastq = any(map(lambda x:x is not None, (getattr(args, arg) for arg in args if arg[:5] == "fastq")))
-    
+    has_fastq = any(
+        map(
+            lambda x:x is not None,
+            (
+                getattr(args, arg) for arg in ("reads1", "reads2", "singles", "orphans") if hasattr(args, arg)
+            )
+        )
+    )
 
     if tuple(map(bool, (has_fastq, args.bam, args.sam))).count(True) != 1:    
         raise ValueError(f"Need exactly one type of input: bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(has_fastq)}.")
+
+    args.input_type = "fastq" if has_fastq else ("bam" if args.bam else "sam")
 
     # args.input_files = []
     # for input_type in ("bam", "sam", "fastq"):
@@ -56,20 +66,20 @@ def validate_args(args):
 
 
     
-    if (args.reference or args.aligner) and not args.fastq:
+    if (args.reference or args.aligner) and not has_fastq:
         raise ValueError(f"--reference/--aligner are not needed with alignment input (bam, sam).")
-    if bool(args.reference and args.aligner) != bool(args.fastq):
+    if bool(args.reference and args.aligner) != has_fastq:
         raise ValueError(f"--fastq requires --reference and --aligner to be set.")
 
     if args.restrict_metrics:
         restrict_metrics = set(args.restrict_metrics.split(","))
-        invalid = args.restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
+        invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
         if invalid:
             raise ValueError(f"Invalid column(s) in `--restrict_metrics`: {str(invalid)}")
         args.restrict_metrics = tuple(restrict_metrics)
 
-    if os.path.isdir(os.path.dirname(args.output_prefix)) and not args.force_overwrite:
-        raise ValueError(f"Output directory exists {os.path.dirname(args.output_prefix)}. Specify -f to overwrite.")
+    if os.path.isdir(os.path.dirname(args.out_prefix)) and not args.force_overwrite:
+        raise ValueError(f"Output directory exists {os.path.dirname(args.out_prefix)}. Specify -f to overwrite.")
 
     return args
     
@@ -139,8 +149,7 @@ def handle_args(args):
     )
 
     ap.add_argument(
-        "keep_alignment_file",
-        dest="alignment_file",
+        "--keep_alignment_file",
         type=str,
         help="Save alignments in sam format to file."
     )
@@ -192,7 +201,7 @@ def handle_args(args):
     ap.add_argument(
         "--fastq-r1",
         dest="reads1",
-        nargs="+",
+        nargs="*",
         type=str,
         help="A comma-delimited string of forward/R1 read fastq files."
     )
@@ -200,7 +209,7 @@ def handle_args(args):
     ap.add_argument(
         "--fastq-r2",
         dest="reads2",
-        nargs="+",
+        nargs="*",
         type=str,
         help="A comma-delimited string of reverse/R2 read fastq files."
     )
@@ -208,7 +217,7 @@ def handle_args(args):
     ap.add_argument(
         "--fastq-singles", "-s",
         dest="singles",
-        nargs="+",
+        nargs="*",
         type=str,
         help="A comma-delimited string of single-end read fastq files."
     )
@@ -216,7 +225,7 @@ def handle_args(args):
     ap.add_argument(
         "--fastq-orphans",
         dest="orphans",
-        nargs="+",
+        nargs="*",
         type=str,
         help="A comma-delimited string of orphan read fastq files."
     )
