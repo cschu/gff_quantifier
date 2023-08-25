@@ -135,7 +135,7 @@ def check_input_reads(fwd_reads=None, rev_reads=None, single_reads=None, orphan_
 #                 read_processing_proc.stdout,
 #                 aln_format="sam",
 #                 min_identity=min_identity,
-#                 min_seqlen=min_seqlen,                
+#                 min_seqlen=min_seqlen,
 #             )
 #     except Exception as err:
 #         logger.error("Caught some exception:")
@@ -192,19 +192,19 @@ def main():
             raise ValueError(f"Aligner `{args.aligner}` is not supported.")
 
         aln_runner = Aln_runner(
-            cpus_for_alignment=args.cpus_for_alignment,
+            args.cpus_for_alignment,
+            args.reference,
             sample_id=os.path.basename(args.out_prefix),
-            alignment_file=args.keep_alignment_file,
         )        
 
         for input_type, *reads in input_data:
 
             logger.info("Running %s alignment: %s", input_type, ",".join(reads))
             # aln_runner.run(profiler, reads, logger, single_end_reads=input_type != "orphan", min_identity=min_identity, min_seqlen=min_seqlen, alignment_file=alignment_file)
-            stream = aln_runner.run(reads, logger, single_end_reads=input_type != "orphan", min_identity=min_identity, min_seqlen=min_seqlen, alignment_file=alignment_file)
+            stream = aln_runner.run(reads, logger, single_end_reads=input_type != "orphan", min_identity=args.min_identity, min_seqlen=args.min_seqlen, alignment_file=args.keep_alignment_file)
 
             profiler.count_alignments(
-                stream, aln_format="sam", min_identity=min_identity, min_seqlen=min_seqlen,  
+                stream, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
             )
 
             # run_alignment(

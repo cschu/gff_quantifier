@@ -28,9 +28,11 @@ class AlignmentRunner:
     def run(self, input_files, logger, single_end_reads=False, min_identity=None, min_seqlen=None, alignment_file=None):
         aligner_call = self.generate_aligner_call(input_files=input_files, single_end_reads=single_end_reads, alignment_file=alignment_file)
 
-        with subprocess.Popen(commands, shell=True, stdout=subprocess.PIPE) as read_processing_proc:
-            for line in read_processing_proc.stdout:
-                yield line
+        read_processing_proc = subprocess.Popen(aligner_call, shell=True, stdout=subprocess.PIPE)
+        return read_processing_proc.stdout
+
+        #with subprocess.Popen(aligner_call, shell=True, stdout=subprocess.PIPE) as read_processing_proc:
+        #    return read_processing_proc.stdout
         
         # try:
         #     with subprocess.Popen(
@@ -60,7 +62,7 @@ class AlignmentRunner:
 
 class BwaMemRunner(AlignmentRunner):
     def __init__(self, cpus, ref_index, single_end_reads=False, sample_id="sample_x", blocksize=10_000_000):
-        super().__init__(cpus, single_end_reads=single_end_reads, sample_id=sample_id, blocksize=blocksize)
+        super().__init__(cpus, ref_index, sample_id=sample_id, blocksize=blocksize)
         self.aligner = "bwa mem"
         self.aligner_args += [
             "-v 1",
@@ -69,7 +71,7 @@ class BwaMemRunner(AlignmentRunner):
 
 class Minimap2Runner(AlignmentRunner):
     def __init__(self, cpus, ref_index, single_end_reads=False, sample_id="sample_x", blocksize=10_000_000):
-        super().__init__(cpus, single_end_reads=single_end_reads, sample_id=sample_id, blocksize=blocksize)
+        super().__init__(cpus, ref_index, sample_id=sample_id, blocksize=blocksize)
         self.aligner = "minimap2"
         self.aligner_args += [
             "--sam-hit-only",
