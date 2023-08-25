@@ -9,10 +9,11 @@ import subprocess
 import sys
 
 # pylint: disable=W0611
-from gffquant.db.db_import import DomainBedDatabaseImporter
-from gffquant.profilers import GeneQuantifier, RegionQuantifier
-from . import __version__
+from .db.db_import import DomainBedDatabaseImporter
 from .handle_args import handle_args
+from .profilers import GeneQuantifier, RegionQuantifier
+from .runners.alignment_runner import BwaMemRunner, Minimap2Runner
+from . import __version__
 
 
 logger = logging.getLogger(__name__)
@@ -66,89 +67,80 @@ def check_input_reads(fwd_reads=None, rev_reads=None, single_reads=None, orphan_
 
     return all_readsets
 
-# pylint: disable=R0913
-def run_alignment(
-    profiler,
-    input_files,
-    aligner,
-    ref_index,
-    cpus_for_alignment=1,
-    min_identity=None,
-    min_seqlen=None,
-    single_end_reads=False,
-    blocksize=10000000,
-    sample_id="sample_x",
-    alignment_file=None,
-):
-    """ docstring """
+# # pylint: disable=R0913
+# def run_alignment(
+#     profiler,
+#     input_files,
+#     aligner,
+#     ref_index,
+#     cpus_for_alignment=1,
+#     min_identity=None,
+#     min_seqlen=None,
+#     single_end_reads=False,
+#     blocksize=10000000,
+#     sample_id="sample_x",
+#     alignment_file=None,
+# ):
+#     """ docstring """
 
-    # def read_group_id = (sample.library == "paired") ? ((sample.is_paired) ? 2 : 2) : 1
-    # def read_group = "'@RG\\tID:${read_group_id}\\tSM:${sample.id}'"
-    # -R ${read_group}
+#     # def read_group_id = (sample.library == "paired") ? ((sample.is_paired) ? 2 : 2) : 1
+#     # def read_group = "'@RG\\tID:${read_group_id}\\tSM:${sample.id}'"
+#     # -R ${read_group}
 
-    read_group = f"'@RG\\tID:{1 if single_end_reads else 2}\\tSM:{sample_id}'"
+#     read_group = f"'@RG\\tID:{1 if single_end_reads else 2}\\tSM:{sample_id}'"
 
-    common_args = [
-        f"-t {cpus_for_alignment}",
-        f"-R {read_group}",
-        f"-K {blocksize}",
-    ]
+#     common_args = [
+#         f"-t {cpus_for_alignment}",
+#         f"-R {read_group}",
+#         f"-K {blocksize}",
+#     ]
 
-    aligner_args = []
+#     aligner_args = []
 
-    if aligner == "bwa":
-        aligner_args = [
-            "-v 1",
-            "-a",            
-        ]
-        align_call = f"bwa mem"
-        # align_cmd = f"cat {input_files} | bwa mem -p -v 1 -a -t {cpus_for_alignment} -R {read_group} -K {blocksize} {ref_index} -"
-    elif aligner == "minimap2":
-        aligner_args = [
-            "--sam-hit-only",
-            "-x sr",
-            "--secondary=yes",
-            "-a",
-            f"--split-prefix {sample_id}_split",
-        ]
-        align_call = "minimap2"
-        #align_cmd = f"minimap2 --sam-hit-only -t {cpus_for_alignment} -x sr --secondary=yes -a -R {read_group} --split-prefix {sample_id}_split {ref_index}"
-    else:
-        raise ValueError(f"Aligner `{aligner}` is not supported.")
+#     if aligner == "bwa":
+#         aligner_args = [
+#             "-v 1",
+#             "-a",            
+#         ]
+#         align_call = f"bwa mem"
+#         # align_cmd = f"cat {input_files} | bwa mem -p -v 1 -a -t {cpus_for_alignment} -R {read_group} -K {blocksize} {ref_index} -"
+#     elif aligner == "minimap2":
+#         aligner_args = [
+#             "--sam-hit-only",
+#             "-x sr",
+#             "--secondary=yes",
+#             "-a",
+#             f"--split-prefix {sample_id}_split",
+#         ]
+#         align_call = "minimap2"
+#         #align_cmd = f"minimap2 --sam-hit-only -t {cpus_for_alignment} -x sr --secondary=yes -a -R {read_group} --split-prefix {sample_id}_split {ref_index}"
+#     else:
+#         raise ValueError(f"Aligner `{aligner}` is not supported.")
     
-    align_cmd = f"{align_call} {' '.join(common_args)} {' '.join(aligner_args)} {ref_index} {' '.join(input_files)}"
+#     align_cmd = f"{align_call} {' '.join(common_args)} {' '.join(aligner_args)} {ref_index} {' '.join(input_files)}"
 
+#     commands = [align_cmd]
+#     if alignment_file is not None:
+#         commands.append(f"tee -a {alignment_file}")
 
-    # script:
-	# def reads = (sample.is_paired) ? "${sample.id}_R1.fastq.gz ${sample.id}_R2.fastq.gz" : "${sample.id}_R1.fastq.gz"
-	# def mm_options = "--sam-hit-only -t ${task.cpus} -x sr --secondary=yes -a"
+#     commands = " | ".join(commands)
 
-	# """
-	# minimap2 ${mm_options} --split-prefix ${sample.id}_split ${reference} ${reads} > ${sample.id}/${sample.id}.sam
-	# """
+#     logger.info("Used command: %s", commands)
 
-    commands = [align_cmd]
-    if alignment_file is not None:
-        commands.append(f"tee -a {alignment_file}")
-
-    commands = " | ".join(commands)
-
-    logger.info("Used command: %s", commands)
-
-    try:
-        with subprocess.Popen(
-            commands, shell=True, stdout=subprocess.PIPE
-        ) as read_processing_proc:
-            profiler.count_alignments(
-                read_processing_proc.stdout,
-                aln_format="sam",
-                min_identity=min_identity,
-                min_seqlen=min_seqlen,                
-            )
-    except Exception as err:
-        logger.error("Caught some exception:")
-        logger.error("%s", err)
-        raise Exception from err
+#     try:
+#         with subprocess.Popen(
+#             commands, shell=True, stdout=subprocess.PIPE
+#         ) as read_processing_proc:
+#             profiler.count_alignments(
+#                 read_processing_proc.stdout,
+#                 aln_format="sam",
+#                 min_identity=min_identity,
+#                 min_seqlen=min_seqlen,                
+#             )
+#     except Exception as err:
+#         logger.error("Caught some exception:")
+#         logger.error("%s", err)
+#         raise Exception from err
 
 
 def main():
@@ -166,12 +158,12 @@ def main():
     kwargs = {}
     annotation_db = args.annotation_db
     if args.mode in ("gene", "genes"):
-        quantifier = GeneQuantifier
+        Quantifier = GeneQuantifier
     else:
-        quantifier, kwargs["reference_type"] = RegionQuantifier, args.mode
+        Quantifier, kwargs["reference_type"] = RegionQuantifier, args.mode
         if args.mode == "domain":
             annotation_db = DomainBedDatabaseImporter(
-                logger, args.annotation_db, single_category="cazy"
+                logger, args.annotation_db, single_category="feature"
             )
             logger.info("Finished loading database.")
 
@@ -180,7 +172,7 @@ def main():
         single_reads=args.singles, orphan_reads=args.orphans,
     )
 
-    profiler = quantifier(
+    profiler = Quantifier(
         db=annotation_db,
         out_prefix=args.out_prefix,
         ambig_mode=args.ambig_mode,
@@ -191,22 +183,42 @@ def main():
 
     if args.input_type == "fastq":
 
+        Aln_runner = {
+            "bwa": BwaMemRunner,
+            "minimap2": Minimap2Runner,
+        }.get(args.aligner)
+
+        if Aln_runner is None:
+            raise ValueError(f"Aligner `{args.aligner}` is not supported.")
+
+        aln_runner = Aln_runner(
+            cpus_for_alignment=args.cpus_for_alignment,
+            sample_id=os.path.basename(args.out_prefix),
+            alignment_file=args.keep_alignment_file,
+        )        
+
         for input_type, *reads in input_data:
 
             logger.info("Running %s alignment: %s", input_type, ",".join(reads))
+            # aln_runner.run(profiler, reads, logger, single_end_reads=input_type != "orphan", min_identity=min_identity, min_seqlen=min_seqlen, alignment_file=alignment_file)
+            stream = aln_runner.run(reads, logger, single_end_reads=input_type != "orphan", min_identity=min_identity, min_seqlen=min_seqlen, alignment_file=alignment_file)
 
-            run_alignment(
-                profiler,
-                reads,
-                args.aligner,
-                args.reference,
-                cpus_for_alignment=args.cpus_for_alignment,
-                min_identity=args.min_identity,
-                min_seqlen=args.min_seqlen,
-                single_end_reads=input_type != "orphan",
-                sample_id=os.path.basename(args.out_prefix),
-                alignment_file=args.keep_alignment_file,
+            profiler.count_alignments(
+                stream, aln_format="sam", min_identity=min_identity, min_seqlen=min_seqlen,  
             )
+
+            # run_alignment(
+            #     profiler,
+            #     reads,
+            #     args.aligner,
+            #     args.reference,
+            #     cpus_for_alignment=args.cpus_for_alignment,
+            #     min_identity=args.min_identity,
+            #     min_seqlen=args.min_seqlen,
+            #     single_end_reads=input_type != "orphan",
+            #     sample_id=os.path.basename(args.out_prefix),
+            #     alignment_file=args.keep_alignment_file,
+            # )
 
         # run_alignment(
         #     profiler,
