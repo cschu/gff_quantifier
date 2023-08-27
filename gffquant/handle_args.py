@@ -13,22 +13,10 @@ from . import __tool__
 logger = logging.getLogger(__name__)
 
 
-"""
-def gq_output = "-o profiles/${sample}/${sample}"
-
-			def gq_params = "-m ${params.gq_mode} --ambig_mode ${params.gq_ambig_mode}"
-			gq_params += (params.gq_strand_specific) ? " --strand_specific" : ""
-			gq_params += (params.gq_min_seqlen) ? (" --min_seqlen " + params.gq_min_seqlen) : ""
-			gq_params += (params.gq_min_identity) ? (" --min_identity " + params.gq_min_identity) : ""
-			gq_params += (params.gq_restrict_metrics) ? " --restrict_metrics ${params.gq_restrict_metrics}" : ""
-	
-			def gq_cmd = "gffquant ${gq_output} ${gq_params} --db gq_db.sqlite3 --reference ${reference} --aligner ${params.gq_aligner} --fastq *.fastq.gz"
-"""
 def check_bwa_index(prefix):
     """ docstring """
     suffixes = (".amb", ".ann", ".bwt", ".pac", ".sa")
     return all(os.path.isfile(prefix + suffix) for suffix in suffixes)
-
 
 
 def validate_args(args):
@@ -54,18 +42,6 @@ def validate_args(args):
 
     args.input_type = "fastq" if has_fastq else ("bam" if args.bam else "sam")
 
-    # args.input_files = []
-    # for input_type in ("bam", "sam", "fastq"):
-    #     args.input_files = args.input_files or getattr(args, input_type)
-    #     if args.input_files:
-    #         args.input_type = input_type
-    #         break
-    # for f in args.input_files:
-    #     if f != "-" and not os.path.isfile(f):
-    #         raise ValueError(f"Cannot find input file {f}")
-
-
-    
     if (args.reference or args.aligner) and not has_fastq:
         raise ValueError(f"--reference/--aligner are not needed with alignment input (bam, sam).")
     if bool(args.reference and args.aligner) != has_fastq:
