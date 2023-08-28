@@ -4,7 +4,7 @@
 
 import logging
 
-from gffquant.db.annotation_db import AnnotationDatabaseManager
+from ..db.annotation_db import AnnotationDatabaseManager
 from .feature_quantifier import FeatureQuantifier
 
 from .. import __tool__
