@@ -11,6 +11,7 @@ import sys
 # pylint: disable=W0611
 from .db.db_import import DomainBedDatabaseImporter
 from .handle_args import handle_args
+from .ui.validation import check_input_reads
 from .profilers import GeneQuantifier, RegionQuantifier
 from .runners.alignment_runner import BwaMemRunner, Minimap2Runner
 from . import __version__
@@ -19,66 +20,12 @@ from . import __version__
 logger = logging.getLogger(__name__)
 
 
-def check_input_reads(fwd_reads=None, rev_reads=None, single_reads=None, orphan_reads=None):
-    """ docstring """
-    # fwd_reads = fwd if fwd else None
-    # rev_reads = rev if rev else None
-    # single_reads = singles if singles else None
-    # orphan_reads = orphans if orphans else None
-
-    all_readsets = []
-
-    if fwd_reads and rev_reads:
-        if len(fwd_reads) == len(rev_reads):
-            all_readsets += zip(
-                (["paired"] * len(fwd_reads)),
-                fwd_reads, rev_reads
-            )
-        else:
-            raise ValueError(
-                f"Found different numbers of forward/R1 {len(fwd_reads)} "
-                f"and reverse/R2 {len(rev_reads)} reads."
-            )
-    elif fwd_reads:
-        logger.warning(
-            "Found -1 forward/R1 reads but no -2 reverse/R2 reads. "
-            "Treating these as single-end reads."
-        )
-        all_readsets += zip((["single"] * len(fwd_reads)), fwd_reads)
-    elif rev_reads:
-        logger.warning(
-            "Found -2 reverse/R2 reads but no -1 forward/R1 reads. "
-            "Treating these as single-end reads."
-        )
-        all_readsets += zip((["single"] * len(rev_reads)), rev_reads)
-
-    if single_reads:
-        all_readsets += zip((["single"] * len(single_reads)), single_reads)
-    if orphan_reads:
-        all_readsets += zip((["orphan"] * len(orphan_reads)), orphan_reads)
-
-    if not all_readsets:
-        raise ValueError("No input reads specified.")
-
-    for _, *reads in all_readsets:
-        for r in reads:
-            if not os.path.isfile(r):
-                raise ValueError(f"{r} does not seem to be a valid read file.")
-
-    return all_readsets
-
-
 def main():
 
     args = handle_args(sys.argv[1:])
 
     logger.info("Version: %s", __version__)
     logger.info("Command: %s %s", os.path.basename(sys.argv[0]), " ".join(sys.argv[1:]))
-
-    if os.path.dirname(args.out_prefix):
-        pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(
-            exist_ok=True, parents=True
-        )
 
     kwargs = {}
     annotation_db = args.annotation_db
@@ -96,6 +43,11 @@ def main():
         fwd_reads=args.reads1, rev_reads=args.reads2,
         single_reads=args.singles, orphan_reads=args.orphans,
     )
+
+    if os.path.dirname(args.out_prefix):
+        pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(
+            exist_ok=True, parents=True
+        )
 
     profiler = Quantifier(
         db=annotation_db,
