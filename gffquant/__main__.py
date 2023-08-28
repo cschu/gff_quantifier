@@ -8,7 +8,7 @@ import pathlib
 import sys
 
 # pylint: disable=W0611
-from .db.db_import import DomainBedDatabaseImporter
+from .db.db_import import SmallDatabaseImporter
 from .handle_args import handle_args
 from .ui.validation import check_input_reads
 from .profilers import GeneQuantifier, RegionQuantifier
@@ -33,8 +33,8 @@ def main():
     else:
         Quantifier, kwargs["reference_type"] = RegionQuantifier, args.mode
         if args.mode == "domain":
-            annotation_db = DomainBedDatabaseImporter(
-                logger, args.annotation_db, single_category="feature"
+            annotation_db = SmallDatabaseImporter(
+                logger, args.annotation_db, single_category="feature", sep=args.db_separator,
             )
             logger.info("Finished loading database.")
 

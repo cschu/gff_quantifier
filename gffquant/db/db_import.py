@@ -126,16 +126,18 @@ class GqDatabaseImporter(ABC):
                 self.db_session.commit()
 
 
-class DomainBedDatabaseImporter(GqDatabaseImporter):
-    def __init__(self, logger, input_data, db_path=None, db_session=None, single_category="domain"):
+# class DomainBedDatabaseImporter(GqDatabaseImporter):
+class SmallDatabaseImporter(GqDatabaseImporter):
+    def __init__(self, logger, input_data, db_path=None, db_session=None, single_category="domain", sep="\t"):
         self.single_category = single_category
+        self.sep = sep
         super().__init__(logger, input_data, db_path=db_path, db_session=db_session)
 
     def parse_categories(self, _in):
         categories = {}
 
         for self.nseqs, line in enumerate(_in, start=1):
-            line = line.strip().split("\t")
+            line = line.strip().split(self.sep)
             categories.setdefault(self.single_category, set()).update(line[3].split(","))
 
         self.logger.info("    Parsed %s entries.", self.nseqs)
@@ -146,7 +148,7 @@ class DomainBedDatabaseImporter(GqDatabaseImporter):
         for i, line in enumerate(_in, start=1):
             if i % 10000 == 0 and self.db_session:
                 self.db_session.commit()
-            line = line.strip().split("\t")
+            line = line.strip().split(self.sep)
             gid, start, end, features = line
             annotations.setdefault((gid, int(start) + 1, int(end)), set()).update(features.split(","))
 

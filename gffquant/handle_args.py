@@ -82,10 +82,18 @@ def handle_args(args):
         type=str,
         help=textwrap.dedent(
             """\
-            Path to an sqlite3 database containing the reference annotation.
+            Path to the reference annotation database.
 			"""
         ),
     )
+
+    ap.add_argument(
+        "--db_separator",
+        type=str,
+        default="\t",
+        help="Separator-character for text-based annotation databases."
+    )
+
     # ap.add_argument(
     #     "--bed4",
     #     dest="annotation_bed4",
