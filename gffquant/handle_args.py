@@ -138,10 +138,10 @@ def handle_args(args):
     ap.add_argument(
         "--bam",
         type=str,
-        nargs="+",
+        # nargs="+",
         help=textwrap.dedent(
             """\
-            Path to one or more name-sorted BAM file(s). Ambiguous alignments need to be flagged as secondary
+            Path to a name-sorted BAM file. Ambiguous alignments need to be flagged as secondary
             alignments with the same read id as their primary alignment.
             (e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0.
             Input from STDIN can be specified with '-'."""
@@ -150,10 +150,10 @@ def handle_args(args):
     ap.add_argument(
         "--sam",
         type=str,
-        nargs="+",
+        # nargs="+",
         help=textwrap.dedent(
             """\
-            Path to one or more name-sorted SAM file(s). Ambiguous alignments need to be flagged as secondary
+            Path to a name-sorted SAM file. Ambiguous alignments need to be flagged as secondary
             alignments with the same read id as their primary alignment.
             (e.g. output from BWA mem -a). All alignments of an ambiguous group need to have MAPQ=0.
             Input from STDIN can be specified with '-'."""

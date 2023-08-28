@@ -5,7 +5,6 @@
 import logging
 import os
 import pathlib
-import subprocess
 import sys
 
 # pylint: disable=W0611
