@@ -9,14 +9,10 @@ import textwrap
 from . import __version__
 from . import __tool__
 
+from .ui.validation import check_bwa_index, check_minimap2_index
+
 
 logger = logging.getLogger(__name__)
-
-
-def check_bwa_index(prefix):
-    """ docstring """
-    suffixes = (".amb", ".ann", ".bwt", ".pac", ".sa")
-    return all(os.path.isfile(prefix + suffix) for suffix in suffixes)
 
 
 def validate_args(args):
@@ -25,7 +21,7 @@ def validate_args(args):
 
     if not os.path.isfile(args.annotation_db):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
-    if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and False):
+    if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
         raise ValueError(f"Cannot find reference index at `{args.reference}`.")
     
     has_fastq = any(
@@ -57,9 +53,7 @@ def validate_args(args):
     if os.path.isdir(os.path.dirname(args.out_prefix)) and not args.force_overwrite:
         raise ValueError(f"Output directory exists {os.path.dirname(args.out_prefix)}. Specify -f to overwrite.")
 
-    return args
-    
-    
+    return args    
 
 
 def handle_args(args):
@@ -165,15 +159,7 @@ def handle_args(args):
             Input from STDIN can be specified with '-'."""
         ),
     )
-    # ap.add_argument(
-    #     "--fastq",
-    #     type=str,
-    #     nargs="+",
-    #     help=textwrap.dedent(
-    #         """\
-    #         Path to one or more fastq file(s). Input from STDIN can be specified with '-'."""
-    #     ),
-    # )
+    
     ap.add_argument(
         "--fastq-r1",
         dest="reads1",
