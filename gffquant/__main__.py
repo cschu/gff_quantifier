@@ -76,7 +76,7 @@ def main():
         for input_type, *reads in input_data:
 
             logger.info("Running %s alignment: %s", input_type, ",".join(reads))
-            stream = aln_runner.run(reads, logger, single_end_reads=input_type != "orphan", min_identity=args.min_identity, min_seqlen=args.min_seqlen, alignment_file=args.keep_alignment_file)
+            stream = aln_runner.run(reads, logger, single_end_reads=input_type == "single", min_identity=args.min_identity, min_seqlen=args.min_seqlen, alignment_file=args.keep_alignment_file)
 
             profiler.count_alignments(
                 stream, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
