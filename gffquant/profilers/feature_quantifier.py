@@ -220,7 +220,7 @@ class FeatureQuantifier(ABC):
             logger.warning("No alignments present in stream.")
 
         t1 = time.time()
-        logger.info("Processed %s alignments (%s reads) in %s.", aln_count, read_count, f"{t1 - t0:.3f}s")
+        logger.info("Processed %s reads (%s alignments) in %s.", read_count, aln_count, f"{t1 - t0:.3f}s")
 
         return aln_count, read_count, 0, None
 
