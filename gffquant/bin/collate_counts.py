@@ -64,6 +64,7 @@ class FeatureCountCollator:
             else:
                 self._collate_category(category, sorted(files), index_file=index_file)
 
+    # pylint: disable=W0613
     def _extract_index(self, files, feature_label):
         t00 = time.time()
         index = set()
@@ -75,6 +76,7 @@ class FeatureCountCollator:
         print(f"Extracted feature column in {time.time() - t00:.03f}s.", flush=True)
         return index
 
+    # pylint: disable=R0912,R0915
     def _collate_category(self, category, files, index_file=None):
         table_file = f"{self.prefix}.{category}.{self.column}.txt.gz"
         feature_label = ("feature", "gene")[category == "gene_counts"]
@@ -103,7 +105,7 @@ class FeatureCountCollator:
         index = index_header + sorted(
             index.difference(("unannotated", feature_label, "total_reads", "filtered_reads", "category"))
         )
-        
+
         merged_tab = None
 
         t00 = time.time()

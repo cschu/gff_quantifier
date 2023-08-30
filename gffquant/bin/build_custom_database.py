@@ -40,7 +40,15 @@ def get_database(db_path):
     return engine, db_session
 
 
-def gather_category_and_feature_data(input_data, db_path, db_session=None, columns=None, header=None, delimiter="\t", is_gzipped=False):
+def gather_category_and_feature_data(
+    input_data,
+    db_path,
+    db_session=None,
+    columns=None,
+    header=None,
+    delimiter="\t",
+    is_gzipped=False
+):
     logging.info("First pass: gathering category and feature information.")
 
     cat_d = {}
@@ -170,7 +178,15 @@ def main():
     if args.extract_map_only:
         return
 
-    process_annotations(args.input_data, db_session, code_map, columns=args.columns, header=args.header, delimiter="\t", is_gzipped=is_gzipped,)
+    process_annotations(
+        args.input_data,
+        db_session,
+        code_map,
+        columns=args.columns,
+        header=args.header,
+        delimiter="\t",
+        is_gzipped=is_gzipped,
+    )
 
     # https://www.sqlite.org/wal.html
     # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections

@@ -1,3 +1,6 @@
+# pylint: disable=C0103
+
+""" validation """
 import logging
 import os
 

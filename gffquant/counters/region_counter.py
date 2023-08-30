@@ -18,10 +18,11 @@ class RegionCounter(AlignmentCounter):
             self, distribution_mode=distribution_mode, strand_specific=strand_specific
         )
 
-    # pylint: disable=R0913
+    # pylint: disable=R0913,W0613
     def _update_region(self, region_id, ostart, oend, rev_strand, cstart, cend, increment=1):
         overlap_id = ((ostart, oend), rev_strand) if self.strand_specific else (ostart, oend)
         self.setdefault(region_id, Counter())[overlap_id] += increment
+
 
 class UniqueRegionCounter(RegionCounter):
     """This counter class can be used in overlap mode, i.e.

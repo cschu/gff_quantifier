@@ -40,7 +40,7 @@ class CountWriter:
             self.publish_reports.append("filtered_readcount")
 
         self.total_readcount = total_readcount
-        self.filtered_readcount = filtered_readcount        
+        self.filtered_readcount = filtered_readcount
 
     def get_header(self):
         reports = [
@@ -107,6 +107,7 @@ class CountWriter:
     def write_row(header, data, stream=sys.stdout):
         print(header, *(f"{c:.5f}" for c in data), flush=True, sep="\t", file=stream)
 
+    # pylint: disable=R0914
     def write_feature_counts(self, db, featcounts, unannotated_reads=None):
         for category_id, counts in sorted(featcounts.items()):
             scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
@@ -121,7 +122,7 @@ class CountWriter:
             with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
                 header = self.get_header()
                 print("feature", *header, sep="\t", file=feat_out)
-                
+
                 if unannotated_reads is not None:
                     print("unannotated", unannotated_reads, sep="\t", file=feat_out)
 
@@ -137,8 +138,8 @@ class CountWriter:
                         "filtered_reads",
                         np.zeros(len(header)) + self.filtered_readcount,
                         stream=feat_out,
-                    )                
-                
+                    )
+
                 if "category" in self.publish_reports:
                     cat_counts = counts.get(f"cat:::{category_id}")
                     if cat_counts is not None:

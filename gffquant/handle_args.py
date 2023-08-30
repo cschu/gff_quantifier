@@ -1,4 +1,4 @@
-# pylint: disable=C0301,C0103
+# pylint: disable=C0301,C0103,W1203
 """ module docstring """
 
 import argparse
@@ -23,25 +23,25 @@ def validate_args(args):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
     if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
         raise ValueError(f"Cannot find reference index at `{args.reference}`.")
-    
+
     has_fastq = any(
         map(
-            lambda x:x is not None,
+            lambda x: x is not None,
             (
                 getattr(args, arg) for arg in ("reads1", "reads2", "singles", "orphans") if hasattr(args, arg)
             )
         )
     )
 
-    if tuple(map(bool, (has_fastq, args.bam, args.sam))).count(True) != 1:    
+    if tuple(map(bool, (has_fastq, args.bam, args.sam))).count(True) != 1:
         raise ValueError(f"Need exactly one type of input: bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(has_fastq)}.")
 
     args.input_type = "fastq" if has_fastq else ("bam" if args.bam else "sam")
 
     if (args.reference or args.aligner) and not has_fastq:
-        raise ValueError(f"--reference/--aligner are not needed with alignment input (bam, sam).")
+        raise ValueError("--reference/--aligner are not needed with alignment input (bam, sam).")
     if bool(args.reference and args.aligner) != has_fastq:
-        raise ValueError(f"--fastq requires --reference and --aligner to be set.")
+        raise ValueError("--fastq requires --reference and --aligner to be set.")
 
     if args.restrict_metrics:
         restrict_metrics = set(args.restrict_metrics.split(","))
@@ -53,7 +53,7 @@ def validate_args(args):
     if os.path.isdir(os.path.dirname(args.out_prefix)) and not args.force_overwrite:
         raise ValueError(f"Output directory exists {os.path.dirname(args.out_prefix)}. Specify -f to overwrite.")
 
-    return args    
+    return args
 
 
 def handle_args(args):
@@ -101,10 +101,10 @@ def handle_args(args):
     #     help=textwrap.dedent(
     #         """\
     #         Path to a bed4 file containing the reference annotation.
-	# 		"""
+    # 		"""
     #     ),
     # )
-    
+
     ap.add_argument(
         "--reference",
         type=str,
@@ -123,7 +123,7 @@ def handle_args(args):
             Select aligner to map fastq files against a reference index.
 			"""
         ),
-        choices=("bwa", "minimap2"),        
+        choices=("bwa", "minimap2"),
     )
 
     ap.add_argument(
@@ -167,7 +167,7 @@ def handle_args(args):
             Input from STDIN can be specified with '-'."""
         ),
     )
-    
+
     ap.add_argument(
         "--fastq-r1",
         dest="reads1",
@@ -254,7 +254,7 @@ def handle_args(args):
         type=int,
         default=45,
         help="Minimum read length [bp] for an alignment to be considered.",
-    )    
+    )
 
     ap.add_argument(
         "--paired_end_count",

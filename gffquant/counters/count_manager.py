@@ -1,4 +1,4 @@
-"""module docstring"""
+"""count_manager"""
 
 from collections import Counter
 
@@ -49,7 +49,6 @@ class CountManager:
         self.increments = [1.0, 1.0]
         self.increments_auto_detect = [1.0, self.paired_end_count / 2.0]
 
-
         self.uniq_seqcounts, self.ambig_seqcounts = None, None
         self.uniq_regioncounts, self.ambig_regioncounts = None, None
 
@@ -76,7 +75,7 @@ class CountManager:
             if not ambiguous_counts
             else (self.ambig_seqcounts, self.ambig_regioncounts)
         )
-        
+
         if pe_library is not None:
             # this is the case when the alignment has a read group tag
             # if pe_library is True (RG tag '2') -> take paired-end increment (also for orphans)

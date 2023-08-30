@@ -71,7 +71,7 @@ def main():
             args.cpus_for_alignment,
             args.reference,
             sample_id=os.path.basename(args.out_prefix),
-        )        
+        )
 
         for input_type, *reads in input_data:
 
@@ -82,7 +82,7 @@ def main():
                 stream, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
             )
 
-    else :
+    else:
         profiler.count_alignments(
             args.input_files,
             aln_format=args.input_type,

@@ -104,8 +104,8 @@ class AnnotationDatabaseManager(ABC):
 
         if domain_mode:
             return self.get_interval_overlaps(seqid, start, end)
-        return (            
-            (interval.begin + 1, interval.end)            
+        return (
+            (interval.begin + 1, interval.end)
             for interval in self.get_interval_tree(seqid)[start:end]
         )
         #     overlaps = self.get_interval_tree(seqid)[start:end]
