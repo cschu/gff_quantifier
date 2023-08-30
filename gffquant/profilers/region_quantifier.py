@@ -39,6 +39,11 @@ class RegionQuantifier(FeatureQuantifier):
         # logger.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
         ambig_counts = list(aln_group.get_ambig_align_counts())
         if any(ambig_counts) and self.require_ambig_bookkeeping:
+            # this is for multimappers - could either be
+            # - single-end
+            # - input orphans
+            # - newly orphaned (one mate didn't align)
+            # - complete pairs
             all_hits = []
             for aln in aln_group.get_alignments():
                 current_ref = self.register_reference(aln.rid, aln_reader)
@@ -66,6 +71,9 @@ class RegionQuantifier(FeatureQuantifier):
                 pe_library=aln_group.pe_library,
             )
         elif aln_group.is_aligned_pair():
+            # this is the case of properly aligning pairs
+            # - unique (each mate aligns once)
+            # - concordant (mates align to the same reference)
             current_ref = self.register_reference(aln_group.primaries[0].rid, aln_reader)
             hits = self.process_alignments_sameref(
                 current_ref,
@@ -78,6 +86,12 @@ class RegionQuantifier(FeatureQuantifier):
                 hits, ambiguous_counts=False, pair=True, pe_library=aln_group.pe_library,
             )
         else:
+            # here we could have uniquely aligning
+            # - single-end reads
+            # - input orphan reads
+            # - newly orphaned reads, e.g. if only one mate of an input pair aligns
+            # - pairs, with mates aligning to different references
+            # -> i.e. reads could be derived from either kind of library
             for aln in aln_group.get_alignments():
                 current_ref = self.register_reference(aln.rid, aln_reader)
                 hits = self.process_alignments_sameref(
