@@ -76,7 +76,7 @@ def main():
         for input_type, *reads in input_data:
 
             logger.info("Running %s alignment: %s", input_type, ",".join(reads))
-            proc, call = aln_runner.run(reads, logger, single_end_reads=input_type == "single", min_identity=args.min_identity, min_seqlen=args.min_seqlen, alignment_file=args.keep_alignment_file)
+            proc, call = aln_runner.run(reads, logger, single_end_reads=input_type == "single", alignment_file=args.keep_alignment_file)
 
             # if proc.returncode != 0:
             #     logger.error("Encountered problems aligning.")
