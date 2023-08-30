@@ -70,7 +70,7 @@ class CountManager:
     def has_ambig_counts(self):
         return self.ambig_regioncounts or self.ambig_seqcounts
 
-    def update_counts(self, count_stream, ambiguous_counts=False, pair=False, pe_library=False):
+    def update_counts(self, count_stream, ambiguous_counts=False, pair=False, pe_library=None):
         seq_counter, region_counter = (
             (self.uniq_seqcounts, self.uniq_regioncounts)
             if not ambiguous_counts
@@ -78,8 +78,16 @@ class CountManager:
         )
         
         if pe_library is not None:
+            # this is the case when the alignment has a read group tag
+            # if pe_library is True (RG tag '2') -> take paired-end increment (also for orphans)
+            # else (RG tag '2') -> take single-end increment
             increment = self.increments_auto_detect[pe_library]
         else:
+            # if the alignment has no (appropriate) read group tag
+            # use the paired-end information instead
+            # if orphan reads are present in the input sam/bam,
+            # the flag `--unmarked_orphans` should be set
+            # otherwise orphan reads will be assigned a count of 1.
             increment = self.increments[pair]
 
         if seq_counter is not None:
