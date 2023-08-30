@@ -313,8 +313,32 @@ class FeatureQuantifier(ABC):
                 dump_counters=dump_counters,
             )
 
-            for metric, value in self.aln_counter.items():
-                logger.info("%s: %s", metric, value)
+            # for metric, value in self.aln_counter.items():
+            #     logger.info("%s: %s", metric, value)
+
+            for metric, value in (
+                ("Input reads", "full_read_count"),
+                ("Aligned reads", "read_count"),
+                ("Alignments", "pysam_total")
+                ("Reads passing filters", "filtered_read_count"),
+                ("Alignments passing filters", "pysam_passed"),
+                ("  - Discarded due to seqid", "pysam_seqid_filt"),
+                ("  - Discarded due to length", "pysam_len_filt"),
+                # ("Unannotated multimappers", "unannotated_ambig"), 
+            ):
+                logger.info("%s: %s", metric, self.aln_counter.get(value))
+
+            """
+            aln_count: 6469971
+            [2023-08-30 16:51:23,259] read_count: 2498819
+            [2023-08-30 16:51:23,259] unannotated_ambig: 0
+            [2023-08-30 16:51:23,259] full_read_count: 2574299
+            [2023-08-30 16:51:23,260] filtered_read_count: 2241860
+            [2023-08-30 16:51:23,260] pysam_total: 11875545
+            [2023-08-30 16:51:23,260] pysam_passed: 6469971
+            [2023-08-30 16:51:23,260] pysam_seqid_filt: 1683770
+            [2023-08-30 16:51:23,260] pysam_len_filt: 3721804
+            """
 
             logger.info(
                 "Alignment rate: %s%%, Filter pass rate: %s%%",
