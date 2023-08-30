@@ -317,7 +317,7 @@ class FeatureQuantifier(ABC):
                 logger.info("%s: %s", metric, value)
 
             logger.info(
-                "Alignment rate: %s%%, Filtered: %s%%",
+                "Alignment rate: %s%%, Filter pass rate: %s%%",
                 round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
                 round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
             )
