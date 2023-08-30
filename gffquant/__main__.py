@@ -76,11 +76,40 @@ def main():
         for input_type, *reads in input_data:
 
             logger.info("Running %s alignment: %s", input_type, ",".join(reads))
-            stream = aln_runner.run(reads, logger, single_end_reads=input_type == "single", min_identity=args.min_identity, min_seqlen=args.min_seqlen, alignment_file=args.keep_alignment_file)
+            proc, call = aln_runner.run(reads, logger, single_end_reads=input_type == "single", min_identity=args.min_identity, min_seqlen=args.min_seqlen, alignment_file=args.keep_alignment_file)
 
-            profiler.count_alignments(
-                stream, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
-            )
+            # if proc.returncode != 0:
+            #     logger.error("Encountered problems aligning.")
+            #     logger.error("Aligner call was:")
+            #     logger.error("%s", call)
+            #     logger.error("Shutting down.")
+            #     sys.exit(1)
+
+            # pylint: disable=W0718
+            try:
+
+                profiler.count_alignments(
+                    proc.stdout, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
+                )
+
+            except Exception as err:
+                if isinstance(err, ValueError) and str(err).strip() == "file does not contain alignment data":
+                    # pylint: disable=W1203
+                    logger.error(f"Failed to align. Is `{args.aligner}` installed and on the path?")
+                    logger.error("Aligner call was:")
+                    logger.error("%s", call)
+                    sys.exit(1)
+
+                logger.error("Encountered problems digesting the alignment stream:")
+                logger.error("%s", err)
+                logger.error("Aligner call was:")
+                logger.error("%s", call)
+                logger.error("Shutting down.")
+                sys.exit(1)
+
+
+
+
 
     else:
         profiler.count_alignments(

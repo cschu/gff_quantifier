@@ -36,7 +36,7 @@ class AlignmentRunner:
 
         # pylint: disable=R1732
         read_processing_proc = subprocess.Popen(aligner_call, shell=True, stdout=subprocess.PIPE)
-        return read_processing_proc.stdout
+        return read_processing_proc, aligner_call  # .stdout
 
         # with subprocess.Popen(aligner_call, shell=True, stdout=subprocess.PIPE) as read_processing_proc:
         #    return read_processing_proc.stdout
