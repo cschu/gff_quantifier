@@ -61,19 +61,31 @@ class AnnotationDatabaseManager(ABC):
 
     @abstractmethod
     def get_db_sequence(self, seqid):
+        """ abstract method for sequence retrieval """
+        # pylint: disable=W2301
         ...
 
     def get_interval_overlaps(self, seqid, qstart, qend):
+        """ return all intervals overlapping the query read """
         db_sequences = self.get_db_sequence(seqid)
 
         for seq in db_sequences:
-            interval = seq.start, seq.end
-            sstart, send = seq.start - 1, seq.end
-
-            if qend < sstart or send < qstart:
+            # we're assuming
+            # 1) database coordinates in 1-based, closed interval
+            # 2) read coordinates in 0-based, closed interval (pysam!)
+            if qend < seq.start - 1 or seq.end - 1 < qstart:
                 continue
 
-            yield interval
+            yield seq.start, seq.end
+
+            # interval = seq.start, seq.end
+            # sstart, send = seq.start - 1, seq.end
+
+            # if qend < sstart or send < qstart:
+            #     continue
+
+            # yield interval
+
             # if sstart <= qstart <= qend <= send:
             #     yield interval, (qstart, qend)
             # elif qstart < sstart:

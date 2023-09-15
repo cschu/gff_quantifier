@@ -324,7 +324,7 @@ class FeatureQuantifier(ABC):
                 ("Alignments passing filters", "pysam_passed"),
                 ("  - Discarded due to seqid", "pysam_seqid_filt"),
                 ("  - Discarded due to length", "pysam_len_filt"),
-                # ("Unannotated multimappers", "unannotated_ambig"), 
+                # ("Unannotated multimappers", "unannotated_ambig"),
             ):
                 logger.info("%s: %s", metric, self.aln_counter.get(value))
 
