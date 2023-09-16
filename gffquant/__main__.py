@@ -112,8 +112,9 @@ def main():
 
 
     else:
+        input_file = args.bam if args.input_type == "bam" else args.sam
         profiler.count_alignments(
-            args.input_files,
+            sys.stdin if input_file == "-" else input_file,
             aln_format=args.input_type,
             min_identity=args.min_identity,
             min_seqlen=args.min_seqlen,
