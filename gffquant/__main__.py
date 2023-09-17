@@ -34,7 +34,7 @@ def main():
         Quantifier, kwargs["reference_type"] = RegionQuantifier, args.mode
         if args.mode == "domain":
             annotation_db = SmallDatabaseImporter(
-                logger, args.annotation_db, single_category="feature", sep=args.db_separator,
+                logger, args.annotation_db, single_category="feature", sep=args.db_separator, coords=args.db_coordinates,
             )
             logger.info("Finished loading database.")
 
