@@ -38,10 +38,11 @@ def main():
             )
             logger.info("Finished loading database.")
 
-    input_data = check_input_reads(
-        fwd_reads=args.reads1, rev_reads=args.reads2,
-        single_reads=args.singles, orphan_reads=args.orphans,
-    )
+    if args.input_type == "fastq":
+        input_data = check_input_reads(
+            fwd_reads=args.reads1, rev_reads=args.reads2,
+            single_reads=args.singles, orphan_reads=args.orphans,
+        )
 
     if os.path.dirname(args.out_prefix):
         pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(
