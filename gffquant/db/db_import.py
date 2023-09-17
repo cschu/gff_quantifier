@@ -153,7 +153,7 @@ class SmallDatabaseImporter(GqDatabaseImporter):
 
         for self.nseqs, line in enumerate(_in, start=1):
             line = line.strip().split(self.sep)
-            categories.setdefault(self.single_category, set()).update(line[3].split(","))
+            categories.setdefault(self.single_category, set()).update(line[self.cols[-1]].split(","))
 
         self.logger.info("    Parsed %s entries.", self.nseqs)
         return categories
