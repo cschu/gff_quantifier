@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def validate_args(args):
+    """ Validate command line arguments. """
 
     logger.info(f"args: {args.__dict__}")
 
@@ -57,6 +58,7 @@ def validate_args(args):
 
 
 def handle_args(args):
+    """ Parse and check command line arguments. """
 
     log_ap = argparse.ArgumentParser(prog=__tool__, add_help=False)
     log_ap.add_argument("-l", "--log_level", type=int, choices=range(1, 5), default=logging.INFO)
@@ -88,19 +90,27 @@ def handle_args(args):
     )
 
     ap.add_argument(
-        "--db_coordinates",
+        "--db_format",
         type=str,
         default="bed",
         choices=("bed", "hmmer"),
-        help="Coordinate format for text-based annotation databases. bed=[start, end), hmmer=[start, end]"
+        help="Format of the annotation database.",
     )
 
-    ap.add_argument(
-        "--db_separator",
-        type=str,
-        default="\t",
-        help="Separator-character for text-based annotation databases."
-    )
+    # ap.add_argument(
+    #     "--db_coordinates",
+    #     type=str,
+    #     default="bed",
+    #     choices=("bed", "hmmer"),
+    #     help="Coordinate format for text-based annotation databases. bed=[start, end), hmmer=[start, end]"
+    # )
+
+    # ap.add_argument(
+    #     "--db_separator",
+    #     type=str,
+    #     default="\t",
+    #     help="Separator-character for text-based annotation databases."
+    # )
 
     # ap.add_argument(
     #     "--bed4",
