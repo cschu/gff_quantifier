@@ -4,5 +4,5 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python>=3.7
+  - python>=3.7,<3.11
   - nextflow>=21.10.4

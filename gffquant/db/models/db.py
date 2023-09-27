@@ -55,12 +55,10 @@ class Observation(Base):
 
     id = Column(Integer, primary_key=True)
     metric = Column(String)
-    value = Column(Float)    
+    value = Column(Float)
 
     feature_id = Column(Integer, ForeignKey("feature.id"))
     category_id = Column(Integer, ForeignKey("category.id"))
     sample_id = Column(Integer, ForeignKey("sample.id"))
 
     sample = relationship("Sample", back_populates="observations")
-
-    

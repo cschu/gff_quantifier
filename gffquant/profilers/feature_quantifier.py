@@ -135,7 +135,7 @@ class FeatureQuantifier(ABC):
 
         annotator_type = (GeneCountAnnotator, RegionCountAnnotator)[self.do_overlap_detection]
         count_annotator = annotator_type(self.strand_specific, report_scaling_factors=report_scaling_factors)
-        count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)            
+        count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
 
         count_writer = CountWriter(
             self.out_prefix,
@@ -144,13 +144,16 @@ class FeatureQuantifier(ABC):
             restrict_reports=restrict_reports,
             report_category=report_category,
             total_readcount=self.aln_counter["read_count"],
-            filtered_readcount=self.aln_counter["filtered_read_count"],         
+            filtered_readcount=self.aln_counter["filtered_read_count"],
         )
+
+        unannotated_reads = self.count_manager.get_unannotated_reads()
+        unannotated_reads += self.aln_counter["unannotated_ambig"]
 
         count_writer.write_feature_counts(
             self.adm,
             count_annotator,
-            (None, self.count_manager.get_unannotated_reads() + self.aln_counter["unannotated_ambig"])[report_unannotated],            
+            (None, unannotated_reads)[report_unannotated],
         )
 
         count_writer.write_gene_counts(
@@ -217,7 +220,7 @@ class FeatureQuantifier(ABC):
             logger.warning("No alignments present in stream.")
 
         t1 = time.time()
-        logger.info("Processed %s alignments (%s reads) in %s.", aln_count, read_count, f"{t1 - t0:.3f}s")
+        logger.info("Processed %s reads (%s alignments) in %s.", read_count, aln_count, f"{t1 - t0:.3f}s")
 
         return aln_count, read_count, 0, None
 
@@ -235,7 +238,8 @@ class FeatureQuantifier(ABC):
             except Exception as err:
                 print(f"Error accessing readcounts: {err}")
                 logger.warning(
-                    "Could not access pre-filter readcounts. Using post-filter readcounts (%s).\nThis should result in an alignment-rate of 100%.",
+                    "Could not access pre-filter readcounts. Using post-filter readcounts (%s).\n"
+                    "This should result in an alignment-rate of 100%%.",
                     read_count
                 )
         else:
@@ -309,58 +313,25 @@ class FeatureQuantifier(ABC):
                 dump_counters=dump_counters,
             )
 
-            for metric, value in self.aln_counter.items():
-                logger.info("%s: %s", metric, value)
+            # for metric, value in self.aln_counter.items():
+            #     logger.info("%s: %s", metric, value)
+
+            for metric, value in (
+                ("Input reads", "full_read_count"),
+                ("Aligned reads", "read_count"),
+                ("Alignments", "pysam_total"),
+                ("Reads passing filters", "filtered_read_count"),
+                ("Alignments passing filters", "pysam_passed"),
+                ("  - Discarded due to seqid", "pysam_seqid_filt"),
+                ("  - Discarded due to length", "pysam_len_filt"),
+                # ("Unannotated multimappers", "unannotated_ambig"),
+            ):
+                logger.info("%s: %s", metric, self.aln_counter.get(value))
 
             logger.info(
-                "Alignment rate: %s%%, Filtered: %s%%",
+                "Alignment rate: %s%%, Filter pass rate: %s%%",
                 round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
                 round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
-            )
-
-        logger.info("Finished.")
-
-    def process_bamfile_old(
-        self,
-        bamfile,
-        aln_format="sam",
-        min_identity=None,
-        min_seqlen=None,
-        external_readcounts=None,
-        restrict_reports=None,
-        report_category=False,
-        report_unannotated=False,
-        dump_counters=False,
-        unmarked_orphans=False,
-    ):
-        # default: specific report rows are disabled
-        # otherwise specific tools have too many confusing user-exposed parameters
-        """processes one bamfile"""
-
-        self.alp = AlignmentProcessor(bamfile, aln_format)
-
-        aln_count, read_count, unannotated_ambig, _ = self.process_alignments(
-            self.alp,
-            min_identity=min_identity,
-            min_seqlen=min_seqlen,
-            unmarked_orphans=unmarked_orphans,
-        )
-
-        with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
-            print(self.alp.get_alignment_stats_str(self.alp.get_alignment_stats(), table=True), file=aln_stats_out)
-
-        # try to access externally specified readcounts
-        if aln_count:
-            if external_readcounts is not None:
-                read_count = FeatureQuantifier.get_readcount(read_count, external_readcounts)
-
-            self.process_counters(
-                unannotated_ambig,
-                aln_count=read_count,
-                restrict_reports=restrict_reports,
-                report_category=report_category,
-                report_unannotated=report_unannotated,
-                dump_counters=dump_counters,
             )
 
         logger.info("Finished.")

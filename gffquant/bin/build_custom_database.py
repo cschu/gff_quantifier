@@ -40,12 +40,20 @@ def get_database(db_path):
     return engine, db_session
 
 
-def gather_category_and_feature_data(input_data, db_path, db_session=None, columns=None, header=None, delimiter="\t"):
+def gather_category_and_feature_data(
+    input_data,
+    db_path,
+    db_session=None,
+    columns=None,
+    header=None,
+    delimiter="\t",
+    is_gzipped=False
+):
     logging.info("First pass: gathering category and feature information.")
 
     cat_d = {}
     n = 0
-    with open(input_data, "rt") as _in:
+    with (gzip.open if is_gzipped else open)(input_data, "rt") as _in:
         if header:
             _ = [next(_in) for _ in range(header - 1)]
         header_line = next(_in).strip().strip("#").split(delimiter)
@@ -99,10 +107,10 @@ def gather_category_and_feature_data(input_data, db_path, db_session=None, colum
         return code_map, n
 
 
-def process_annotations(input_data, db_session, code_map, header=None, columns=None, delimiter="\t"):
+def process_annotations(input_data, db_session, code_map, header=None, columns=None, delimiter="\t", is_gzipped=False):
     logging.info("Second pass: Encoding sequence annotations")
 
-    with open(input_data, "rt") as _in:
+    with (gzip.open if is_gzipped else open)(input_data, "rt") as _in:
         if header:
             _ = [next(_in) for _ in range(header - 1)]
         header_line = next(_in).strip().strip("#").split(delimiter)
@@ -153,19 +161,32 @@ def main():
     if args.initialise_db and not args.extract_map_only:
         initialise_db(engine)
 
+    gz_magic = b"\x1f\x8b\x08"
+    # pylint: disable=R1732,W0511
+    is_gzipped = open(args.input_data, "rb").read(3).startswith(gz_magic)
+
     if args.code_map:
         with gzip.open(args.code_map, "rt") as _map_in:
             code_map = json.load(_map_in)
     else:
         code_map, _ = gather_category_and_feature_data(
             args.input_data, args.db_path,
-            db_session=db_session, columns=args.columns, header=args.header, delimiter=args.delimiter
+            db_session=db_session, columns=args.columns, header=args.header, delimiter=args.delimiter,
+            is_gzipped=is_gzipped,
         )
 
     if args.extract_map_only:
         return
 
-    process_annotations(args.input_data, db_session, code_map, columns=args.columns, header=args.header, delimiter="\t")
+    process_annotations(
+        args.input_data,
+        db_session,
+        code_map,
+        columns=args.columns,
+        header=args.header,
+        delimiter="\t",
+        is_gzipped=is_gzipped,
+    )
 
     # https://www.sqlite.org/wal.html
     # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections

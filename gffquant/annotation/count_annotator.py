@@ -74,8 +74,9 @@ class CountAnnotator(dict):
 
             if category_counts:
                 # eggnog-mapper annotation tables in v2.1.2 (maybe earlier?) have '-' instead of empty cells
-                # category counts may be empty in case a non-patched db based on such tables is used
-                # in that case we're adding counts of non-existing features to the category without checking for empty cat counts!
+                # category counts may be empty in case a non-patched db based on such tables is used
+                # in that case we're adding counts of non-existing features to the category
+                # without checking for empty cat counts!
                 self.add_counts(category, f"cat:::{category}", counts)
 
     def add_counts(self, category, feature, counts):
@@ -175,8 +176,9 @@ class CountAnnotator(dict):
         # 1. each of these fields gets a copy of the unique count sum
         # 2. add the ambiguous counts to the combined_ elements
 
+        # pylint: disable=R1727
         if region_counts and False:
-            # used to ask for region_counts and coverage_counts
+            # used to ask for region_counts and coverage_counts
             counts[0:4] = sum(x[2] for x in chain(*uniq_counts) if x is not None)
             counts[2:4] += sum(x[2] for x in chain(*ambig_counts) if x is not None)
         else:
