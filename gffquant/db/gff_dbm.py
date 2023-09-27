@@ -10,12 +10,33 @@ from intervaltree import IntervalTree
 
 
 class EmapperFormat:
-    def __init__(self, query_field, fields, categories):
+    def __init__(self, query_field, fields, categories, na):
         self.query_field = query_field
         self.categories = dict(zip(fields, categories))
+        self.na = na
 
     def get_category(self, index):
         return self.categories.get(index)
+
+    def parse_emapper_line(self, line):
+        line = line.strip().split("\t")
+        categories = []
+        for i, col in enumerate(line):
+            category = self.get_category(i)
+            if category is not None:
+                col = col.strip()
+                if col and col != self.na:
+                    features = tuple(
+                        feature.strip()
+                        for feature in col.split(",")
+                        if feature.strip()
+                    )
+                    if features:
+                        categories.append((category, features))
+        if categories:
+            return line[self.query_field], (("strand", None),) + tuple(categories)
+
+        return None
 
 
 EMAPPER_FORMATS = {
@@ -29,6 +50,7 @@ EMAPPER_FORMATS = {
             "eggNOG_OGs",
             "COG_Functional_Category",
         ),
+        "",
     ),
     "v2": EmapperFormat(
         0,
@@ -48,6 +70,28 @@ EMAPPER_FORMATS = {
             "eggNOG_OGs",
             "COG_Functional_Category",
         ),
+        "",
+    ),
+    "v2.1.2": EmapperFormat(
+        0,
+        (4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,),
+        (
+            "eggNOG_OGs",
+            "COG_cat",
+            "GOs",
+            "EC",
+            "KEGG_ko",
+            "KEGG_Pathway",
+            "KEGG_Module",
+            "KEGG_Reaction",
+            "KEGG_rclass",
+            "BRITE",
+            "KEGG_TC",
+            "CAZy",
+            "BiGG_Reaction",
+            "PFAMs",
+        ),
+        "-",
     ),
 }
 
@@ -64,22 +108,27 @@ class GffDatabaseManager:
                 chunk, tail = chunk[:-1], chunk[-1]
                 for line in chunk:
                     if line[0] != "#":
-                        line = line.strip().split("\t")
-                        categories = []
-                        for i, col in enumerate(line):
-                            category = self.emapper_format.get_category(i)
-                            if category is not None:
-                                features = tuple(
-                                    feature.strip()
-                                    for feature in col.strip().split(",")
-                                    if feature.strip()
-                                )
-                                if features:
-                                    categories.append((category, features))
-                        if categories:
-                            yield line[self.emapper_format.query_field], (
-                                ("strand", None),
-                            ) + tuple(categories)
+                        annotation = self.emapper_format.parse_emapper_line(line)
+                        if annotation is not None:
+                            yield annotation
+                        # line = line.strip().split("\t")
+                        # categories = []
+                        # for i, col in enumerate(line):
+                        #     category = self.emapper_format.get_category(i)
+                        #     if category is not None:
+                        #         col = col.strip().split(",")
+                        #         if col != self.emapper_format.na:
+                        #             features = tuple(
+                        #                 feature.strip()
+                        #                 for feature in col
+                        #                 if feature.strip()
+                        #             )
+                        #             if features:
+                        #                 categories.append((category, features))
+                        # if categories:
+                        #     yield line[self.emapper_format.query_field], (
+                        #         ("strand", None),
+                        #     ) + tuple(categories)
 
     def _read_index(self, f):
         self.db_index = {}

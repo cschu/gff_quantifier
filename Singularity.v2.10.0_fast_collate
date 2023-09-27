@@ -31,11 +31,15 @@ export PATH=$PATH:/opt/software/miniconda3/bin:/opt/software/mOTUs
   /opt/software/miniconda3/bin/conda install -y -c bioconda 'samtools>=1.13' bwa minimap2 bwa-mem2
   git clone https://github.com/cschu/gff_quantifier.git
   cd gff_quantifier
-  git checkout a707e20d5a43cff53e2ac156ea15dd3605cf9686
-  /opt/software/miniconda3/bin/python setup.py bdist_wheel
-  /opt/software/miniconda3/bin/pip install --force-reinstall dist/*whl
+  git checkout feature/faster_collate_20230413
+
+  /opt/software/miniconda3/bin/pip install https://h2o-release.s3.amazonaws.com/datatable/dev/datatable-1.1.0a2231/datatable-1.1.0a2231-cp310-cp310-manylinux_2_17_x86_64.whl#sha256=dad17386c8d68845faf1d82e1dddca9201fe4d09daa3e71042d830baec8d068a
+  /opt/software/miniconda3/bin/pip install .
+
+  # /opt/software/miniconda3/bin/python setup.py bdist_wheel
+  # /opt/software/miniconda3/bin/pip install --force-reinstall dist/*whl
   cd ..
   rm -rf gff_quantifier/
 
 
-# trigger trigger trigger trigger trigger trigger trigger
+# trigger trigger trigger trigger trigger trigger trigger trigger

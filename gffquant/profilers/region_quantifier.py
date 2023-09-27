@@ -4,9 +4,10 @@
 
 import logging
 
-from gffquant.db.annotation_db import AnnotationDatabaseManager
+from ..db.annotation_db import AnnotationDatabaseManager
 from .feature_quantifier import FeatureQuantifier
 
+from .. import __tool__
 
 logger = logging.getLogger(__name__)
 
@@ -16,13 +17,11 @@ class RegionQuantifier(FeatureQuantifier):
     def __init__(
         self,
         db=None,
-        out_prefix="gffquant",
+        out_prefix=__tool__,
         ambig_mode="uniq_only",
         strand_specific=False,
-        calc_coverage=False,
         paired_end_count=1,
-        unmarked_orphans=False,
-        reference_type="genome"
+        reference_type="genome",
     ):
         FeatureQuantifier.__init__(
             self,
@@ -31,19 +30,23 @@ class RegionQuantifier(FeatureQuantifier):
             ambig_mode=ambig_mode,
             strand_specific=strand_specific,
             reference_type=reference_type,
-            calc_coverage=calc_coverage,
             paired_end_count=paired_end_count,
-            unmarked_orphans=unmarked_orphans,
         )
-        self.adm = AnnotationDatabaseManager(self.db)
 
-    def process_alignment_group(self, aln_group):
-        logger.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
+        self.adm = AnnotationDatabaseManager.from_db(self.db)
+
+    def process_alignment_group(self, aln_group, aln_reader):
+        # logger.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
         ambig_counts = list(aln_group.get_ambig_align_counts())
         if any(ambig_counts) and self.require_ambig_bookkeeping:
+            # this is for multimappers - could either be
+            # - single-end
+            # - input orphans
+            # - newly orphaned (one mate didn't align)
+            # - complete pairs
             all_hits = []
             for aln in aln_group.get_alignments():
-                current_ref = self.alp.get_reference(aln.rid)[0]
+                current_ref = self.register_reference(aln.rid, aln_reader)
                 # how many other positons does this read align to?
                 # this is needed in 1overN to scale down counts of multiple alignments
                 ambig_count = ambig_counts[aln.is_second()]
@@ -64,10 +67,14 @@ class RegionQuantifier(FeatureQuantifier):
                     for aln, hit, unaligned in all_hits
                 ),
                 ambiguous_counts=True,
-                pair=aln_group.is_paired()
+                pair=aln_group.is_paired(),
+                pe_library=aln_group.pe_library,
             )
         elif aln_group.is_aligned_pair():
-            current_ref = self.alp.get_reference(aln_group.primaries[0].rid)[0]
+            # this is the case of properly aligning pairs
+            # - unique (each mate aligns once)
+            # - concordant (mates align to the same reference)
+            current_ref = self.register_reference(aln_group.primaries[0].rid, aln_reader)
             hits = self.process_alignments_sameref(
                 current_ref,
                 (
@@ -76,15 +83,22 @@ class RegionQuantifier(FeatureQuantifier):
                 )
             )
             self.count_manager.update_counts(
-                hits, ambiguous_counts=False, pair=True
+                hits, ambiguous_counts=False, pair=True, pe_library=aln_group.pe_library,
             )
         else:
+            # here we could have uniquely aligning
+            # - single-end reads
+            # - input orphan reads
+            # - newly orphaned reads, e.g. if only one mate of an input pair aligns
+            # - pairs, with mates aligning to different references
+            # -> i.e. reads could be derived from either kind of library
             for aln in aln_group.get_alignments():
-                current_ref = self.alp.get_reference(aln.rid)[0]
+                current_ref = self.register_reference(aln.rid, aln_reader)
                 hits = self.process_alignments_sameref(
                     current_ref, (aln.shorten(),)
                 )
                 self.count_manager.update_counts(
                     hits, ambiguous_counts=not aln.is_unique(),
-                    pair=aln_group.is_paired()
+                    pair=aln_group.is_paired(),
+                    pe_library=aln_group.pe_library,
                 )

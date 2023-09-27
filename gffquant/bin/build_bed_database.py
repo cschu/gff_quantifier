@@ -3,6 +3,7 @@
 """ module docstring """
 
 import argparse
+import contextlib
 import gzip
 import json
 import logging
@@ -11,8 +12,8 @@ import sqlite3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from gffquant.db import initialise_db
-from gffquant.db.models import db
+from ..db import initialise_db
+from ..db.models import db
 from ..db.models.meta import Base
 
 
@@ -39,18 +40,18 @@ def get_database(db_path):
     return engine, db_session
 
 
-def gather_category_and_feature_data(args, db_session=None):
+def gather_category_and_feature_data(input_data, db_path=None, db_session=None):
 
     cat_d = {}
 
     logging.info("First pass: gathering category and feature information.")
     gz_magic = b"\x1f\x8b\x08"
     # pylint: disable=R1732,W0511
-    gzipped = open(args.input_data, "rb").read(3).startswith(gz_magic)
+    gzipped = open(input_data, "rb").read(3).startswith(gz_magic)
     _open = gzip.open if gzipped else open
 
     n = 0
-    with _open(args.input_data, "rt") as _in:
+    with _open(input_data, "rt") as _in:
         for n, line in enumerate(_in, start=1):
             line = line.strip().split("\t")
             cat_d.setdefault("domain", set()).update(line[3].split(","))
@@ -61,7 +62,8 @@ def gather_category_and_feature_data(args, db_session=None):
     code_map = {}
     feature_offset = 0
 
-    with gzip.open(args.db_path + ".code_map.json.gz", "wt") as _map_out:
+    _map_out = gzip.open(db_path + ".code_map.json.gz", "wt") if db_path else contextlib.nullcontext()
+    with _map_out:
         for category, features in sorted(cat_d.items()):
             code_map[category] = {
                 "key": len(code_map),
@@ -84,7 +86,8 @@ def gather_category_and_feature_data(args, db_session=None):
             if db_session is not None:
                 db_session.commit()
 
-        json.dump(code_map, _map_out)
+        if db_path:
+            json.dump(code_map, _map_out)
 
     return code_map, n
 
@@ -109,10 +112,11 @@ def process_annotations(input_data, db_session, code_map, nseqs):
             d.setdefault((gid, start, end), set()).update(features.split(","))
 
         for i, ((gid, start, end), features) in enumerate(d.items(), start=1):
-            if nseqs is not None:
-                logging.info("Processed %s entries. (%s%%)", i, round(i / nseqs * 100, 3))
-            else:
-                logging.info("Processed %s entries.", str(i))
+            if i % 1000000 == 0:
+                if nseqs is not None:
+                    logging.info("Processed %s entries. (%s%%)", i, round(i / nseqs * 100, 3))
+                else:
+                    logging.info("Processed %s entries.", str(i))
 
             encoded = []
             enc_category = code_map["domain"]['key']
@@ -123,12 +127,17 @@ def process_annotations(input_data, db_session, code_map, nseqs):
             db_sequence = db.AnnotatedSequence(
                 seqid=gid,
                 featureid=None,
-                start=int(start),
+                start=int(start) + 1,
                 end=int(end),
                 annotation_str=encoded,
             )
 
             db_session.add(db_sequence)
+
+        if nseqs is not None:
+            logging.info("Processed %s entries. (%s%%)", i, round(i / nseqs * 100, 3))
+        else:
+            logging.info("Processed %s entries.", str(i))
 
         db_session.commit()
 

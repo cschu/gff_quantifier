@@ -7,6 +7,7 @@ class AlignmentGroup:
         self.qname = None
         self.primaries = [None, None]
         self.secondaries = [[], []]
+        self.pe_library = None
 
         if aln is not None:
             self.add_alignment(aln)
@@ -18,6 +19,16 @@ class AlignmentGroup:
             self.primaries[aln.is_second()] = aln
         else:
             self.secondaries[aln.is_second()].append(aln)
+
+        read_group = aln.tags.get("RG")
+        if read_group is None and self.pe_library is not None:
+            raise ValueError(f"Alignment {str(aln)} has no read group information. Expected: {self.pe_library}")
+
+        if read_group is not None and str(read_group) in ("1", "2"):
+            pe_library = read_group == "2"
+            if self.pe_library is not None and pe_library != self.pe_library:
+                raise ValueError(f"Conflicting read group information found in {str(aln)}.")
+            self.pe_library = pe_library
 
     def n_align(self):
         return sum((

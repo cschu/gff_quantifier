@@ -12,9 +12,9 @@ import sqlite3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from gffquant.db import initialise_db
-from gffquant.db.models import db
-from gffquant.db.gff_dbm import GffDatabaseManager
+from ..db import initialise_db
+from ..db.models import db
+from ..db.gff_dbm import GffDatabaseManager
 from ..db.models.meta import Base
 
 
@@ -61,6 +61,7 @@ def gather_category_and_feature_data(args, db_session=None):
 
     with gzip.open(args.db_path + ".code_map.json.gz", "wt") as _map_out:
         for category, features in sorted(cat_d.items()):
+            features.difference_update({"-"})
             code_map[category] = {
                 "key": len(code_map),
                 "features": {
@@ -91,7 +92,7 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
     logging.info("Second pass: Encoding sequence annotations")
     gffdbm = GffDatabaseManager(input_data, "genes", emapper_version=emapper_version)
     for i, (ref, region_annotation) in enumerate(gffdbm.iterate(bufsize=4000000000), start=1):
-        if i % 10000 == 0:
+        if i and i % 10000 == 0:
             db_session.commit()
 
             if nseqs is not None:
@@ -101,19 +102,23 @@ def process_annotations(input_data, db_session, code_map, nseqs, emapper_version
 
         encoded = []
         for category, features in region_annotation[1:]:
-            enc_category = code_map[category]['key']
-            enc_features = sorted(code_map[category]['features'][feature] for feature in features)
-            encoded.append((enc_category, ",".join(map(str, enc_features))))
-        encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
+            features = set(features).difference({"-"})
+            if features:
+                enc_category = code_map[category]['key']
+                enc_features = sorted(code_map[category]['features'][feature] for feature in features)
+                encoded.append((enc_category, ",".join(map(str, enc_features))))
 
-        _, strand = region_annotation[0]
-        db_sequence = db.AnnotatedSequence(
-            seqid=ref,
-            featureid=None,
-            strand=int(strand == "+") if strand is not None else None,
-            annotation_str=encoded
-        )
-        db_session.add(db_sequence)
+        if encoded:
+            encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
+
+            _, strand = region_annotation[0]
+            db_sequence = db.AnnotatedSequence(
+                seqid=ref,
+                featureid=None,
+                strand=int(strand == "+") if strand is not None else None,
+                annotation_str=encoded
+            )
+            db_session.add(db_sequence)
     db_session.commit()
 
 
@@ -129,7 +134,7 @@ def main():
         "--emapper_version",
         type=str,
         default="v2",
-        choices=("v1", "v2"),
+        choices=("v1", "v2", "v2.1.2"),
     )
     args = ap.parse_args()
 

@@ -13,20 +13,15 @@ class RegionCounter(AlignmentCounter):
     with multiple regions of interest (features).
     """
 
-    def __init__(self, distribution_mode="uniq_only", strand_specific=False, calc_coverage=False):
+    def __init__(self, distribution_mode="uniq_only", strand_specific=False):
         AlignmentCounter.__init__(
             self, distribution_mode=distribution_mode, strand_specific=strand_specific
         )
-        self.calc_coverage = calc_coverage
 
-    # pylint: disable=R0913
+    # pylint: disable=R0913,W0613
     def _update_region(self, region_id, ostart, oend, rev_strand, cstart, cend, increment=1):
         overlap_id = ((ostart, oend), rev_strand) if self.strand_specific else (ostart, oend)
-        if self.calc_coverage:
-            self.setdefault(region_id, {}) \
-                .setdefault(overlap_id, []).append((cstart, cend, increment))
-        else:
-            self.setdefault(region_id, Counter())[overlap_id] += increment
+        self.setdefault(region_id, Counter())[overlap_id] += increment
 
 
 class UniqueRegionCounter(RegionCounter):
@@ -35,9 +30,9 @@ class UniqueRegionCounter(RegionCounter):
     with multiple regions of interest (features).
     """
 
-    def __init__(self, distribution_mode="uniq_only", strand_specific=False, calc_coverage=False):
+    def __init__(self, distribution_mode="uniq_only", strand_specific=False):
         RegionCounter.__init__(
-            self, distribution_mode=distribution_mode, strand_specific=strand_specific, calc_coverage=calc_coverage
+            self, distribution_mode=distribution_mode, strand_specific=strand_specific,
         )
 
     # pylint: disable=W0613
@@ -68,9 +63,9 @@ class AmbiguousRegionCounter(RegionCounter):
     with multiple regions of interest (features).
     """
 
-    def __init__(self, distribution_mode="uniq_only", strand_specific=False, calc_coverage=False):
+    def __init__(self, distribution_mode="uniq_only", strand_specific=False):
         RegionCounter.__init__(
-            self, distribution_mode=distribution_mode, strand_specific=strand_specific, calc_coverage=calc_coverage
+            self, distribution_mode=distribution_mode, strand_specific=strand_specific,
         )
 
     # pylint: disable=W0613

@@ -1,4 +1,4 @@
-# pylint: disable=C0103,W0105
+# pylint: disable=C0103,W0105,R0902
 
 """ This module contains code for transforming gene counts to feature counts. """
 
@@ -32,7 +32,7 @@ normalizeCounts nmethod counts sizes
 class CountAnnotator(dict):
     """ CountAnnotator is the parent class for the two different count annotators. """
 
-    def __init__(self, strand_specific):
+    def __init__(self, strand_specific, report_scaling_factors=True):
         """
         input:
         - strand_specific: true | false
@@ -44,10 +44,12 @@ class CountAnnotator(dict):
         # [uniq_raw, uniq_normed, combined_raw, combined_normed]
         self.total_counts = np.zeros(4)
         self.total_gene_counts = np.zeros(4)
+        self.unannotated_counts = np.zeros(4)
         # holds total_counts-like vectors for feature-wise scaling factor calculation
         self.feature_count_sums = {}
         self.scaling_factors = {}
         self.gene_counts = {}
+        self.report_scaling_factors = report_scaling_factors
 
     def distribute_feature_counts(self, counts, region_annotation):
         """
@@ -70,7 +72,12 @@ class CountAnnotator(dict):
             for feature in category_counts:
                 self.add_counts(category, feature, counts)
 
-            self.add_counts(category, f"cat:::{category}", counts)
+            if category_counts:
+                # eggnog-mapper annotation tables in v2.1.2 (maybe earlier?) have '-' instead of empty cells
+                # category counts may be empty in case a non-patched db based on such tables is used
+                # in that case we're adding counts of non-existing features to the category
+                # without checking for empty cat counts!
+                self.add_counts(category, f"cat:::{category}", counts)
 
     def add_counts(self, category, feature, counts):
         """ Increments feature counts by input count vector """
@@ -132,11 +139,12 @@ class CountAnnotator(dict):
                 )
             )
 
-            logger.info(
-                "Calculating scaling factors for category=%s: uraw=%s unorm=%s araw=%s anorm=%s -> factors=%s",
-                category, total_uniq, total_uniq_normed,
-                total_ambi, total_ambi_normed, self.scaling_factors[category]
-            )
+            if self.report_scaling_factors:
+                logger.info(
+                    "Calculating scaling factors for category=%s: uraw=%s unorm=%s araw=%s anorm=%s -> factors=%s",
+                    category, total_uniq, total_uniq_normed,
+                    total_ambi, total_ambi_normed, self.scaling_factors[category]
+                )
 
     # pylint: disable=R0913
     def compute_count_vector(
@@ -145,7 +153,7 @@ class CountAnnotator(dict):
         ambig_counts,
         length,
         strand_specific_counts=None,
-        region_counts=False
+        region_counts=False,
     ):
         """Computes a count vector for a region."""
         # we have either 4 bins (unstranded) or 12 (strand-specific)
@@ -168,7 +176,9 @@ class CountAnnotator(dict):
         # 1. each of these fields gets a copy of the unique count sum
         # 2. add the ambiguous counts to the combined_ elements
 
-        if region_counts:
+        # pylint: disable=R1727
+        if region_counts and False:
+            # used to ask for region_counts and coverage_counts
             counts[0:4] = sum(x[2] for x in chain(*uniq_counts) if x is not None)
             counts[2:4] += sum(x[2] for x in chain(*ambig_counts) if x is not None)
         else:
@@ -184,11 +194,11 @@ class CountAnnotator(dict):
 class RegionCountAnnotator(CountAnnotator):
     """ CountAnnotator subclass for contig/region-based counting. """
 
-    def __init__(self, strand_specific):
-        CountAnnotator.__init__(self, strand_specific)
+    def __init__(self, strand_specific, report_scaling_factors=True):
+        CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
     # pylint: disable=R0914
-    def annotate(self, bam, db, count_manager, coverage_counter=None):
+    def annotate(self, refmgr, db, count_manager):
         """
         Annotate a set of region counts via db-lookup.
         input:
@@ -199,14 +209,14 @@ class RegionCountAnnotator(CountAnnotator):
         for rid in set(count_manager.uniq_regioncounts).union(
             count_manager.ambig_regioncounts
         ):
-            ref = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)[0]
+            ref = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0]
 
             for region in count_manager.get_regions(rid):
                 if self.strand_specific:
                     (start, end), rev_strand = region
                 else:
                     (start, end), rev_strand = region, None
-                # region_annotation is a tuple of key-value pairs:
+                # the region_annotation is a tuple of key-value pairs:
                 # (strand, func_category1: subcategories, func_category2: subcategories, ...)
                 # the first is the strand, the second is the gene id, the rest are the features
 
@@ -243,11 +253,8 @@ class RegionCountAnnotator(CountAnnotator):
                         ambig_counts,
                         region_length,
                         strand_specific_counts=strand_specific_counts,
-                        region_counts=True
+                        region_counts=True,
                     )
-
-                    if coverage_counter is not None and (uniq_counts or ambig_counts):
-                        coverage_counter.update_coverage(rid, start, end, uniq_counts, ambig_counts, region_annotation)
 
                     self.distribute_feature_counts(counts, region_annotation)
 
@@ -263,10 +270,10 @@ class RegionCountAnnotator(CountAnnotator):
 class GeneCountAnnotator(CountAnnotator):
     """ CountAnnotator subclass for gene-based counting. """
 
-    def __init__(self, strand_specific):
-        CountAnnotator.__init__(self, strand_specific)
+    def __init__(self, strand_specific, report_scaling_factors=True):
+        CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
-    def annotate(self, bam, db, count_manager):
+    def annotate(self, refmgr, db, count_manager):
         """
         Annotate a set of gene counts via db-iteration.
         input:
@@ -282,7 +289,7 @@ class GeneCountAnnotator(CountAnnotator):
         for rid in set(count_manager.uniq_seqcounts).union(
             count_manager.ambig_seqcounts
         ):
-            ref, region_length = bam.get_reference(rid[0] if isinstance(rid, tuple) else rid)
+            ref, region_length = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
 
             uniq_counts, ambig_counts = count_manager.get_counts(
                 rid, region_counts=False, strand_specific=self.strand_specific
@@ -303,5 +310,7 @@ class GeneCountAnnotator(CountAnnotator):
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
                 self.distribute_feature_counts(counts, region_annotation)
+            else:
+                self.unannotated_counts += counts[:4]
 
         self.calculate_scaling_factors()
