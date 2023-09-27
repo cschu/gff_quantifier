@@ -79,7 +79,7 @@ class CountManager:
         if pe_library is not None:
             # this is the case when the alignment has a read group tag
             # if pe_library is True (RG tag '2') -> take paired-end increment (also for orphans)
-            # else (RG tag '2') -> take single-end increment
+            # else (RG tag '1') -> take single-end increment
             increment = self.increments_auto_detect[pe_library]
         else:
             # if the alignment has no (appropriate) read group tag
