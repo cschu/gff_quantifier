@@ -34,3 +34,14 @@ class AlignmentCounter(Counter):
             for k, v in self.items():
                 ref, reflen = refmgr.get(k[0] if isinstance(k, tuple) else k)
                 print(k, ref, reflen, v, sep="\t", file=_out)
+
+    def update_counts(self, count_stream, increment=1):
+        for hits, aln_count in count_stream:
+            inc = increment if aln_count == 1 else self.get_increment(aln_count, increment)
+            for hit in hits:
+                if self.strand_specific:
+                    strands = tuple(int(not h.rev_strand) for h in hits)
+                    self[(hit.rid, True)] += sum(strands) * inc
+                    self[(hit.rid, False)] += (len(strands) - sum(strands)) * inc
+                else:
+                    self[hit.rid] += len(strands) * inc

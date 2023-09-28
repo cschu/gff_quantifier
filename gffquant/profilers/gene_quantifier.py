@@ -30,7 +30,7 @@ class GeneQuantifier(FeatureQuantifier):
             paired_end_count=paired_end_count,
         )
 
-    def process_alignment_group(self, aln_group, aln_reader):
+    def process_alignment_group_old(self, aln_group, aln_reader):
         # logger.info("Processing new alignment group %s (%s)", aln_group.qname, aln_group.n_align())
         ambig_counts = aln_group.get_ambig_align_counts()
         if any(ambig_counts) and self.require_ambig_bookkeeping:

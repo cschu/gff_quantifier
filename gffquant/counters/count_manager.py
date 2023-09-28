@@ -2,7 +2,8 @@
 
 from collections import Counter
 
-from .region_counter import UniqueRegionCounter, AmbiguousRegionCounter
+from .alignment_counter import AlignmentCounter
+from .region_counter import UniqueRegionCounter, AmbiguousRegionCounter, RegionCounter
 from .seq_counter import UniqueSeqCounter, AmbiguousSeqCounter
 
 
@@ -53,15 +54,15 @@ class CountManager:
         self.uniq_regioncounts, self.ambig_regioncounts = None, None
 
         if region_counts:
-            self.uniq_regioncounts = UniqueRegionCounter(strand_specific=strand_specific)
-            self.ambig_regioncounts = AmbiguousRegionCounter(
+            self.uniq_regioncounts = RegionCounter(strand_specific=strand_specific)
+            self.ambig_regioncounts = RegionCounter(
                 strand_specific=strand_specific,
                 distribution_mode=distribution_mode,
             )
 
         else:
-            self.uniq_seqcounts = UniqueSeqCounter(strand_specific=strand_specific)
-            self.ambig_seqcounts = AmbiguousSeqCounter(
+            self.uniq_seqcounts = AlignmentCounter(strand_specific=strand_specific)
+            self.ambig_seqcounts = AlignmentCounter(
                 strand_specific=strand_specific,
                 distribution_mode=distribution_mode
             )

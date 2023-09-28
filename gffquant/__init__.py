@@ -1,4 +1,4 @@
 """ module docstring """
 
-__version__ = "2.14.3"
+__version__ = "2.15.0"
 __tool__ = "gffquant"

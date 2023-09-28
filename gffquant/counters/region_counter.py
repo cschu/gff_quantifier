@@ -23,6 +23,14 @@ class RegionCounter(AlignmentCounter):
         overlap_id = ((ostart, oend), rev_strand) if self.strand_specific else (ostart, oend)
         self.setdefault(region_id, Counter())[overlap_id] += increment
 
+    def update_counts(self, count_stream, increment=1):
+        for hits, aln_count in count_stream:
+            inc = increment if aln_count == 1 else self.get_increment(aln_count, increment)
+            for hit in hits:
+                self._update_region(
+                    hit.rid, hit.start, hit.end, hit.rev_strand, increment=inc,
+                )
+
 
 class UniqueRegionCounter(RegionCounter):
     """This counter class can be used in overlap mode, i.e.
