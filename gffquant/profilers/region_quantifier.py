@@ -49,7 +49,28 @@ class RegionQuantifier(FeatureQuantifier):
                 current_ref = self.register_reference(aln.rid, aln_reader)
                 # how many other positons does this read align to?
                 # this is needed in 1overN to scale down counts of multiple alignments
-                ambig_count = ambig_counts[aln.is_second()]
+                """ ambig_count = ambig_counts[aln.is_second()] """
+
+                hits = self.check_hits(current_ref, (aln,))
+                if not hits:
+                    # correct for alignments in unannotated regions
+                    ambig_counts[aln.is_second()] -= 1
+                
+                all_hits += [(aln, hit) for hit in hits]
+
+            self.count_manager.update_counts(
+                (
+                    (hit, ambig_counts[aln.is_second()])
+                    for aln, hit in all_hits
+                ),
+                ambiguous_counts=True,
+                pair=aln_group.is_paired(),
+                pe_library=aln_group.pe_library,
+            )
+
+                    
+            """
+
                 # if no overlaps: aln_count = 0
                 # yield ({rid: hits}, aln_count, 0 if aln_count else 1)
                 hit, _, unaligned = next(self.process_alignments_sameref(
@@ -70,11 +91,19 @@ class RegionQuantifier(FeatureQuantifier):
                 pair=aln_group.is_paired(),
                 pe_library=aln_group.pe_library,
             )
+            """
         elif aln_group.is_aligned_pair():
             # this is the case of properly aligning pairs
             # - unique (each mate aligns once)
             # - concordant (mates align to the same reference)
             current_ref = self.register_reference(aln_group.primaries[0].rid, aln_reader)
+
+            hits = self.check_hits(current_ref, aln_group.primaries)
+            self.count_manager.update_counts(
+                ((hit, 1) for hit in hits),
+                ambiguous_counts=False, pair=True, pe_library=aln_group.pe_library,
+            )
+            """
             hits = self.process_alignments_sameref(
                 current_ref,
                 (
@@ -85,6 +114,7 @@ class RegionQuantifier(FeatureQuantifier):
             self.count_manager.update_counts(
                 hits, ambiguous_counts=False, pair=True, pe_library=aln_group.pe_library,
             )
+            """
         else:
             # here we could have uniquely aligning
             # - single-end reads
@@ -92,8 +122,18 @@ class RegionQuantifier(FeatureQuantifier):
             # - newly orphaned reads, e.g. if only one mate of an input pair aligns
             # - pairs, with mates aligning to different references
             # -> i.e. reads could be derived from either kind of library
+            # - these could also be multimappers in all1-mode!
             for aln in aln_group.get_alignments():
                 current_ref = self.register_reference(aln.rid, aln_reader)
+
+                hits = self.check_hits(current_ref, (aln, ))
+                self.count_manager.update_counts(
+                    ((hit, 1) for hit in hits),
+                    ambiguous_counts=not aln.is_unique(),
+                    pair=aln_group.is_paired(),
+                    pe_library=aln_group.pe_library,
+                )
+                """
                 hits = self.process_alignments_sameref(
                     current_ref, (aln.shorten(),)
                 )
@@ -102,3 +142,4 @@ class RegionQuantifier(FeatureQuantifier):
                     pair=aln_group.is_paired(),
                     pe_library=aln_group.pe_library,
                 )
+                """

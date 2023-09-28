@@ -10,6 +10,7 @@ import time
 
 from abc import ABC, abstractmethod
 from collections import Counter
+from dataclasses import dataclass
 
 from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
@@ -20,6 +21,19 @@ from .. import __tool__
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ReferenceHit:
+    rid: int = None
+    start: int = None
+    end: int = None
+    rev_strand: bool = None
+    cov_start: int = None
+    cov_end: int = None
+
+    def __hash__(self):
+        return hash(tuple(self.__dict__.values()))
 
 
 class FeatureQuantifier(ABC):
@@ -69,6 +83,23 @@ class FeatureQuantifier(ABC):
         return (
             self.allow_ambiguous_alignments() and not self.treat_ambiguous_as_unique()
         )
+            
+
+    def check_hits(self, ref, alignments):  #  , aln_count=1):
+        for aln in alignments:
+            if self.do_overlap_detection:
+                hits = {
+                    ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse())
+                    for (start, end) in self.adm.get_overlaps(
+                        ref, aln.start, aln.end,
+                        domain_mode=self.reference_type == "domain"
+                    )
+                }
+            else:
+                hits = {ReferenceHit(rid=aln.rid, rev_strand=aln.is_reverse())}
+
+            yield hits
+
 
     def process_alignments_sameref(self, ref, alignments, aln_count=1):
         """
