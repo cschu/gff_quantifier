@@ -19,7 +19,7 @@ class RegionCounter(AlignmentCounter):
         )
 
     # pylint: disable=R0913,W0613
-    def _update_region(self, region_id, ostart, oend, rev_strand, cstart, cend, increment=1):
+    def _update_region(self, region_id, ostart, oend, rev_strand, cstart=None, cend=None, increment=1):
         overlap_id = ((ostart, oend), rev_strand) if self.strand_specific else (ostart, oend)
         self.setdefault(region_id, Counter())[overlap_id] += increment
 
