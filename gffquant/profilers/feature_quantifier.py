@@ -6,6 +6,7 @@ import gzip
 import json
 import logging
 import os
+import sys
 import time
 
 from abc import ABC, abstractmethod
@@ -100,16 +101,19 @@ class FeatureQuantifier(ABC):
                 domain_mode=self.reference_type == "domain"
             )
 
-            has_annotation, *_ = next(overlaps)
-            yield has_annotation, None
+            has_target, *_ = next(overlaps)
+            yield has_target, None
 
-            for (start, end) in overlaps:
-                yield ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse())
+            hits = [
+                ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse())
+                for (start, end) in overlaps
+            ]
+            yield None, hits
 
         else:
 
-            yield None, None            
-            yield None, ReferenceHit(rid=aln.rid, rev_strand=aln.is_reverse())
+            yield True, None            
+            yield None, [ReferenceHit(rid=aln.rid, rev_strand=aln.is_reverse())]
 
 
 
@@ -387,12 +391,13 @@ class FeatureQuantifier(ABC):
             current_ref = self.register_reference(aln.rid, aln_reader)
             hit_gen = self.check_hits(current_ref, aln)
 
-            has_annotation, _ = next(hit_gen)
-            if has_annotation:
+            has_target, _ = next(hit_gen)
+            if has_target:
                 print(aln, file=file)
-            hits = [(aln, hit) for _, hit in hit_gen]
-            hit_count += bool(hits)
-            all_hits += hits
+
+                hits = [(aln, aln_hits) for _, aln_hits in hit_gen]
+                hit_count += bool(hits)
+                all_hits += hits
 
         if any(ambig_counts) and self.require_ambig_bookkeeping:
             aln_count = hit_count
@@ -400,7 +405,7 @@ class FeatureQuantifier(ABC):
             aln_count = 1
 
         self.count_manager.update_counts(
-            ((hit, aln_count) for _, hit in all_hits),
+            ((aln_hits, aln_count) for _, aln_hits in all_hits),
             ambiguous_counts=any(ambig_counts),
             pair=aln_group.is_paired(),
             pe_library=aln_group.pe_library,

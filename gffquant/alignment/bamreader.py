@@ -152,7 +152,7 @@ class BamAlignment:
         #     f"({CigarOps.show_cigar(self.cigar)};{self.flag};{self.mapq};{self.tlen})"
         #     f"{self.rnext}:{self.pnext}"
         # )
-        return "\t".join((self.rid, self.start, self.end, CigarOps.show_cigar(self.cigar), self.flag, self.mapq, self.tlen, self.rnext, self.pnext))
+        return "\t".join(map(str, (self.rid, self.start, self.end, CigarOps.show_cigar(self.cigar), self.flag, self.mapq, self.tlen, self.rnext, self.pnext)))
     
     def __repr__(self):
         return str(self)
