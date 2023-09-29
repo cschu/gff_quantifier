@@ -411,9 +411,11 @@ class FeatureQuantifier(ABC):
             for aln, aln_hits in all_hits
         )
 
-        self.count_manager.update_counts(
+        contributed_counts = self.count_manager.update_counts(
             count_stream,
             ambiguous_counts=any(ambig_counts),
             pair=aln_group.is_paired(),
             pe_library=aln_group.pe_library,
         )
+
+        logger.info(f"aln_group {aln_group.qname} (ambig={ambig_alignment} size={aln_group.n_align()} {hit_counts=} {contributed_counts=})")
