@@ -24,15 +24,15 @@ class RegionCounter(AlignmentCounter):
         self.setdefault(region_id, Counter())[overlap_id] += increment
 
     def update_counts(self, count_stream, increment=1):
-        count = 0
+        contributed_counts = 0
         for hits, aln_count in count_stream:
             inc = increment if aln_count == 1 else self.get_increment(aln_count, increment)
             for hit in hits:
                 self._update_region(
                     hit.rid, hit.start, hit.end, hit.rev_strand, increment=inc,
                 )
-                count += inc
-        return count
+                contributed_counts += inc
+        return contributed_counts
 
 
 class UniqueRegionCounter(RegionCounter):
@@ -47,7 +47,7 @@ class UniqueRegionCounter(RegionCounter):
         )
 
     # pylint: disable=W0613
-    def update_counts(self, count_stream, increment=1, pair=False):
+    def update_counts(self, count_stream, increment=1):
         """Update counter with alignments against the same reference.
 
         input: count_stream
@@ -79,7 +79,7 @@ class AmbiguousRegionCounter(RegionCounter):
         )
 
     # pylint: disable=W0613
-    def update_counts(self, count_stream, pair=False, increment=1):
+    def update_counts(self, count_stream, increment=1):
         """Update counter with alignments against the same reference.
 
         input: count_stream

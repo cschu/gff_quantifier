@@ -1,6 +1,6 @@
-# pylint: disable=C0103,W1203,R0914,R0915
+# pylint: disable=C0103,W1203,R0914,R0915,E1101
 
-""" db_collate """
+""" db_collate - experimental """
 
 import argparse
 import logging

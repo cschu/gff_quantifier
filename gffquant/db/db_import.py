@@ -140,6 +140,7 @@ class DefaultDatabaseInputFormat:
     columns: tuple = field(default=(0, 1, 2, 3))
     separator: str = "\t"
 
+
 @dataclass
 class BedDatabaseInputFormat(DefaultDatabaseInputFormat):
     """ BED database input format. """
@@ -147,11 +148,13 @@ class BedDatabaseInputFormat(DefaultDatabaseInputFormat):
     # bed coords coming in as [x,y)_0 -> [x+1, y]_1
     offsets: tuple = field(default=(1, 0))
 
+
 @dataclass
 class HmmerDatabaseInputFormat(DefaultDatabaseInputFormat):
     """ HMMer database input format. """
     columns: tuple = field(default=(0, 1, 2, 4))
     separator: str = ","
+
 
 DB_SETTINGS_SELECTION = {
     "default": DefaultDatabaseInputFormat,
@@ -159,7 +162,7 @@ DB_SETTINGS_SELECTION = {
     "hmmer": HmmerDatabaseInputFormat,
 }
 
-# class DomainBedDatabaseImporter(GqDatabaseImporter):
+
 class SmallDatabaseImporter(GqDatabaseImporter):
     """ Importer for small dict-based databases. """
     def __init__(
@@ -173,25 +176,9 @@ class SmallDatabaseImporter(GqDatabaseImporter):
     ):
         self.single_category = single_category
 
-        # db_settings = {
-        #     "bed": {
-        #         "offsets": (1, 0), "columns": (0, 1, 2, 3), "separator": "\t",
-        #     },
-        #     "hmmer": {
-        #         "offsets": (0, 0), "columns": (0, 1, 2, 4), "separator": ",",
-        #     },
-        # }
-
         self.db_settings = DB_SETTINGS_SELECTION.get(db_format)
         if self.db_settings is None:
             raise ValueError(f"{db_format=} is not recognised.")
-
-        # self.sep = sep
-        # settings = db_settings.get(coords, db_settings["bed"])
-        # self.coordinate_modifiers = settings["offsets"]
-        # self.cols = settings["columns"]
-        # self.sep = settings["separator"]
-        # GMGC10.000_000_128.UNKNOWN,1,420,4.958096936477401e-50,GH88,417
 
         super().__init__(logger, input_data, db_path=db_path, db_session=db_session)
 

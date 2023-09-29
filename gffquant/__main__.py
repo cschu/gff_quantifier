@@ -108,10 +108,6 @@ def main():
                 logger.error("Shutting down.")
                 sys.exit(1)
 
-
-
-
-
     else:
         input_file = args.bam if args.input_type == "bam" else args.sam
         profiler.count_alignments(

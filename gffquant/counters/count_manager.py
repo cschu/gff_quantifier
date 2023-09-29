@@ -3,8 +3,7 @@
 from collections import Counter
 
 from .alignment_counter import AlignmentCounter
-from .region_counter import UniqueRegionCounter, AmbiguousRegionCounter, RegionCounter
-from .seq_counter import UniqueSeqCounter, AmbiguousSeqCounter
+from .region_counter import RegionCounter
 
 
 # pylint: disable=R0902

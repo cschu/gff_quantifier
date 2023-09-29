@@ -36,6 +36,7 @@ class AlignmentCounter(Counter):
                 print(k, ref, reflen, v, sep="\t", file=_out)
 
     def update_counts(self, count_stream, increment=1):
+        contributed_counts = 0
         for hits, aln_count in count_stream:
             inc = increment if aln_count == 1 else self.get_increment(aln_count, increment)
             for hit in hits:
@@ -45,3 +46,6 @@ class AlignmentCounter(Counter):
                     self[(hit.rid, False)] += (len(strands) - sum(strands)) * inc
                 else:
                     self[hit.rid] += len(strands) * inc
+                contributed_counts += len(strands) * inc
+
+        return contributed_counts
