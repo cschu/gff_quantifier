@@ -67,7 +67,7 @@ class AlignmentProcessor:
     ):
         last_read, last_passed_read = None, None
 
-        with self.aln_stream:
+        with self.aln_stream, open("filtered.sam", "wt") as _out:
             for pysam_aln in self.aln_stream:
 
                 read_unmapped = SamFlags.is_unmapped(pysam_aln.flag)
@@ -114,4 +114,5 @@ class AlignmentProcessor:
                     last_passed_read = pysam_aln.qname
                     self.read_counter[AlignmentProcessor.TOTAL_PASSED_READS] += 1
 
+                print(pysam_aln.to_string(), file=_out)
                 yield aln
