@@ -102,18 +102,18 @@ class FeatureQuantifier(ABC):
             )
 
             has_target, *_ = next(overlaps)
-            yield has_target, None
+            # yield has_target, None
 
             hits = [
                 ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse())
                 for _, start, end in overlaps
             ]
-            yield None, hits
+            return has_target, hits
 
         else:
 
-            yield True, None            
-            yield None, [ReferenceHit(rid=aln.rid, rev_strand=aln.is_reverse())]
+            # yield True, None            
+            return True, [ReferenceHit(rid=aln.rid, rev_strand=aln.is_reverse())]
 
 
 
@@ -389,16 +389,14 @@ class FeatureQuantifier(ABC):
 
         for aln in aln_group.get_alignments():
             current_ref = self.register_reference(aln.rid, aln_reader)
-            hit_gen = self.check_hits(current_ref, aln)
+            # hit_gen = self.check_hits(current_ref, aln)
 
-            has_target, _ = next(hit_gen)
-            if has_target:
-
-                hits = [(aln, aln_hits) for _, aln_hits in hit_gen]
-                if hits:
-                    print(current_ref, aln, file=file)
-
-                hit_count += bool(hits)
+            # has_target, _ = next(hit_gen)
+            has_target, hits = self.check_hits(current_ref, aln)
+            if has_target and hits:
+                print(current_ref, aln, hits, file=file)
+                hits = [(aln, aln_hits) for _, aln_hits in hits]
+                hit_count += 1
                 all_hits += hits
 
         if any(ambig_counts) and self.require_ambig_bookkeeping:
