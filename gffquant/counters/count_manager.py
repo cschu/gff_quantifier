@@ -91,9 +91,11 @@ class CountManager:
             increment = self.increments[pair]
 
         if seq_counter is not None:
-            seq_counter.update_counts(count_stream, increment=increment)
+            contributed_counts = seq_counter.update_counts(count_stream, increment=increment)
         elif region_counter is not None:
-            region_counter.update_counts(count_stream, increment=increment)
+            contributed_counts = region_counter.update_counts(count_stream, increment=increment)
+
+        return contributed_counts
 
     def dump_raw_counters(self, prefix, refmgr):
         if self.uniq_seqcounts is not None:
