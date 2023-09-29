@@ -405,22 +405,32 @@ class FeatureQuantifier(ABC):
         logger.info("Finished.")
 
     def process_alignment_group(self, aln_group, aln_reader):
+        """ Checks an alignment group for hits and passes the hit list
+        to the counters.
+        """
         ambig_counts = aln_group.get_ambig_align_counts()
-        ambig_alignment = any(ambig_counts) and self.require_ambig_bookkeeping()
+        is_ambig_alignment = any(ambig_counts) and self.require_ambig_bookkeeping()
+        # hit counts are mode-dependent:
+        # ambiguous alignments in overlap modes require the number of alternative locations
+        # (we handle first/second PE-alignments separately, hence a 2x2 list)
+        # otherwise the hit count is always 1
         hit_counts = [[1, 1], [0, 0]]
         all_hits = []
 
+        # process each alignment of the group individually
         for aln in aln_group.get_alignments():
             current_ref = self.register_reference(aln.rid, aln_reader)
-
+            # check for region hits (in overlap modes, otherwise alignments always hit)
             has_target, hits = self.check_hits(current_ref, aln)
             if has_target and hits:
-                if ambig_alignment:
+                if is_ambig_alignment:
+                    # update the hit counts
                     hit_counts[1][aln.is_second()] += 1
                 all_hits.append((aln, hits))
 
+        # pass the hit lists to the counters
         count_stream = (
-            (aln_hits, hit_counts[ambig_alignment][aln.is_second()])
+            (aln_hits, hit_counts[is_ambig_alignment][aln.is_second()])
             for aln, aln_hits in all_hits
         )
 
@@ -434,6 +444,6 @@ class FeatureQuantifier(ABC):
         # pylint: disable=W1203
         logger.debug(
             f"aln_group {aln_group.qname} "
-            f"(ambig={ambig_alignment} size={aln_group.n_align()} "
+            f"(ambig={is_ambig_alignment} size={aln_group.n_align()} "
             f"{hit_counts=} {contributed_counts=})"
         )
