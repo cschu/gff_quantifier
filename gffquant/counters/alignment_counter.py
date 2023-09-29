@@ -38,14 +38,11 @@ class AlignmentCounter(Counter):
     def update_counts(self, count_stream, increment=1):
         contributed_counts = 0
         for hits, aln_count in count_stream:
+            hit = hits[0]
             inc = increment if aln_count == 1 else self.get_increment(aln_count, increment)
-            for hit in hits:
-                if self.strand_specific:
-                    strands = tuple(int(not h.rev_strand) for h in hits)
-                    self[(hit.rid, True)] += sum(strands) * inc
-                    self[(hit.rid, False)] += (len(strands) - sum(strands)) * inc
-                else:
-                    self[hit.rid] += len(strands) * inc
-                contributed_counts += len(strands) * inc
+            if self.strand_specific:
+                self[(hit.rid, hit.rev_strand)] += inc
+            else:
+                self[hit.rid] += inc            
 
         return contributed_counts
