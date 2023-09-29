@@ -399,10 +399,10 @@ class FeatureQuantifier(ABC):
             # has_target, _ = next(hit_gen)
             has_target, hits = self.check_hits(current_ref, aln)
             if has_target and hits:
-                print(current_ref, aln, *hits, file=file)
-                hits = [(aln, aln_hit) for aln_hit in hits]
+                print(current_ref, aln, hits, file=file)
+                # hits = [(aln, aln_hit) for aln_hit in hits]
                 hit_count += 1
-                all_hits += hits
+                all_hits.append(hits)
 
         if any(ambig_counts) and self.require_ambig_bookkeeping:
             aln_count = hit_count
@@ -410,7 +410,7 @@ class FeatureQuantifier(ABC):
             aln_count = 1
 
         self.count_manager.update_counts(
-            ((aln_hits, aln_count) for _, aln_hits in all_hits),
+            ((aln_hits, aln_count) for aln_hits in all_hits),
             ambiguous_counts=any(ambig_counts),
             pair=aln_group.is_paired(),
             pe_library=aln_group.pe_library,
