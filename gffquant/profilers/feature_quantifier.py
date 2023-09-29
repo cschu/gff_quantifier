@@ -393,9 +393,11 @@ class FeatureQuantifier(ABC):
 
             has_target, _ = next(hit_gen)
             if has_target:
-                print(aln, file=file)
 
                 hits = [(aln, aln_hits) for _, aln_hits in hit_gen]
+                if hits:
+                    print(aln, file=file)
+
                 hit_count += bool(hits)
                 all_hits += hits
 
