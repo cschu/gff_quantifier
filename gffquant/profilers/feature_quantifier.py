@@ -389,8 +389,9 @@ class FeatureQuantifier(ABC):
 
     def process_alignment_group(self, aln_group, aln_reader, file=sys.stderr):
         ambig_counts = aln_group.get_ambig_align_counts()
+        ambig_alignment = any(ambig_counts) and self.require_ambig_bookkeeping()
+        hit_counts = [[1, 1], [0, 0]]
         all_hits = []
-        hit_count = 0
 
         for aln in aln_group.get_alignments():
             current_ref = self.register_reference(aln.rid, aln_reader)
@@ -401,16 +402,17 @@ class FeatureQuantifier(ABC):
             if has_target and hits:
                 print(current_ref, aln, hits, file=file)
                 # hits = [(aln, aln_hit) for aln_hit in hits]
-                hit_count += 1
-                all_hits.append(hits)
-
-        if any(ambig_counts) and self.require_ambig_bookkeeping:
-            aln_count = hit_count
-        else:
-            aln_count = 1
+                if ambig_alignment:
+                    hit_counts[1][aln.is_second()] += 1
+                all_hits.append((aln, hits))
+        
+        count_stream = (
+            (aln_hits, hit_counts[ambig_alignment][aln.is_second()])
+            for aln, aln_hits in all_hits
+        )
 
         self.count_manager.update_counts(
-            ((aln_hits, aln_count) for aln_hits in all_hits),
+            count_stream,
             ambiguous_counts=any(ambig_counts),
             pair=aln_group.is_paired(),
             pe_library=aln_group.pe_library,
