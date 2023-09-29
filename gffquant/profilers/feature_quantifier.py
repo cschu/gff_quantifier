@@ -400,7 +400,7 @@ class FeatureQuantifier(ABC):
             has_target, hits = self.check_hits(current_ref, aln)
             if has_target and hits:
                 print(current_ref, aln, *hits, file=file)
-                hits = [(aln, aln_hits) for _, aln_hits in hits]
+                hits = [(aln, aln_hit) for aln_hit in hits]
                 hit_count += 1
                 all_hits += hits
 
