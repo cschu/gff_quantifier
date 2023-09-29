@@ -24,12 +24,15 @@ class RegionCounter(AlignmentCounter):
         self.setdefault(region_id, Counter())[overlap_id] += increment
 
     def update_counts(self, count_stream, increment=1):
+        count = 0
         for hits, aln_count in count_stream:
             inc = increment if aln_count == 1 else self.get_increment(aln_count, increment)
             for hit in hits:
                 self._update_region(
                     hit.rid, hit.start, hit.end, hit.rev_strand, increment=inc,
                 )
+                count += inc
+        return count
 
 
 class UniqueRegionCounter(RegionCounter):
