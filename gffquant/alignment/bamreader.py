@@ -147,11 +147,16 @@ class BamAlignment:
         return int(md5.hexdigest(), 16)
 
     def __str__(self):
-        return (
-            f"{self.rid}:{self.start}-{self.end}"
-            f"({CigarOps.show_cigar(self.cigar)};{self.flag};{self.mapq};{self.tlen})"
-            f"{self.rnext}:{self.pnext}"
-        )
+        # return (
+        #     f"{self.rid}:{self.start}-{self.end}"
+        #     f"({CigarOps.show_cigar(self.cigar)};{self.flag};{self.mapq};{self.tlen})"
+        #     f"{self.rnext}:{self.pnext}"
+        # )
+        return "\t".join((self.rid, self.start, self.end, CigarOps.show_cigar(self.cigar), self.flag, self.mapq, self.tlen, self.rnext, self.pnext))
+    
+    def __repr__(self):
+        return str(self)
+
 
     def shorten(self):
         return (self.rid, self.start, self.end, self.is_reverse())

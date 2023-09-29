@@ -34,6 +34,15 @@ class ReferenceHit:
 
     def __hash__(self):
         return hash(tuple(self.__dict__.values()))
+    
+    def __eq__(self, other):
+        return all(
+            item[0][1] == item[1][1]
+            for item in zip(
+                sorted(self.__dict__.items()),
+                sorted(other.__dict__.items())
+            )
+        )
 
 
 class FeatureQuantifier(ABC):
@@ -82,23 +91,26 @@ class FeatureQuantifier(ABC):
         It requires all alignments of a read to be processed together."""
         return (
             self.allow_ambiguous_alignments() and not self.treat_ambiguous_as_unique()
-        )
-            
+        )            
 
-    def check_hits(self, ref, alignments):  #  , aln_count=1):
-        for aln in alignments:
-            if self.do_overlap_detection:
-                hits = {
-                    ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse())
-                    for (start, end) in self.adm.get_overlaps(
-                        ref, aln.start, aln.end,
-                        domain_mode=self.reference_type == "domain"
-                    )
-                }
-            else:
-                hits = {ReferenceHit(rid=aln.rid, rev_strand=aln.is_reverse())}
+    def check_hits(self, ref, aln):        
+        if self.do_overlap_detection:
+            overlaps = self.adm.get_overlaps(
+                ref, aln.start, aln.end,
+                domain_mode=self.reference_type == "domain"
+            )
 
-            yield hits
+            has_annotation, *_ = next(overlaps)
+            yield has_annotation, None
+
+            for (start, end) in overlaps:
+                yield ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse())
+
+        else:
+
+            yield None, None            
+            yield None, ReferenceHit(rid=aln.rid, rev_strand=aln.is_reverse())
+
 
 
     def process_alignments_sameref(self, ref, alignments, aln_count=1):
@@ -223,25 +235,28 @@ class FeatureQuantifier(ABC):
         aln_count = 0
         read_count = 0
         current_aln_group = None
-        for aln_count, aln in enumerate(aln_stream, start=1):
-            if self.ambig_mode == "primary_only" and not aln.is_primary():
-                continue
-            if self.ambig_mode in ("uniq_only", "unique_only") and not aln.is_unique():
-                continue
 
-            if current_aln_group is None or current_aln_group.qname != aln.qname:
-                if current_aln_group is not None:
-                    self.process_alignment_group(current_aln_group, aln_reader)
-                current_aln_group = AlignmentGroup()
-                read_count += 1
+        with open("annotated.sam", "wt") as sam_out:
 
-                if read_count and read_count % 100000 == 0:
-                    logger.info("Processed %s reads.", read_count)
+            for aln_count, aln in enumerate(aln_stream, start=1):
+                if self.ambig_mode == "primary_only" and not aln.is_primary():
+                    continue
+                if self.ambig_mode in ("uniq_only", "unique_only") and not aln.is_unique():
+                    continue
 
-            current_aln_group.add_alignment(aln)
+                if current_aln_group is None or current_aln_group.qname != aln.qname:
+                    if current_aln_group is not None:
+                        self.process_alignment_group(current_aln_group, aln_reader, file=sam_out)
+                    current_aln_group = AlignmentGroup()
+                    read_count += 1
 
-        if current_aln_group is not None:
-            self.process_alignment_group(current_aln_group, aln_reader)
+                    if read_count and read_count % 100000 == 0:
+                        logger.info("Processed %s reads.", read_count)
+
+                current_aln_group.add_alignment(aln)
+
+            if current_aln_group is not None:
+                self.process_alignment_group(current_aln_group, aln_reader)
 
         if aln_count == 0:
             logger.warning("No alignments present in stream.")
@@ -363,14 +378,19 @@ class FeatureQuantifier(ABC):
 
         logger.info("Finished.")
 
-    def process_alignment_group(self, aln_group, aln_reader):
+    def process_alignment_group(self, aln_group, aln_reader, file=sys.stderr):
         ambig_counts = aln_group.get_ambig_align_counts()
         all_hits = []
         hit_count = 0
 
         for aln in aln_group.get_alignments():
             current_ref = self.register_reference(aln.rid, aln_reader)
-            hits = [(aln, hit) for hit in self.check_hits(current_ref, (aln,))]
+            hit_gen = self.check_hits(current_ref, aln)
+
+            has_annotation, _ = next(hit_gen)
+            if has_annotation:
+                print(aln, file=file)
+            hits = [(aln, hit) for _, hit in hit_gen]
             hit_count += bool(hits)
             all_hits += hits
 

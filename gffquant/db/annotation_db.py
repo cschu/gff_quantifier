@@ -69,6 +69,8 @@ class AnnotationDatabaseManager(ABC):
         """ return all intervals overlapping the query read """
         db_sequences = self.get_db_sequence(seqid)
 
+        yield bool(db_sequences), None, None
+
         for seq in db_sequences:
             # we're assuming
             # 1) database coordinates in 1-based, closed interval
@@ -76,7 +78,7 @@ class AnnotationDatabaseManager(ABC):
             if qend < seq.start - 1 or seq.end - 1 < qstart:
                 continue
 
-            yield seq.start, seq.end
+            yield None, seq.start, seq.end
 
             # interval = seq.start, seq.end
             # sstart, send = seq.start - 1, seq.end
