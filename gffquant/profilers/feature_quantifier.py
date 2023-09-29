@@ -144,54 +144,6 @@ class FeatureQuantifier(ABC):
 
         return has_target, hits
 
-    def process_alignments_sameref(self, ref, alignments, aln_count=1):
-        """
-        Process a group of alignments against the same reference sequence.
-
-        The weird output format is due to compatibility reasons with ambiguous alignments
-        when one of the TRUE_AMBIG_MODES is chosen.
-
-        input:
-          - reference clear text identifier (required for overlap detection)
-          - list of alignments (reference short id, start, end, is_reverse)
-
-        output:
-          - generator! with the following items:
-            in overlap mode:
-              {reference_id:
-                  [(begin overlap, end overlap,
-				    is_reverse, begin covered region, end covered region)
-               for each overlapped region]}
-                  + alignment count: 1 if the alignment overlaps any region of interest, else 0
-                  + unalignment count: 1 - alignment count
-            else:
-                  {reference_id:(-1, -1, is_reverse, -1, -1)
-                  + alignment count: 1
-				  (each reference is already a feature, i.e. everything is aligned)
-                  + unalignment count: 0
-        """
-
-        for rid, start, end, rev_strand in alignments:
-            if self.do_overlap_detection:
-
-                hits = {
-                    (sstart, send, rev_strand, None, None)
-                    for (sstart, send)
-                    in self.adm.get_overlaps(
-                        ref, start, end,
-                        domain_mode=self.reference_type == "domain",
-                    )
-                }
-
-                # if the alignment overlaps multiple features, each one gets a count
-                aln_count = int(bool(hits)) * aln_count
-
-            else:
-                hits = {(None, None, rev_strand, None, None)}
-                # aln_count = 1 / aln_count
-
-            yield ({rid: hits}, aln_count, 0 if aln_count else 1)
-
     def process_counters(
         self,
         restrict_reports=None,
