@@ -106,7 +106,7 @@ class FeatureQuantifier(ABC):
 
             hits = [
                 ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse())
-                for (start, end) in overlaps
+                for _, start, end in overlaps
             ]
             yield None, hits
 
