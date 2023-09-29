@@ -45,6 +45,11 @@ class ReferenceHit:
             )
         )
 
+    def __str__(self):
+        return "\t".join(map(str, self.__dict__.values()))
+    
+    def __repr__(self):
+        return str(self)
 
 class FeatureQuantifier(ABC):
     # pylint: disable=R0902,R0913
@@ -394,7 +399,7 @@ class FeatureQuantifier(ABC):
             # has_target, _ = next(hit_gen)
             has_target, hits = self.check_hits(current_ref, aln)
             if has_target and hits:
-                print(current_ref, aln, hits, file=file)
+                print(current_ref, aln, *hits, file=file)
                 hits = [(aln, aln_hits) for _, aln_hits in hits]
                 hit_count += 1
                 all_hits += hits
