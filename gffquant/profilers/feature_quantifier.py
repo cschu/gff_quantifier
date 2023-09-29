@@ -396,7 +396,7 @@ class FeatureQuantifier(ABC):
 
                 hits = [(aln, aln_hits) for _, aln_hits in hit_gen]
                 if hits:
-                    print(aln, file=file)
+                    print(current_ref, aln, file=file)
 
                 hit_count += bool(hits)
                 all_hits += hits
