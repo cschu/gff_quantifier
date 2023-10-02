@@ -211,6 +211,7 @@ class FeatureQuantifier(ABC):
             allow_multiple=self.allow_ambiguous_alignments(),
             allow_unique=True,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
+            filtered_sam=f"{self.out_prefix}.filtered.sam",
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)

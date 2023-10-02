@@ -1,5 +1,7 @@
 """ module docstring """
 
+from contextlib import nullcontext
+
 import pysam
 
 from .bamreader import BamAlignment, SamFlags
@@ -64,10 +66,13 @@ class AlignmentProcessor:
         filter_flags=0,
         required_flags=0,
         verbose=True,
+        filtered_sam=None,
     ):
         last_read, last_passed_read = None, None
 
-        with self.aln_stream:
+        filtered_out = open(filtered_sam, "wt") if filtered_sam else nullcontext()
+
+        with self.aln_stream, filtered_out:
             for pysam_aln in self.aln_stream:
 
                 read_unmapped = SamFlags.is_unmapped(pysam_aln.flag)
@@ -113,5 +118,8 @@ class AlignmentProcessor:
                 if last_passed_read is None or pysam_aln.qname != last_passed_read:
                     last_passed_read = pysam_aln.qname
                     self.read_counter[AlignmentProcessor.TOTAL_PASSED_READS] += 1
+
+                if filtered_sam is not None:
+                    print(pysam_aln.to_string(), file=filtered_out)
 
                 yield aln
