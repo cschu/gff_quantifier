@@ -43,6 +43,8 @@ class AlignmentCounter(Counter):
             if self.strand_specific:
                 self[(hit.rid, hit.rev_strand)] += inc
             else:
-                self[hit.rid] += inc            
+                self[hit.rid] += inc
+
+            contributed_counts += inc
 
         return contributed_counts
