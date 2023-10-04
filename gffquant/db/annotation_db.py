@@ -11,7 +11,7 @@ from intervaltree import IntervalTree
 
 from . import get_database
 from .models import db
-from .db_import import GqDatabaseImporter
+from .importers import GqDatabaseImporter
 
 
 logger = logging.getLogger(__name__)

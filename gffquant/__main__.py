@@ -8,11 +8,11 @@ import pathlib
 import sys
 
 # pylint: disable=W0611
-from .db.db_import import SmallDatabaseImporter
+from .db.importers import SmallDatabaseImporter
 from .handle_args import handle_args
-from .ui.validation import check_input_reads
 from .profilers import GeneQuantifier, RegionQuantifier
 from .runners.alignment_runner import BwaMemRunner, Minimap2Runner
+from .ui.validation import check_input_reads
 from . import __version__
 
 

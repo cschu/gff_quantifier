@@ -8,9 +8,8 @@ import json
 import logging
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 
-from .models import db
+from ..models import db
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +25,7 @@ class GqDatabaseImporter(ABC):
         self.nseqs = 0
         self.categories = {}
         self.features = {}
+        self.open_function = GqDatabaseImporter.get_open_function(input_data)
 
         self.gather_category_and_feature_data(input_data)
         self.process_annotations(input_data)
@@ -52,10 +52,10 @@ class GqDatabaseImporter(ABC):
         """ Initial pass to parse and encode category/feature data. """
         logger.info("First pass: gathering category and feature information.")
 
-        _open = GqDatabaseImporter.get_open_function(input_data)
-
-        with _open(input_data, "rt") as _in:
+        with self.open_function(input_data, "rt") as _in:
             cat_d = self.parse_categories(_in)
+
+        logger.info("    Parsed %s entries.", self.nseqs)
 
         logger.info("Building code map and dumping category and feature encodings.")
 
@@ -93,39 +93,37 @@ class GqDatabaseImporter(ABC):
         """ Second pass to parse and store annotations. """
         logger.info("Second pass: Encoding sequence annotations")
 
-        _open = GqDatabaseImporter.get_open_function(input_data)
-
-        single_category = getattr(self, "single_category") if hasattr(self, "single_category") else "domain"
-
-        with _open(input_data, "rt") as _in:
+        with self.open_function(input_data, "rt") as _in:
             annotation_data = self.parse_annotations(_in)
 
             i = 0
-            for i, ((gid, start, end), features) in enumerate(annotation_data.items(), start=1):
+            for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
                 if i % 100000 == 0:
+                    if self.db_session is not None:
+                        self.db_session.commit()
                     if self.nseqs:
                         logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
                     else:
                         logger.info("    Loaded %s entries.", str(i))
 
                 encoded = []
-                enc_category = self.code_map[single_category]['key']
-                enc_features = sorted(self.code_map[single_category]['features'][feature] for feature in features)
-                encoded.append((enc_category, ",".join(map(str, enc_features))))
-                encoded = ";".join(f"{cat}={features}" for cat, features in sorted(encoded))
+                for category, features in annotation:
+                    enc_category = self.code_map[category]['key']
+                    enc_features = sorted(
+                        self.code_map[category]['features'][feature]
+                        for feature in features
+                    )
+                    encoded.append((enc_category, ",".join(map(str, enc_features))))
+                    encoded = ";".join(
+                        f"{cat}={features}" for cat, features in sorted(encoded)
+                    )
 
-                db_sequence = db.AnnotatedSequence(
-                    seqid=gid,
-                    featureid=None,
-                    start=int(start),
-                    end=int(end),
-                    annotation_str=encoded,
-                )
-
-                self.annotations.setdefault(gid, []).append(db_sequence)
+                seq_feature.annotation_str = encoded
 
                 if self.db_session:
-                    self.db_session.add(db_sequence)
+                    self.db_session.add(seq_feature)
+                else:
+                    self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
 
             if self.nseqs:
                 logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
@@ -134,77 +132,3 @@ class GqDatabaseImporter(ABC):
 
             if self.db_session:
                 self.db_session.commit()
-
-
-@dataclass
-class DefaultDatabaseInputFormat:
-    """ Default database input format. """
-    offsets: tuple = field(default=(0, 0))
-    columns: tuple = field(default=(0, 1, 2, 3))
-    separator: str = "\t"
-
-
-@dataclass
-class BedDatabaseInputFormat(DefaultDatabaseInputFormat):
-    """ BED database input format. """
-    # we store everything as 1-based, closed intervals internally
-    # bed coords coming in as [x,y)_0 -> [x+1, y]_1
-    offsets: tuple = field(default=(1, 0))
-
-
-@dataclass
-class HmmerDatabaseInputFormat(DefaultDatabaseInputFormat):
-    """ HMMer database input format. """
-    columns: tuple = field(default=(0, 1, 2, 4))
-    separator: str = ","
-
-
-DB_SETTINGS_SELECTION = {
-    "default": DefaultDatabaseInputFormat,
-    "bed": BedDatabaseInputFormat,
-    "hmmer": HmmerDatabaseInputFormat,
-}
-
-
-class SmallDatabaseImporter(GqDatabaseImporter):
-    """ Importer for small dict-based databases. """
-    def __init__(
-        self,
-        input_data,
-        db_path=None,
-        db_session=None,
-        single_category="domain",
-        db_format="default",
-    ):
-        self.single_category = single_category
-
-        self.db_settings = DB_SETTINGS_SELECTION.get(db_format)
-        if self.db_settings is None:
-            raise ValueError(f"{db_format=} is not recognised.")
-
-        super().__init__(input_data, db_path=db_path, db_session=db_session)
-
-    def parse_categories(self, _in):
-        categories = {}
-
-        for self.nseqs, line in enumerate(_in, start=1):
-            line = line.strip().split(self.db_settings.separator)
-            categories.setdefault(self.single_category, set()).update(line[self.db_settings.columns[-1]].split(","))
-
-        logger.info("    Parsed %s entries.", self.nseqs)
-        return categories
-
-    def parse_annotations(self, _in):
-        annotations = {}
-        for i, line in enumerate(_in, start=1):
-            if i % 10000 == 0 and self.db_session:
-                self.db_session.commit()
-            line = line.strip().split(self.db_settings.separator)
-            gid, start, end, features = (c for i, c in enumerate(line) if i in self.db_settings.columns)
-            # we store everything as 1-based, closed intervals internally
-            start = int(start) + self.db_settings.offsets[0]
-            end = int(end) + self.db_settings.offsets[1]
-            # was: start + 1
-            annotations.setdefault((gid, start, end), set()).update(features.split(","))
-
-        return annotations
