@@ -80,7 +80,20 @@ class GqDatabaseImporter(ABC):
                 seq_feature.annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
-                    
+                
+            for cat_name, cat_id in category_map.items():
+                db_category = db.Category(id=cat_id, name=cat_name)
+                self.categories[db_category.id] = db_category
+                if self.db_session is not None:
+                    self.db_session.add(db_category)
+
+            for (cat_id, feat_name), feat_id in feature_map.items():
+                db_feature = db.Feature(id=feat_id, name=feat_name, category=cat_id)
+                if self.db_session is not None:
+                    self.db_session.add(db_feature)                
+
+            self.db_session.commit()
+
                   
                 #     self.code_map[category] = {
                 #     "key": len(self.code_map),
