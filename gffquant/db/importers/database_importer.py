@@ -80,7 +80,17 @@ class GqDatabaseImporter(ABC):
                 seq_feature.annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
-                
+
+                if self.db_session:
+                    self.db_session.add(seq_feature)
+                else:
+                    self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
+
+            if self.nseqs:
+                logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
+            else:
+                logger.info("    Loaded %s entries.", str(i))
+
             for cat_name, cat_id in category_map.items():
                 db_category = db.Category(id=cat_id, name=cat_name)
                 self.categories[db_category.id] = db_category
@@ -93,37 +103,6 @@ class GqDatabaseImporter(ABC):
                     self.db_session.add(db_feature)                
 
             self.db_session.commit()
-
-                  
-                #     self.code_map[category] = {
-                #     "key": len(self.code_map),
-                #     "features": {
-                #         feature: (i + feature_offset) for i, feature in enumerate(sorted(features))
-                #     }
-                # }
-
-
-                #     enc_category = self.code_map[category]['key']
-                #     enc_features = sorted(
-                #         self.code_map[category]['features'][feature]
-                #         for feature in features
-                #     )
-                #     encoded.append((enc_category, ",".join(map(str, enc_features))))
-                    
-                # encoded = ";".join(
-                #     f"{cat}={features}" for cat, features in sorted(encoded)
-                # )
-
-
-                if self.db_session:
-                    self.db_session.add(seq_feature)
-                else:
-                    self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
-
-            if self.nseqs:
-                logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
-            else:
-                logger.info("    Loaded %s entries.", str(i))
 
             if self.db_session:
                 self.db_session.commit()
