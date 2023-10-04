@@ -13,7 +13,7 @@ import sqlite3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from ..db import initialise_db
+from ..db import get_database, initialise_db
 from ..db.models import db
 from ..db.models.meta import Base
 
@@ -24,7 +24,7 @@ logging.basicConfig(
 )
 
 
-def get_database(db_path):
+def get_database_old(db_path):
     engine = create_engine(f"sqlite:///{db_path}")
 
     db_session = scoped_session(

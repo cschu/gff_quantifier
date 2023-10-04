@@ -24,6 +24,8 @@ def get_writable_database():
 
     return engine, db_session
 
+def initialise_db(engine):
+    meta.Base.metadata.create_all(bind=engine)
 
 def get_database(db_path, in_memory=True):
 
@@ -37,7 +39,8 @@ def get_database(db_path, in_memory=True):
         source.backup(conn)
         logger.info("Finished loading database.")
 
-        meta.Base.metadata.create_all(engine)
+        # meta.Base.metadata.create_all(engine)
+        initialise_db(engine)
 
     else:
         engine = create_engine(f"sqlite:///{db_path}")
@@ -48,5 +51,3 @@ def get_database(db_path, in_memory=True):
     return engine, db_session
 
 
-def initialise_db(engine):
-    meta.Base.metadata.create_all(bind=engine)
