@@ -58,9 +58,9 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
                 featureid=None,
                 strand=int(strand == "+") if strand is not None else None,
             )
-            annotation = {
-                category: set(features).difference({"-"})
+            annotation = [
+                (category, set(features).difference({"-"}))
                 for category, features in region_annotation[1:]
-            }
+			]
 
             yield seq_feature, annotation
