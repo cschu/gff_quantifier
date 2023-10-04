@@ -52,7 +52,7 @@ class GqDatabaseImporter(ABC):
         """ Initial pass to parse and encode category/feature data. """
         logger.info("First pass: gathering category and feature information.")
 
-        with self.open_function(input_data, "rt") as _in:
+        with self.open_function(input_data, "rb") as _in:
             cat_d = self.parse_categories(_in)
 
         logger.info("    Parsed %s entries.", self.nseqs)
@@ -93,7 +93,7 @@ class GqDatabaseImporter(ABC):
         """ Second pass to parse and store annotations. """
         logger.info("Second pass: Encoding sequence annotations")
 
-        with self.open_function(input_data, "rt") as _in:
+        with self.open_function(input_data, "rb") as _in:
             annotation_data = self.parse_annotations(_in)
 
             i = 0
