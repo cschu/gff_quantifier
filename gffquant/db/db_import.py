@@ -5,6 +5,7 @@
 import contextlib
 import gzip
 import json
+import logging
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -12,10 +13,12 @@ from dataclasses import dataclass, field
 from .models import db
 
 
+logger = logging.getLogger(__name__)
+
+
 class GqDatabaseImporter(ABC):
     """ Base database importer class"""
-    def __init__(self, logger, input_data, db_path=None, db_session=None):
-        self.logger = logger
+    def __init__(self, input_data, db_path=None, db_session=None):
         self.db_path = db_path
         self.db_session = db_session
         self.code_map = {}
@@ -47,14 +50,14 @@ class GqDatabaseImporter(ABC):
 
     def gather_category_and_feature_data(self, input_data):
         """ Initial pass to parse and encode category/feature data. """
-        self.logger.info("First pass: gathering category and feature information.")
+        logger.info("First pass: gathering category and feature information.")
 
         _open = GqDatabaseImporter.get_open_function(input_data)
 
         with _open(input_data, "rt") as _in:
             cat_d = self.parse_categories(_in)
 
-        self.logger.info("Building code map and dumping category and feature encodings.")
+        logger.info("Building code map and dumping category and feature encodings.")
 
         feature_offset = 0
         _map_out = gzip.open(self.db_path + ".code_map.json.gz", "wt") if self.db_path else contextlib.nullcontext()
@@ -88,7 +91,7 @@ class GqDatabaseImporter(ABC):
 
     def process_annotations(self, input_data):
         """ Second pass to parse and store annotations. """
-        self.logger.info("Second pass: Encoding sequence annotations")
+        logger.info("Second pass: Encoding sequence annotations")
 
         _open = GqDatabaseImporter.get_open_function(input_data)
 
@@ -101,9 +104,9 @@ class GqDatabaseImporter(ABC):
             for i, ((gid, start, end), features) in enumerate(annotation_data.items(), start=1):
                 if i % 100000 == 0:
                     if self.nseqs:
-                        self.logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
+                        logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
                     else:
-                        self.logger.info("    Loaded %s entries.", str(i))
+                        logger.info("    Loaded %s entries.", str(i))
 
                 encoded = []
                 enc_category = self.code_map[single_category]['key']
@@ -125,9 +128,9 @@ class GqDatabaseImporter(ABC):
                     self.db_session.add(db_sequence)
 
             if self.nseqs:
-                self.logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
+                logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
             else:
-                self.logger.info("    Loaded %s entries.", str(i))
+                logger.info("    Loaded %s entries.", str(i))
 
             if self.db_session:
                 self.db_session.commit()
@@ -167,7 +170,6 @@ class SmallDatabaseImporter(GqDatabaseImporter):
     """ Importer for small dict-based databases. """
     def __init__(
         self,
-        logger,
         input_data,
         db_path=None,
         db_session=None,
@@ -180,7 +182,7 @@ class SmallDatabaseImporter(GqDatabaseImporter):
         if self.db_settings is None:
             raise ValueError(f"{db_format=} is not recognised.")
 
-        super().__init__(logger, input_data, db_path=db_path, db_session=db_session)
+        super().__init__(input_data, db_path=db_path, db_session=db_session)
 
     def parse_categories(self, _in):
         categories = {}
@@ -189,7 +191,7 @@ class SmallDatabaseImporter(GqDatabaseImporter):
             line = line.strip().split(self.db_settings.separator)
             categories.setdefault(self.single_category, set()).update(line[self.db_settings.columns[-1]].split(","))
 
-        self.logger.info("    Parsed %s entries.", self.nseqs)
+        logger.info("    Parsed %s entries.", self.nseqs)
         return categories
 
     def parse_annotations(self, _in):
