@@ -56,8 +56,8 @@ class SmallDatabaseImporter(GqDatabaseImporter):
                 end=end,
             )
 
-            annotation = {
-                self.single_category: set(features.split(","))
-            }
+            annotation = [
+                (self.single_category, set(features.split(",")))
+            ]
 
             yield seq_feature, annotation
