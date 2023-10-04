@@ -56,7 +56,7 @@ class AlignmentProcessor:
                 f"Filtered(seqid): {stat_counter[1]} " + \
                 f"Filtered(length): {stat_counter[2]}"
 
-    # pylint: disable=R0913,W0613
+    # pylint: disable=R0913,R0914,W0613
     def get_alignments(
         self,
         min_identity=0.97,
@@ -70,7 +70,9 @@ class AlignmentProcessor:
     ):
         last_read, last_passed_read = None, None
 
-        filtered_out = open(filtered_sam, "wt") if filtered_sam else nullcontext()
+        # pylint: disable=R1732
+        filtered_out = open(filtered_sam, "wt", encoding="UTF-8") if filtered_sam else nullcontext()
+        # pylint: enable=R1732
 
         with self.aln_stream, filtered_out:
             for pysam_aln in self.aln_stream:
