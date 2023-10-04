@@ -10,6 +10,8 @@ import json
 import logging
 import sqlite3
 
+from os.path import basename, splitext
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
@@ -146,7 +148,7 @@ def process_annotations(input_data, db_session, code_map, nseqs):
 
 
 def main():
-    ap = argparse.ArgumentParser(prog=f"{__tool__}:{__file__}")
+    ap = argparse.ArgumentParser(prog=f"{__tool__}:{splitext(basename(__file__))[0]}")
     ap.add_argument("db_path", type=str)
     ap.add_argument("input_data", type=str)
     ap.add_argument("--initialise_db", action="store_true")
