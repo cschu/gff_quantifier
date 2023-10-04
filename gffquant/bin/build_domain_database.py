@@ -160,7 +160,7 @@ def main():
     )
     args = ap.parse_args()
 
-    engine, db_session = get_database(args.db_path) if not args.extract_map_only else (None, None)
+    engine, db_session = get_database(args.db_path, in_memory=False) if not args.extract_map_only else (None, None)
 
     if args.initialise_db and not args.extract_map_only:
         initialise_db(engine)
