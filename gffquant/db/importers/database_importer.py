@@ -114,10 +114,10 @@ class GqDatabaseImporter(ABC):
                         for feature in features
                     )
                     encoded.append((enc_category, ",".join(map(str, enc_features))))
-                    encoded = ";".join(
-                        f"{cat}={features}" for cat, features in sorted(encoded)
-                    )
-
+                    
+                encoded = ";".join(
+					f"{cat}={features}" for cat, features in sorted(encoded)
+				)
                 seq_feature.annotation_str = encoded
 
                 if self.db_session:
