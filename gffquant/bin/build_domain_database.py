@@ -17,7 +17,7 @@ from ..db import get_database, initialise_db
 from ..db.models import db
 from ..db.models.meta import Base
 
-from . import __tool__, __version__
+from .. import __tool__, __version__
 
 
 logging.basicConfig(
