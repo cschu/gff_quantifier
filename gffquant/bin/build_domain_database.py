@@ -8,16 +8,11 @@ import csv
 import gzip
 import json
 import logging
-import sqlite3
 
 from os.path import basename, splitext
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
-
-from ..db import get_database, initialise_db
+from ..db import get_database, initialise_db, improve_concurrent_read_access
 from ..db.models import db
-from ..db.models.meta import Base
 
 from .. import __tool__, __version__
 
@@ -26,23 +21,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(message)s'
 )
-
-
-def get_database_old(db_path):
-    engine = create_engine(f"sqlite:///{db_path}")
-
-    db_session = scoped_session(
-        sessionmaker(
-            autocommit=False,
-            autoflush=False,
-            enable_baked_queries=True,
-            bind=engine
-        )
-    )
-
-    Base.query = db_session.query_property()
-
-    return engine, db_session
 
 
 def gather_category_and_feature_data(input_data, db_path=None, db_session=None):
@@ -177,13 +155,7 @@ def main():
 
     process_annotations(args.input_data, db_session, code_map, nseqs)
 
-    # https://www.sqlite.org/wal.html
-    # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections
-    # concurrent read-access from more than 3 processes seems to be an issue
-    with sqlite3.connect(args.db_path) as conn:
-        cur = conn.cursor()
-        cur.execute('PRAGMA journal_mode=wal')
-        cur.fetchall()
+    improve_concurrent_read_access(args.db_path)
 
 
 if __name__ == "__main__":
