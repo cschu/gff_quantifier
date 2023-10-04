@@ -40,7 +40,9 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
             gffdbm.iterate(bufsize=self.dbm_buffersize), start=1
         ):
             for category, features in region_annotation[1:]:
-                categories.setdefault(category, set()).update(features)
+                categories.setdefault(category, set()).update(
+                    set(features).difference({"-"})
+                )
 
         return categories
 
