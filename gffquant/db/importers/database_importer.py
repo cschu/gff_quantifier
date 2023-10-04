@@ -27,8 +27,9 @@ class GqDatabaseImporter(ABC):
         self.features = {}
         self.open_function = GqDatabaseImporter.get_open_function(input_data)
 
-        self.gather_category_and_feature_data(input_data)
-        self.process_annotations(input_data)
+        # self.gather_category_and_feature_data(input_data)
+        # self.process_annotations(input_data)
+        self.build_database(input_data)
 
     @staticmethod
     def get_open_function(f):
@@ -47,6 +48,75 @@ class GqDatabaseImporter(ABC):
     def parse_annotations(self, input_data):
         """ abstract method to parse annotations from various data formats """
         ...
+
+    def build_database(self, input_data):
+        
+        category_map, feature_map = {}, {}
+        
+        with self.open_function(input_data, "rb") as _in:
+            annotation_data = self.parse_annotations(_in)
+
+            i = 0
+            for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
+                if i % 100000 == 0:
+                    if self.db_session is not None:
+                        self.db_session.commit()
+                    if self.nseqs:
+                        logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
+                    else:
+                        logger.info("    Loaded %s entries.", str(i))
+
+                encoded = []
+                for category, features in annotation:
+                    cat_enc = category_map.setdefault(category, len(category_map))
+                    
+                    feat_enc = sorted(                        
+                        feature_map.setdefault((cat_enc, feat), len(feature_map))
+                        for feat in features                        
+                    )
+                    
+                    encoded.append((cat_enc, ",".join(map(str, feat_enc))))
+                    
+                seq_feature.annotation_str = ";".join(
+                    f"{cat}={features}" for cat, features in sorted(encoded)
+                )
+                    
+                  
+                #     self.code_map[category] = {
+                #     "key": len(self.code_map),
+                #     "features": {
+                #         feature: (i + feature_offset) for i, feature in enumerate(sorted(features))
+                #     }
+                # }
+
+
+                #     enc_category = self.code_map[category]['key']
+                #     enc_features = sorted(
+                #         self.code_map[category]['features'][feature]
+                #         for feature in features
+                #     )
+                #     encoded.append((enc_category, ",".join(map(str, enc_features))))
+                    
+                # encoded = ";".join(
+                #     f"{cat}={features}" for cat, features in sorted(encoded)
+                # )
+
+
+                if self.db_session:
+                    self.db_session.add(seq_feature)
+                else:
+                    self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
+
+            if self.nseqs:
+                logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
+            else:
+                logger.info("    Loaded %s entries.", str(i))
+
+            if self.db_session:
+                self.db_session.commit()
+
+            
+            
 
     def gather_category_and_feature_data(self, input_data):
         """ Initial pass to parse and encode category/feature data. """
@@ -116,8 +186,8 @@ class GqDatabaseImporter(ABC):
                     encoded.append((enc_category, ",".join(map(str, enc_features))))
                     
                 encoded = ";".join(
-					f"{cat}={features}" for cat, features in sorted(encoded)
-				)
+                    f"{cat}={features}" for cat, features in sorted(encoded)
+                )
                 seq_feature.annotation_str = encoded
 
                 if self.db_session:
