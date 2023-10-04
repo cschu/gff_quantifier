@@ -70,5 +70,6 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
                 for category, features in annotation
                 if features
             ]
-
-            yield seq_feature, annotation
+            
+            if annotation:
+                yield seq_feature, annotation
