@@ -7,11 +7,10 @@ import contextlib
 import gzip
 import json
 import logging
-import sqlite3
 
 from os.path import basename, splitext
 
-from ..db import get_database, initialise_db
+from ..db import get_database, initialise_db, improve_concurrent_read_access
 from ..db.models import db
 
 from .. import __tool__, __version__
@@ -155,13 +154,7 @@ def main():
 
     process_annotations(args.input_data, db_session, code_map, nseqs)
 
-    # https://www.sqlite.org/wal.html
-    # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections
-    # concurrent read-access from more than 3 processes seems to be an issue
-    with sqlite3.connect(args.db_path) as conn:
-        cur = conn.cursor()
-        cur.execute('PRAGMA journal_mode=wal')
-        cur.fetchall()
+    improve_concurrent_read_access(args.db_path)
 
 
 if __name__ == "__main__":
