@@ -17,6 +17,8 @@ from ..db import get_database, initialise_db
 from ..db.models import db
 from ..db.models.meta import Base
 
+from . import __tool__, __version__
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -144,13 +146,16 @@ def process_annotations(input_data, db_session, code_map, nseqs):
 
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(prog=f"{__tool__}:{__file__}")
     ap.add_argument("db_path", type=str)
     ap.add_argument("input_data", type=str)
     ap.add_argument("--initialise_db", action="store_true")
     ap.add_argument("--code_map", type=str)
     ap.add_argument("--nseqs", type=int)
     ap.add_argument("--extract_map_only", action="store_true")
+    ap.add_argument(
+        "--version", "-v", action="version", version="%(prog)s " + __version__
+    )
     args = ap.parse_args()
 
     engine, db_session = get_database(args.db_path) if not args.extract_map_only else (None, None)
