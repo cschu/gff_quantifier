@@ -138,11 +138,15 @@ class GffDatabaseManager:
                 self.db_index.setdefault(line[0], []).append(list(map(int, line[1:3])))
 
     def __init__(self, db, reference_type, db_index=None, emapper_version="v2"):
-        gz_magic = b"\x1f\x8b\x08"
-        # pylint: disable=R1732,W0511
-        gzipped = open(db, "rb").read(3).startswith(gz_magic)
-        # TODO: can dbm be written as contextmanager?
-        _open = gzip.open if gzipped else open
+        if isinstance(db, str):
+            gz_magic = b"\x1f\x8b\x08"
+            # pylint: disable=R1732,W0511
+            gzipped = open(db, "rb").read(3).startswith(gz_magic)
+            # TODO: can dbm be written as contextmanager?
+            _open = gzip.open if gzipped else open
+            stream = _open(db, "rt")
+        else:
+            stream = db
         self.reference_type = reference_type
         if db_index:
             if gzipped:
@@ -154,14 +158,16 @@ class GffDatabaseManager:
             self.db = _open(db, "rt")
         elif self.reference_type == "domain":  # bed
             self.db = {}
-            for line in _open(db, "rt"):
+            # for line in _open(db, "rt"):
+            for line in stream:
                 line = line.strip().split("\t")
                 self.db.setdefault(line[0], {}).setdefault(
                     (int(line[1]), int(line[2])), []
                 ).append(line[3])
         else:
-            _open = gzip.open if gzipped else open
-            self.db = _open(db, "rb")
+            # _open = gzip.open if gzipped else open
+            # self.db = _open(db, "rb")
+            self.db = stream
             self.db_index = None
 
         self.emapper_format = EMAPPER_FORMATS.get(emapper_version)
