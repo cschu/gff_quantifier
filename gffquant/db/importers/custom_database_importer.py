@@ -27,6 +27,9 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
 
         super().__init__(input_data, db_path=db_path, db_session=db_session)
 
+    def parse_categories(self, input_data):
+        return super().parse_categories(input_data)
+
     def parse_annotations(self, _in):
         if self.header:
             _ = [next(_in) for _ in range(self.header - 1)]
