@@ -17,9 +17,10 @@ logger = logging.getLogger(__name__)
 
 class GqDatabaseImporter(ABC):
     """ Base database importer class"""
-    def __init__(self, input_data, db_path=None, db_session=None, na_char="-"):
+    def __init__(self, input_data, db_path=None, db_session=None, db_engine=None, na_char="-"):
         self.db_path = db_path
         self.db_session = db_session
+        self.db_engine = db_engine
         self.code_map = {}
         self.annotations = {}
         self.nseqs = 0
@@ -58,10 +59,14 @@ class GqDatabaseImporter(ABC):
 
                 if i % 100000 == 0:
                     if self.db_session is not None and annotations:
-                        self.db_session.execute(
-                            insert(db.AnnotatedSequence),
+                        self.db_engine.execute(
+                            db.AnnotatedSequence.__table__.insert(),
                             [ann.__dict__ for ann in annotations],
                         )
+                        # self.db_session.execute(
+                        #     insert(db.AnnotatedSequence),
+                        #     [ann.__dict__ for ann in annotations],
+                        # )
 
                         self.db_session.flush()
                         annotations.clear()
