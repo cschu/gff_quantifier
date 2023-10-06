@@ -52,7 +52,10 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
             "genes",
             emapper_version=self.emapper_version,
         )
-        for ref, region_annotation in gffdbm.iterate(bufsize=self.dbm_buffersize):
+        for self.nseqs, (ref, region_annotation) in enumerate(
+            gffdbm.iterate(bufsize=self.dbm_buffersize),
+            start=1
+		):
             _, strand = region_annotation[0]
 
             seq_feature = db.AnnotatedSequence(
