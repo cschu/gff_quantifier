@@ -7,7 +7,7 @@ import logging
 
 from abc import ABC, abstractmethod
 
-from sqlalchemy import insert
+from sqlalchemy import insert, Index
 
 from ..models import db
 
@@ -107,22 +107,23 @@ class GqDatabaseImporter(ABC):
                     insert(db.AnnotatedSequence),
                     [ann.__dict__ for ann in annotations],
                 )
+                annotations.clear()
 
                 self.db_session.execute(
                     insert(db.Category),
                     [cat.__dict__ for cat in self.categories.values()],
                 )
+                self.categories.clear()
 
                 self.db_session.execute(
                     insert(db.Feature),
                     [feat.__dict__ for feat in self.features.values()],
                 )
+                self.features.clear()
+
+                Index("seqid_idx", db.AnnotatedSequence.__table__.c.seqid, unique=True)
 
                 self.db_session.commit()
-
-                annotations.clear()
-                self.features.clear()
-                self.categories.clear()
             else:
                 for seq_feature in annotations:
                     self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
