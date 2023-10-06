@@ -1,13 +1,13 @@
-# pylint: disable=C0103,R0902,R0913,W2301
+# pylint: disable=C0103,R0902,R0913,W2301,R0914
 
 """ module docstring """
 
-import contextlib
 import gzip
-import json
 import logging
 
 from abc import ABC, abstractmethod
+
+from sqlalchemy import insert
 
 from ..models import db
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class GqDatabaseImporter(ABC):
     """ Base database importer class"""
-    def __init__(self, input_data, db_path=None, db_session=None):
+    def __init__(self, input_data, db_path=None, db_session=None, na_char="-"):
         self.db_path = db_path
         self.db_session = db_session
         self.code_map = {}
@@ -26,9 +26,8 @@ class GqDatabaseImporter(ABC):
         self.categories = {}
         self.features = {}
         self.open_function = GqDatabaseImporter.get_open_function(input_data)
+        self.na_char = na_char
 
-        # self.gather_category_and_feature_data(input_data)
-        # self.process_annotations(input_data)
         self.build_database(input_data)
 
     @staticmethod
@@ -40,159 +39,86 @@ class GqDatabaseImporter(ABC):
         return gzip.open if gzipped else open
 
     @abstractmethod
-    def parse_categories(self, input_data):
-        """ abstract method to parse categories from various data formats """
-        ...
-
-    @abstractmethod
     def parse_annotations(self, input_data):
         """ abstract method to parse annotations from various data formats """
         ...
 
     def build_database(self, input_data):
-        
+
         category_map, feature_map = {}, {}
-        
+        annotations = []
+
         with self.open_function(input_data, "rb") as _in:
             annotation_data = self.parse_annotations(_in)
 
             i = 0
             for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
+                if not annotation:
+                    continue
+
                 if i % 100000 == 0:
-                    if self.db_session is not None:
+                    if self.db_session is not None and annotations:
+                        self.db_session.execute(
+                            insert(db.AnnotatedSequence),
+                            annotations,
+                        )
+                        # self.db_session.bulk_save_objects(annotations)
                         self.db_session.commit()
-                    if self.nseqs:
-                        logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
-                    else:
-                        logger.info("    Loaded %s entries.", str(i))
+                        annotations.clear()
+                    logger.info("    Loaded %s entries.", str(i))
 
                 encoded = []
                 for category, features in annotation:
                     cat_enc = category_map.setdefault(category, len(category_map))
-                    
-                    feat_enc = sorted(                        
+
+                    feat_enc = sorted(
                         feature_map.setdefault((cat_enc, feat), len(feature_map))
-                        for feat in features                        
+                        for feat in features
                     )
-                    
+
                     encoded.append((cat_enc, ",".join(map(str, feat_enc))))
-                    
+
                 seq_feature.annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
 
-                if self.db_session:
-                    self.db_session.add(seq_feature)
-                else:
-                    self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
+                annotations.append(seq_feature)
 
-            if self.nseqs:
-                logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
-            else:
-                logger.info("    Loaded %s entries.", str(i))
+            logger.info("    Loaded %s entries.", str(self.nseqs))
 
+            self.categories = {
+                cat_id: db.Category(id=cat_id, name=cat_name)
+                for cat_name, cat_id in category_map.items()
+            }
 
-            for cat_name, cat_id in category_map.items():
-                db_category = db.Category(id=cat_id, name=cat_name)
-                if self.db_session is not None:
-                    self.db_session.add(db_category)
-                else:
-                    self.categories[db_category.id] = db_category
-
-            for (cat_id, feat_name), feat_id in feature_map.items():
-                db_feature = db.Feature(id=feat_id, name=feat_name, category_id=cat_id)
-                if self.db_session is not None:
-                    self.db_session.add(db_feature)
-                else:
-                    self.features[db_feature.id] = db_feature
+            self.features = {
+                feat_id: db.Feature(id=feat_id, name=feat_name, category_id=cat_id)
+                for (cat_id, feat_name), feat_id in feature_map.items()
+            }
 
             if self.db_session is not None:
-                self.db_session.commit()
-
-            
-            
-
-    def gather_category_and_feature_data(self, input_data):
-        """ Initial pass to parse and encode category/feature data. """
-        logger.info("First pass: gathering category and feature information.")
-
-        with self.open_function(input_data, "rb") as _in:
-            cat_d = self.parse_categories(_in)
-
-        logger.info("    Parsed %s entries.", self.nseqs)
-
-        logger.info("Building code map and dumping category and feature encodings.")
-
-        feature_offset = 0
-        _map_out = gzip.open(self.db_path + ".code_map.json.gz", "wt") if self.db_path else contextlib.nullcontext()
-        with _map_out:
-            for category, features in sorted(cat_d.items()):
-                self.code_map[category] = {
-                    "key": len(self.code_map),
-                    "features": {
-                        feature: (i + feature_offset) for i, feature in enumerate(sorted(features))
-                    }
-                }
-                feature_offset += len(features)
-
-                db_category = db.Category(id=self.code_map[category]["key"], name=category)
-                self.categories[db_category.id] = db_category
-                if self.db_session is not None:
-                    self.db_session.add(db_category)
-                    self.db_session.commit()
-
-                for feature, fid in self.code_map[category]["features"].items():
-                    db_feature = db.Feature(id=fid, name=feature, category=db_category)
-                    self.features[db_feature.id] = db_feature
-                    if self.db_session is not None:
-                        self.db_session.add(db_feature)
-
-                if self.db_session is not None:
-                    self.db_session.commit()
-
-            if self.db_path:
-                json.dump(self.code_map, _map_out)
-
-    def process_annotations(self, input_data):
-        """ Second pass to parse and store annotations. """
-        logger.info("Second pass: Encoding sequence annotations")
-
-        with self.open_function(input_data, "rb") as _in:
-            annotation_data = self.parse_annotations(_in)
-
-            i = 0
-            for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
-                if i % 100000 == 0:
-                    if self.db_session is not None:
-                        self.db_session.commit()
-                    if self.nseqs:
-                        logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
-                    else:
-                        logger.info("    Loaded %s entries.", str(i))
-
-                encoded = []
-                for category, features in annotation:
-                    enc_category = self.code_map[category]['key']
-                    enc_features = sorted(
-                        self.code_map[category]['features'][feature]
-                        for feature in features
-                    )
-                    encoded.append((enc_category, ",".join(map(str, enc_features))))
-                    
-                encoded = ";".join(
-                    f"{cat}={features}" for cat, features in sorted(encoded)
+                self.db_session.execute(
+                    insert(db.AnnotatedSequence),
+                    annotations,
                 )
-                seq_feature.annotation_str = encoded
+                # bulk_save_objects(annotations)
 
-                if self.db_session:
-                    self.db_session.add(seq_feature)
-                else:
-                    self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
+                self.db_session.execute(
+                    insert(db.Category),
+                    self.categories.values(),
+                )
+                # self.db_session.bulk_save_objects(self.categories.values())
 
-            if self.nseqs:
-                logger.info("    Loaded %s entries. (%s%%)", i, round(i / self.nseqs * 100, 3))
-            else:
-                logger.info("    Loaded %s entries.", str(i))
-
-            if self.db_session:
+                self.db_session.execute(
+                    insert(db.Feature),
+                    self.features.values(),
+                )
+                # self.db_session.bulk_save_objects(self.features.values())
                 self.db_session.commit()
+
+                annotations.clear()
+                self.features.clear()
+                self.categories.clear()
+            else:
+                for seq_feature in annotations:
+                    self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
