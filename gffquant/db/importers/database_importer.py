@@ -62,7 +62,7 @@ class GqDatabaseImporter(ABC):
                             insert(db.AnnotatedSequence),
                             [ann.__dict__ for ann in annotations],
                         )
-                        # self.db_session.bulk_save_objects(annotations)
+
                         self.db_session.commit()
                         annotations.clear()
                     logger.info("    Loaded %s entries.", str(i))
@@ -97,23 +97,22 @@ class GqDatabaseImporter(ABC):
             }
 
             if self.db_session is not None:
+
                 self.db_session.execute(
                     insert(db.AnnotatedSequence),
                     [ann.__dict__ for ann in annotations],
                 )
-                # bulk_save_objects(annotations)
 
                 self.db_session.execute(
                     insert(db.Category),
                     [cat.__dict__ for cat in self.categories.values()],
                 )
-                # self.db_session.bulk_save_objects(self.categories.values())
 
                 self.db_session.execute(
                     insert(db.Feature),
                     [feat.__dict__ for feat in self.features.values()],
                 )
-                # self.db_session.bulk_save_objects(self.features.values())
+
                 self.db_session.commit()
 
                 annotations.clear()
