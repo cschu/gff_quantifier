@@ -105,13 +105,13 @@ class GqDatabaseImporter(ABC):
 
                 self.db_session.execute(
                     insert(db.Category),
-                    self.categories.values(),
+                    [v.__dict__ for v in self.categories.values()],
                 )
                 # self.db_session.bulk_save_objects(self.categories.values())
 
                 self.db_session.execute(
                     insert(db.Feature),
-                    self.features.values(),
+                    [v.__dict__ for v in self.features.values()],
                 )
                 # self.db_session.bulk_save_objects(self.features.values())
                 self.db_session.commit()
