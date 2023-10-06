@@ -2,6 +2,7 @@
 
 """ database importers """
 
+from .custom_database_importer import GqCustomDatabaseImporter
 from .database_importer import GqDatabaseImporter
 from .gene_database_importer import GqGeneDatabaseImporter
 from .small_database_importer import SmallDatabaseImporter
