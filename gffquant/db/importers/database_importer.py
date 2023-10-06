@@ -63,7 +63,7 @@ class GqDatabaseImporter(ABC):
                             [ann.__dict__ for ann in annotations],
                         )
 
-                        self.db_session.commit()
+                        self.db_session.flush()
                         annotations.clear()
                     logger.info("    Loaded %s entries.", str(i))
 
