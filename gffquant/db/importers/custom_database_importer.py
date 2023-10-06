@@ -33,7 +33,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
     def parse_annotations(self, _in):
         if self.header:
             _ = [next(_in) for _ in range(self.header - 1)]
-        header_line = next(_in).strip().strip("#").split(self.delimiter)
+        header_line = next(_in).decode().strip().strip("#").split(self.delimiter)
         category_cols = set(self.columns) if self.columns is not None else header_line[1:]
         logging.info("    Got header: %s", header_line)
         logging.info("    Got columns: %s", category_cols)
@@ -42,6 +42,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
                 logging.error("    column %s is not present in headers", col)
                 raise ValueError(f"column {col} is not present in headers.")
         for self.nseqs, line in enumerate(_in, start=1):
+            line = line.decode()
             if line and line[0] != "#":
                 line = line.strip().split(self.delimiter)
                 line_d = dict(zip(header_line, line))
