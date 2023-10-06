@@ -49,7 +49,7 @@ class GqDatabaseImporter(ABC):
         category_map, feature_map = {}, {}
         annotations = []
 
-        with self.open_function(input_data, "rb") as _in:
+        with self.open_function(input_data, "rb") as _in, self.db_engine.connect() as conn:
             annotation_data = self.parse_annotations(_in)
 
             i = 0
@@ -59,7 +59,7 @@ class GqDatabaseImporter(ABC):
 
                 if i % 100000 == 0:
                     if self.db_session is not None and annotations:
-                        self.db_engine.execute(
+                        conn.execute(
                             db.AnnotatedSequence.__table__.insert(),
                             [ann.__dict__ for ann in annotations],
                         )
