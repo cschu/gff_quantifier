@@ -17,6 +17,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
         input_data,
         db_path=None,
         db_session=None,
+        db_engine=None,
         columns=None,
         header=None,
         delimiter="\t",
@@ -25,7 +26,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
         self.header = header
         self.delimiter = delimiter
 
-        super().__init__(input_data, db_path=db_path, db_session=db_session)
+        super().__init__(input_data, db_path=db_path, db_session=db_session, db_engine=db_engine)
 
     def parse_annotations(self, _in):
         if self.header:

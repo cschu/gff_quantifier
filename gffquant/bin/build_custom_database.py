@@ -45,6 +45,7 @@ def main():
         args.input_data,
         db_path=args.db_path,
         db_session=db_session,
+        db_engine=engine,
         columns=args.columns.split(",") if args.columns is not None else None,
         header=args.header,
         delimiter=args.delimiter,
