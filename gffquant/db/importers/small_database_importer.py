@@ -30,18 +30,8 @@ class SmallDatabaseImporter(GqDatabaseImporter):
 
         super().__init__(input_data, db_path=db_path, db_session=db_session)
 
-    def parse_categories(self, _in):
-        categories = {}
-
-        for self.nseqs, line in enumerate(_in, start=1):
-            line = line.decode().strip().split(self.db_settings.separator)
-            categories.setdefault(self.single_category, set()).update(line[self.db_settings.columns[-1]].split(","))
-
-        logger.info("    Parsed %s entries.", self.nseqs)
-        return categories
-
     def parse_annotations(self, _in):
-        for line in _in:
+        for self.nseqs, line in enumerate(_in, start=1):
             line = line.decode().strip().split(self.db_settings.separator)
             gid, start, end, features = (c for i, c in enumerate(line) if i in self.db_settings.columns)
 

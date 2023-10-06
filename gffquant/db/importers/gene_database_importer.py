@@ -28,34 +28,17 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
 
         super().__init__(input_data, db_path=db_path, db_session=db_session)
 
-    def parse_categories(self, input_data):
-        categories = {}
-        gffdbm = GffDatabaseManager(
-            input_data,
-            "genes",
-            emapper_version=self.emapper_version
-        )
-
-        for self.nseqs, (_, region_annotation) in enumerate(
-            gffdbm.iterate(bufsize=self.dbm_buffersize), start=1
-        ):
-            for category, features in region_annotation[1:]:
-                categories.setdefault(category, set()).update(
-                    set(features).difference({"-"})
-                )
-
-        return categories
-
     def parse_annotations(self, input_data):
         gffdbm = GffDatabaseManager(
             input_data,
             "genes",
             emapper_version=self.emapper_version,
         )
+
         for self.nseqs, (ref, region_annotation) in enumerate(
             gffdbm.iterate(bufsize=self.dbm_buffersize),
             start=1
-		):
+        ):
             _, strand = region_annotation[0]
 
             seq_feature = db.AnnotatedSequence(
@@ -63,16 +46,11 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
                 featureid=None,
                 strand=int(strand == "+") if strand is not None else None,
             )
-            annotation = (
-                (category, set(features).difference({"-"}))
-                for category, features in region_annotation[1:]
-            )
-            
+
             annotation = [
-                (category, features)
-                for category, features in annotation
-                if features
+                (category, set(features.strip().split(",")))
+                for category, features in region_annotation[1:]
+                if features.strip() != self.na_char
             ]
-            
-            if annotation:
-                yield seq_feature, annotation
+
+            yield seq_feature, annotation
