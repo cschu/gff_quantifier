@@ -60,7 +60,7 @@ class GqDatabaseImporter(ABC):
                     if self.db_session is not None and annotations:
                         self.db_session.execute(
                             insert(db.AnnotatedSequence),
-                            annotations,
+                            [ann.__dict__ for ann in annotations],
                         )
                         # self.db_session.bulk_save_objects(annotations)
                         self.db_session.commit()
@@ -99,7 +99,7 @@ class GqDatabaseImporter(ABC):
             if self.db_session is not None:
                 self.db_session.execute(
                     insert(db.AnnotatedSequence),
-                    annotations,
+                    [ann.__dict__ for ann in annotations],
                 )
                 # bulk_save_objects(annotations)
 
