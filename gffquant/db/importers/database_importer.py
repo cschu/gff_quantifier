@@ -58,18 +58,18 @@ class GqDatabaseImporter(ABC):
                     continue
 
                 if i % 100000 == 0:
-                    if self.db_session is not None and annotations:
-                        conn.execute(
-                            db.AnnotatedSequence.__table__.insert(),
-                            [ann.__dict__ for ann in annotations],
-                        )
+                    if self.db_session is not None:  # and annotations:
+                        # conn.execute(
+                        #     db.AnnotatedSequence.__table__.insert(),
+                        #     [ann.__dict__ for ann in annotations],
+                        # )
                         # self.db_session.execute(
                         #     insert(db.AnnotatedSequence),
                         #     [ann.__dict__ for ann in annotations],
                         # )
 
                         self.db_session.flush()
-                        annotations.clear()
+                        # annotations.clear()
                     logger.info("    Loaded %s entries.", str(i))
 
                 encoded = []
@@ -87,7 +87,11 @@ class GqDatabaseImporter(ABC):
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
 
-                annotations.append(seq_feature)
+                if self.db_session is not None:
+                    self.db_session.add(seq_feature)
+                else:
+                    # annotations.append(seq_feature)
+                    self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
 
             logger.info("    Loaded %s entries.", str(self.nseqs))
 
@@ -103,11 +107,11 @@ class GqDatabaseImporter(ABC):
 
             if self.db_session is not None:
 
-                self.db_session.execute(
-                    insert(db.AnnotatedSequence),
-                    [ann.__dict__ for ann in annotations],
-                )
-                annotations.clear()
+                # self.db_session.execute(
+                #     insert(db.AnnotatedSequence),
+                #     [ann.__dict__ for ann in annotations],
+                # )
+                # annotations.clear()
 
                 self.db_session.execute(
                     insert(db.Category),
@@ -129,6 +133,6 @@ class GqDatabaseImporter(ABC):
                     unique=True,
                 ).create(self.db_engine)
 
-            else:
-                for seq_feature in annotations:
-                    self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
+            # else:
+            #     for seq_feature in annotations:
+            #         self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
