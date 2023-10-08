@@ -12,7 +12,7 @@ class AnnotatedSequence(Base):
     __tablename__ = "annotatedsequence"
 
     id = Column(Integer, primary_key=True)
-    seqid = Column(String)  #, index=True)
+    seqid = Column(String, index=True)
     featureid = Column(String)
     start = Column(Integer)
     end = Column(Integer)
