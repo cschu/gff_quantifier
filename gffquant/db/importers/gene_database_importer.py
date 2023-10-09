@@ -28,24 +28,6 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
 
         super().__init__(input_data, db_path=db_path, db_session=db_session)
 
-    def parse_categories(self, input_data):
-        categories = {}
-        gffdbm = GffDatabaseManager(
-            input_data,
-            "genes",
-            emapper_version=self.emapper_version
-        )
-
-        for self.nseqs, (_, region_annotation) in enumerate(
-            gffdbm.iterate(bufsize=self.dbm_buffersize), start=1
-        ):
-            for category, features in region_annotation[1:]:
-                categories.setdefault(category, set()).update(
-                    set(features).difference({"-"})
-                )
-
-        return categories
-
     def parse_annotations(self, input_data):
         gffdbm = GffDatabaseManager(
             input_data,
