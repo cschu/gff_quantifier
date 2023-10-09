@@ -51,9 +51,9 @@ class GqDatabaseImporter(ABC):
         ...
 
     def build_database(self, input_data):
-        
+
         category_map, feature_map = {}, {}
-        
+
         with self.open_function(input_data, "rb") as _in:
             annotation_data = self.parse_annotations(_in)
 
@@ -70,14 +70,14 @@ class GqDatabaseImporter(ABC):
                 encoded = []
                 for category, features in annotation:
                     cat_enc = category_map.setdefault(category, len(category_map))
-                    
-                    feat_enc = sorted(                        
+
+                    feat_enc = sorted(
                         feature_map.setdefault((cat_enc, feat), len(feature_map))
-                        for feat in features                        
+                        for feat in features
                     )
-                    
+
                     encoded.append((cat_enc, ",".join(map(str, feat_enc))))
-                    
+
                 seq_feature.annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
@@ -110,8 +110,6 @@ class GqDatabaseImporter(ABC):
             if self.db_session is not None:
                 self.db_session.commit()
 
-            
-            
 
     def gather_category_and_feature_data(self, input_data):
         """ Initial pass to parse and encode category/feature data. """
@@ -179,7 +177,7 @@ class GqDatabaseImporter(ABC):
                         for feature in features
                     )
                     encoded.append((enc_category, ",".join(map(str, enc_features))))
-                    
+
                 encoded = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )

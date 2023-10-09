@@ -60,12 +60,12 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
                     for category, features in line_d.items()
                     if category in category_cols
                 )
-            
+
                 annotation = [
                     (category, features)
                     for category, features in annotation
                     if features
                 ]
-            
+
                 if annotation:
                     yield seq_feature, annotation

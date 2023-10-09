@@ -67,12 +67,12 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
                 (category, set(features).difference({"-"}))
                 for category, features in region_annotation[1:]
             )
-            
+
             annotation = [
                 (category, features)
                 for category, features in annotation
                 if features
             ]
-            
+
             if annotation:
                 yield seq_feature, annotation
