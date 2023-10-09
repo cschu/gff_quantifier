@@ -78,22 +78,47 @@ class GqDatabaseImporter(ABC):
                 else:
                     self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
 
-
             logger.info("Finished loading %s entries.", str(i))
 
-            for cat_name, cat_id in category_map.items():
-                db_category = db.Category(id=cat_id, name=cat_name)
-                if self.db_session is not None:
-                    self.db_session.add(db_category)
-                else:
-                    self.categories[db_category.id] = db_category
+            logger.info("Loading categories and features.")
+            self.categories.update(
+                {
+                    cat_id: db.Category(id=cat_id, name=cat_name)
+                    for cat_name, cat_id in category_map.items()
+                }
+            )
 
-            for (cat_id, feat_name), feat_id in feature_map.items():
-                db_feature = db.Feature(id=feat_id, name=feat_name, category_id=cat_id)
-                if self.db_session is not None:
-                    self.db_session.add(db_feature)
-                else:
-                    self.features[db_feature.id] = db_feature
+            self.features.update(
+                {
+                    feat_id: db.Feature(id=feat_id, name=feat_name, category_id=cat_id)
+                    for (cat_id, feat_name), feat_id in feature_map.items()
+                }
+            )
 
             if self.db_session is not None:
+                for category in self.categories.values():
+                    self.db_session.add(category)
+                for feature in self.features.values():
+                    self.db_session.add(feature)
+
                 self.db_session.commit()
+
+            logger.info("Finished loading categories and features.")
+
+
+            # for cat_name, cat_id in category_map.items():
+            #     db_category = db.Category(id=cat_id, name=cat_name)
+            #     if self.db_session is not None:
+            #         self.db_session.add(db_category)
+            #     else:
+            #         self.categories[db_category.id] = db_category
+
+            # for (cat_id, feat_name), feat_id in feature_map.items():
+            #     db_feature = db.Feature(id=feat_id, name=feat_name, category_id=cat_id)
+            #     if self.db_session is not None:
+            #         self.db_session.add(db_feature)
+            #     else:
+            #         self.features[db_feature.id] = db_feature
+
+            # if self.db_session is not None:
+            #     self.db_session.commit()
