@@ -81,6 +81,7 @@ class GqDatabaseImporter(ABC):
             logger.info("Finished loading %s entries.", str(i))
 
             logger.info("Loading categories and features.")
+
             self.categories.update(
                 {
                     cat_id: db.Category(id=cat_id, name=cat_name)
