@@ -64,15 +64,15 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
                     if colname in category_cols
                 }
 
-                seq_feature = db.AnnotatedSequence(
-                    seqid=line[0],
-                    featureid=None,
-                )
-
                 annotation = [
                     (category, tuple(features.split(",")))
                     for category, features in columns.items()
                     if features and features != self.na_char
                 ]
 
-                yield seq_feature, annotation
+                if annotation:
+                    seq_feature = db.AnnotatedSequence(
+                        seqid=line[0],
+                        featureid=None,
+                    )
+                    yield seq_feature, annotation

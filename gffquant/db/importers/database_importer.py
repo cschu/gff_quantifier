@@ -52,13 +52,11 @@ class GqDatabaseImporter(ABC):
 
             i = 0
             for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
-                if not annotation:
-                    continue
                 if i % 100000 == 0:
                     if self.db_session is not None:
                         self.db_session.commit()
 
-                        logger.info("    Loaded %s entries.", str(i))
+                    logger.info("    Loaded %s entries.", str(i))
 
                 encoded = []
                 for category, features in annotation:
