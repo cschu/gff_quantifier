@@ -127,11 +127,11 @@ class GqDatabaseImporter(ABC):
 
                 self.db_session.commit()
 
-                Index(
-                    "seqid_idx",
-                    db.AnnotatedSequence.__table__.c.seqid,
-                    unique=True,
-                ).create(self.db_engine)
+                # Index(
+                #     "seqid_idx",
+                #     db.AnnotatedSequence.__table__.c.seqid,
+                #     unique=True,
+                # ).create(self.db_engine)
 
             # else:
             #     for seq_feature in annotations:

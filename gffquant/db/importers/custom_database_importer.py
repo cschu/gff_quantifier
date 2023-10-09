@@ -68,7 +68,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
                 annotation = [
                     (category, set(features.strip().split(",")))
                     for category, features in line_d.items()
-                    if features.strip() != self.na_char
+                    if features.strip() != self.na_char and features.strip()
                 ]
 
                 yield seq_feature, annotation

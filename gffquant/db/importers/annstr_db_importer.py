@@ -1,0 +1,113 @@
+# pylint: disable=C0103,R0902,R0913,W2301,W1203
+
+""" module docstring """
+
+import gzip
+import hashlib
+import logging
+
+from .database_importer import GqCustomDatabaseImporter
+from ..models import db
+
+
+logger = logging.getLogger(__name__)
+
+
+class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
+    def __init__(
+        self,
+        input_data,
+        db_path=None,
+        db_session=None,
+        db_engine=None,
+        columns=None,
+        seq_column=None,
+        header=None,
+        delimiter="\t",
+    ):
+        self.seq_column = seq_column
+
+        super().__init__(
+            input_data,
+            db_path=db_path,
+            db_session=db_session,
+            db_engine=db_engine,
+            columns=columns,
+            header=header,
+            delimiter=delimiter,
+        )
+        
+        def parse_annotations(self, _in):
+            header_line = next(_in, None)
+            if header_line is None:
+                msg = "Reached end of annotation file while parsing header line."
+                logging.error(f"    {msg}")
+                raise ValueError(msg)
+            
+            category_cols = set(self.columns) if self.columns is not None else header_line[1:]
+            logging.info("    Got header: %s", header_line)
+            logging.info("    Got columns: %s", category_cols)
+
+            if self.columns is not None:
+                for col in category_cols:
+                    if col not in header_line:
+                        msg = f"column {col} is not present in headers."
+                        logging.error(msg)
+                        raise ValueError(msg)
+                    
+            if self.seq_column is not None:
+                if self.seq_column not in header_line:
+                    msg = f"column {self.seq_column} is not present in headers."
+                    logging.error(msg)
+                    raise ValueError(msg)
+                
+            annotation_suffices = {}            
+            
+            with gzip.open(f"{self.db_path.replace('sqlite3', 'ffn.gz')}", "wt") as seq_out:
+                for self.nseqs, line in enumerate(_in, start=1):
+                    line = line.decode()
+                    line = line.strip().split(self.delimiter)
+                    line_d = {
+                        colname: value.strip()
+                        for colname, value in zip(header_line + [self.seq_column], line)
+                        if colname in category_cols or colname == self.seq_column
+                    }
+
+                    annotation = tuple(
+                        (category, tuple(set(sorted(features.split(",")))))
+                        for category, features in line_d.items()
+                        if features != self.na_char and features
+                    )
+
+                    ann_str = ";".join(
+                        f"{category}={','.join(features)}"
+                        for category, features in annotation
+                    )
+
+                    def get_ann_hash(s):
+                        h = hashlib.sha256()
+                        h.update(s.encode())
+                        return h.hexdigest()
+
+                    ann_sfx = annotation_suffices.setdefault(
+                        ann_str,
+                        get_ann_hash(ann_str)
+                    )                    
+                    
+                    print(
+                        f">{line[0]}.{ann_sfx}", line_d[self.seq_column],
+                        delimiter="\n",
+                        file=seq_out
+                    )
+
+                    annotation_string = db.AnnotationString(
+                        annotation_hash=ann_sfx,
+                    ) 
+                    
+                    yield annotation_string, annotation
+
+
+
+            
+
+
