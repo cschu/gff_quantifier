@@ -30,7 +30,7 @@ def main():
     ap.add_argument("--code_map", type=str)
     ap.add_argument("--nseqs", type=int)
     ap.add_argument("--extract_map_only", action="store_true")
-    ap.add_argument("--skip_header", type=int, default=0)
+    ap.add_argument("--skip_header_lines", type=int, default=0)
     ap.add_argument("--header", type=str)
     ap.add_argument("--delimiter", type=str, default="\t")
     ap.add_argument("--dbtype", choices=("seq", "str"), default="seq")
