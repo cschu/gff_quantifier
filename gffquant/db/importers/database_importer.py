@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 class GqDatabaseImporter(ABC):
     """ Base database importer class"""
+    update_log_after_n_records = 100000
+    
     def __init__(self, input_data, db_path=None, db_session=None, na_char="-"):
         self.db_path = db_path
         self.db_session = db_session
@@ -26,7 +28,6 @@ class GqDatabaseImporter(ABC):
         self.open_function = GqDatabaseImporter.get_open_function(input_data)
         self.na_char = na_char
 
-        self.update_log_after_n_records = 100000
 
         # self.gather_category_and_feature_data(input_data)
         # self.process_annotations(input_data)

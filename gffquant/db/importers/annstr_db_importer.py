@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
+    update_log_after_n_records = 1000
+    
     def __init__(
         self,
         input_data,
@@ -39,7 +41,6 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
             skip_header_lines=skip_header_lines,
         )
 
-        self.update_log_after_n_records = 1000
 
     def parse_annotations(self, _in):
 
