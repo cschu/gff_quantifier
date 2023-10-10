@@ -13,7 +13,7 @@ class AnnotationString(Base):
 
     id = Column(Integer, primary_key=True)
     annotation_hash = Column(String, index=True)
-    
+
     annotation_str = Column(String)
 
 

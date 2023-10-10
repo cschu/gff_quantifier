@@ -105,21 +105,3 @@ class GqDatabaseImporter(ABC):
                 self.db_session.commit()
 
             logger.info("Finished loading categories and features.")
-
-
-            # for cat_name, cat_id in category_map.items():
-            #     db_category = db.Category(id=cat_id, name=cat_name)
-            #     if self.db_session is not None:
-            #         self.db_session.add(db_category)
-            #     else:
-            #         self.categories[db_category.id] = db_category
-
-            # for (cat_id, feat_name), feat_id in feature_map.items():
-            #     db_feature = db.Feature(id=feat_id, name=feat_name, category_id=cat_id)
-            #     if self.db_session is not None:
-            #         self.db_session.add(db_feature)
-            #     else:
-            #         self.features[db_feature.id] = db_feature
-
-            # if self.db_session is not None:
-            #     self.db_session.commit()

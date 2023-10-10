@@ -27,6 +27,20 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
 
         super().__init__(input_data, db_path=db_path, db_session=db_session)
 
+    def _validate_category_columns(self, header_line):
+        category_cols = set(self.columns) if self.columns is not None else header_line[1:]
+        logging.info("    Got header: %s", header_line)
+        logging.info("    Got columns: %s", category_cols)
+
+        if self.columns is not None:
+            for col in category_cols:
+                if col not in header_line:
+                    msg = f"column {col} is not present in headers."
+                    logging.error(msg)
+                    raise ValueError(msg)
+
+        return category_cols
+
     def parse_annotations(self, _in):
         if self.header:
             try:
@@ -43,16 +57,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
             logging.error(f"    {msg}")
             raise ValueError(msg) from exc
 
-        category_cols = set(self.columns) if self.columns is not None else header_line[1:]
-        logging.info("    Got header: %s", header_line)
-        logging.info("    Got columns: %s", category_cols)
-
-        if self.columns is not None:
-            for col in category_cols:
-                if col not in header_line:
-                    msg = f"column {col} is not present in headers."
-                    logging.error(msg)
-                    raise ValueError(msg)
+        category_cols = self._validate_category_columns(header_line)
 
         for self.nseqs, line in enumerate(_in, start=1):
             line = line.decode()
