@@ -29,7 +29,8 @@ def main():
     ap.add_argument("--code_map", type=str)
     ap.add_argument("--nseqs", type=int)
     ap.add_argument("--extract_map_only", action="store_true")
-    ap.add_argument("--header", type=int)
+    ap.add_argument("--skip_header", type=int)
+    ap.add_argument("--header", type=str)
     ap.add_argument("--delimiter", type=str, default="\t")
     ap.add_argument("--dbtype", choices=("seq", "str"), default="seq")
     ap.add_argument(
@@ -49,7 +50,8 @@ def main():
         db_path=args.db_path,
         db_session=db_session,
         columns=args.columns.split(",") if args.columns is not None else None,
-        header=args.header,
+        skip_header_lines=args.skip_header_lines,
+        header=args.header
         delimiter=args.delimiter,
     )
 

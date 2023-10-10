@@ -21,6 +21,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
         db_session=None,
         columns=None,
         seq_column=None,
+        skip_header=0,
         header=None,
         delimiter="\t",
     ):
@@ -36,13 +37,17 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
         )
 
     def parse_annotations(self, _in):
-        header_line = next(_in, None)
-        if header_line is None:
-            msg = "Reached end of annotation file while parsing header line."
-            logging.error(f"    {msg}")
-            raise ValueError(msg)
-        
-        header_line = header_line.decode()
+
+        if self.header is None:
+            header_line = next(_in, None)
+            if header_line is None:
+                msg = "Reached end of annotation file while parsing header line."
+                logging.error(f"    {msg}")
+                raise ValueError(msg)
+
+            header_line = header_line.decode()
+        else:
+            header_line = self.header
 
         category_cols = self._validate_category_columns(header_line)
 
