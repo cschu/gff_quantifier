@@ -91,19 +91,16 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                     for category, features in annotation
                 )                
 
-                ann_sfx = annotation_suffices.setdefault(
+                ann_sfx, _ = annotation_suffices.setdefault(
                     ann_str,
-                    get_ann_hash(ann_str)
+                    (get_ann_hash(ann_str), annotation)
                 )
 
                 print(
                     f">{line[0]}.{ann_sfx}", line_d[self.seq_column],
                     sep="\n",
                     file=seq_out
-                )
+                )                
 
-                annotation_string = db.AnnotationString(
-                    annotation_hash=ann_sfx,
-                )
-
-                yield annotation_string, annotation
+        for ann_sfx, annotation in annotation_suffices.values():
+            yield db.AnnotationString(annotation_hash=ann_sfx), annotation
