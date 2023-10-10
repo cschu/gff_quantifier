@@ -18,7 +18,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
         db_path=None,
         db_session=None,
         columns=None,
-        skip_header=0,
+        skip_header_lines=0,
         header=None,
         delimiter="\t",
     ):
@@ -26,7 +26,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
         self.columns = columns
         self.header = header.split(",") if header is not None else None
         self.delimiter = delimiter
-        self.skip_header = skip_header
+        self.skip_header_lines = skip_header_lines
 
         super().__init__(input_data, db_path=db_path, db_session=db_session)
 
@@ -45,7 +45,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
         return category_cols
 
     def parse_annotations(self, _in):
-        if self.skip_header:
+        if self.skip_header_lines > 0:
             try:
                 _ = [next(_in) for _ in range(self.header - 1)]
             except StopIteration as exc:

@@ -21,7 +21,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
         db_session=None,
         columns=None,
         seq_column=None,
-        skip_header=0,
+        skip_header_lines=0,
         header=None,
         delimiter="\t",
     ):
@@ -34,6 +34,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
             columns=columns,
             header=header,
             delimiter=delimiter,
+            skip_header_lines=skip_header_lines,
         )
 
     def parse_annotations(self, _in):
