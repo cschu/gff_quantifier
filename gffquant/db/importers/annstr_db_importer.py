@@ -54,7 +54,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
 
         if self.seq_column is not None:
             if self.seq_column not in header_line:
-                msg = f"column {self.seq_column} is not present in headers."
+                msg = f"column `{self.seq_column}` is not present in headers.\n{self.header}"
                 logging.error(msg)
                 raise ValueError(msg)
 
@@ -93,7 +93,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
 
                 print(
                     f">{line[0]}.{ann_sfx}", line_d[self.seq_column],
-                    delimiter="\n",
+                    sep="\n",
                     file=seq_out
                 )
 
