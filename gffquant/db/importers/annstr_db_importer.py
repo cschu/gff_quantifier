@@ -21,11 +21,13 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
         db_session=None,
         columns=None,
         seq_column=None,
+        seqid_column=None,
         skip_header_lines=0,
         header=None,
         delimiter="\t",
     ):
         self.seq_column = seq_column
+        self.seqid_column = seqid_column
 
         super().__init__(
             input_data,
@@ -75,19 +77,19 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                 line_d = {
                     colname: value.strip()
                     for colname, value in zip(header_line + [self.seq_column], line)
-                    if colname in category_cols or colname == self.seq_column
+                    if colname in category_cols or colname in (self.seq_column, self.seqid_column)
                 }
 
                 annotation = tuple(
                     (category, tuple(set(sorted(features.split(",")))))
                     for category, features in line_d.items()
-                    if features != self.na_char and features and category != self.seq_column
-                )                
+                    if features != self.na_char and features and category not in (self.seq_column, self.seqid_column)
+                )
 
                 ann_str = ";".join(
                     f"{category}={','.join(features)}"
                     for category, features in annotation
-                )                
+                )
 
                 ann_sfx, _ = annotation_suffices.setdefault(
                     ann_str,
@@ -95,10 +97,10 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                 )
 
                 print(
-                    f">{line[0]}.{ann_sfx}", line_d[self.seq_column],
+                    f">{line_d[self.seqid_column]}.{ann_sfx}", line_d[self.seq_column],
                     sep="\n",
                     file=seq_out
-                )                
+                )
 
         for ann_sfx, annotation in annotation_suffices.values():
             yield db.AnnotationString(annotation_hash=ann_sfx), annotation

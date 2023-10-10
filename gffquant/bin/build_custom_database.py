@@ -27,6 +27,7 @@ def main():
     ap.add_argument("--initialise_db", action="store_true")
     ap.add_argument("--columns", type=str)
     ap.add_argument("--seq_column", type=str)
+    ap.add_argument("--seqid_column", type=str)
     ap.add_argument("--code_map", type=str)
     ap.add_argument("--nseqs", type=int)
     ap.add_argument("--extract_map_only", action="store_true")
@@ -46,7 +47,10 @@ def main():
 
     Importer = {"seq": GqCustomDatabaseImporter, "str": AnnstrDatabaseImporter}[args.dbtype]
 
-    kwargs = {"seq_column": args.seq_column} if args.dbtype == "str" and args.seq_column else {}
+    kwargs = {
+        "seq_column": args.seq_column,
+        "seqid_column": args.seqid_column,
+    } if args.dbtype == "str" and args.seq_column else {}
 
     _ = Importer(
         args.input_data,
