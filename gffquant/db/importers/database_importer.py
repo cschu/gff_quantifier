@@ -48,6 +48,7 @@ class GqDatabaseImporter(ABC):
     def build_database(self, input_data):
 
         category_map, feature_map = {}, {}
+        logger.info(f"{self.update_log_after_n_records=}")
 
         with self.open_function(input_data, "rb") as _in:
             annotation_data = self.parse_annotations(_in)
