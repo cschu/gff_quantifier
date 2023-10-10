@@ -39,6 +39,8 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
             skip_header_lines=skip_header_lines,
         )
 
+        self.update_log_after_n_records = 1000
+
     def parse_annotations(self, _in):
 
         if self.header is None:
@@ -91,16 +93,13 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                     for category, features in annotation
                 )
 
-                ann_sfx, _ = annotation_suffices.setdefault(
-                    ann_str,
-                    (get_ann_hash(ann_str), annotation)
-                )
+                ann_sfx = annotation_suffices.get(ann_str)
+                if ann_sfx is None:
+                    ann_sfx = annotation_suffices[ann_str] = get_ann_hash(ann_str)
+                    yield db.AnnotationString(annotation_hash=ann_sfx)
 
                 print(
                     f">{line_d[self.seqid_column]}.{ann_sfx}", line_d[self.seq_column],
                     sep="\n",
                     file=seq_out
                 )
-
-        for ann_sfx, annotation in annotation_suffices.values():
-            yield db.AnnotationString(annotation_hash=ann_sfx), annotation

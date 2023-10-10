@@ -26,6 +26,8 @@ class GqDatabaseImporter(ABC):
         self.open_function = GqDatabaseImporter.get_open_function(input_data)
         self.na_char = na_char
 
+        self.update_log_after_n_records = 100000
+
         # self.gather_category_and_feature_data(input_data)
         # self.process_annotations(input_data)
         self.build_database(input_data)
@@ -52,7 +54,7 @@ class GqDatabaseImporter(ABC):
 
             i = 0
             for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
-                if i % 100000 == 0:
+                if i % self.update_log_after_n_records == 0:
                     if self.db_session is not None:
                         self.db_session.commit()
 
