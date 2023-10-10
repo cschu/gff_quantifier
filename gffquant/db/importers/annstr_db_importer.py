@@ -41,6 +41,8 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
             msg = "Reached end of annotation file while parsing header line."
             logging.error(f"    {msg}")
             raise ValueError(msg)
+        
+        header_line = header_line.decode()
 
         category_cols = self._validate_category_columns(header_line)
 
