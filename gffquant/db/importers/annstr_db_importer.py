@@ -82,9 +82,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                     (category, tuple(set(sorted(features.split(",")))))
                     for category, features in line_d.items()
                     if features != self.na_char and features and category != self.seq_column
-                )
-                if not annotation:
-                    logger.info(f"Gene `{line[0]}` has no annotation.")
+                )                
 
                 ann_str = ";".join(
                     f"{category}={','.join(features)}"
