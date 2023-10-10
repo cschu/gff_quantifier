@@ -73,7 +73,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                 annotation = tuple(
                     (category, tuple(set(sorted(features.split(",")))))
                     for category, features in line_d.items()
-                    if features != self.na_char and features
+                    if features != self.na_char and features and category != self.seq_column
                 )
 
                 ann_str = ";".join(
