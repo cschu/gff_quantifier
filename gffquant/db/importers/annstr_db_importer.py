@@ -96,7 +96,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                 ann_sfx = annotation_suffices.get(ann_str)
                 if ann_sfx is None:
                     ann_sfx = annotation_suffices[ann_str] = get_ann_hash(ann_str)
-                    yield db.AnnotationString(annotation_hash=ann_sfx)
+                    yield db.AnnotationString(annotation_hash=ann_sfx), annotation
 
                 print(
                     f">{line_d[self.seqid_column]}.{ann_sfx}", line_d[self.seq_column],
