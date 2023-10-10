@@ -75,7 +75,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
 
         with gzip.open(f"{self.db_path.replace('sqlite3', 'ffn.gz')}", "wt") as seq_out:
             for self.nseqs, line in enumerate(_in, start=1):
-                if self.nseqs % 100000:
+                if self.nseqs % 100000 == 0:
                     logger.info("\tProcessed %s records", self.nseqs)
                 line = line.decode()
                 line = line.strip().split(self.delimiter)
