@@ -26,10 +26,11 @@ def main():
     ap.add_argument("input_data", type=str)
     ap.add_argument("--initialise_db", action="store_true")
     ap.add_argument("--columns", type=str)
+    ap.add_argument("--seq_column", type=str)
     ap.add_argument("--code_map", type=str)
     ap.add_argument("--nseqs", type=int)
     ap.add_argument("--extract_map_only", action="store_true")
-    ap.add_argument("--skip_header", type=int)
+    ap.add_argument("--skip_header", type=int, default=0)
     ap.add_argument("--header", type=str)
     ap.add_argument("--delimiter", type=str, default="\t")
     ap.add_argument("--dbtype", choices=("seq", "str"), default="seq")
@@ -45,14 +46,17 @@ def main():
 
     Importer = {"seq": GqCustomDatabaseImporter, "str": AnnstrDatabaseImporter}[args.dbtype]
 
+    kwargs = {"seq_column": args.seq_column} if args.dbtype == "str" and args.seq_column else {}
+
     _ = Importer(
         args.input_data,
         db_path=args.db_path,
         db_session=db_session,
         columns=args.columns.split(",") if args.columns is not None else None,
         skip_header_lines=args.skip_header_lines,
-        header=args.header
+        header=args.header,
         delimiter=args.delimiter,
+        **kwargs,
     )
 
     improve_concurrent_read_access(args.db_path)
