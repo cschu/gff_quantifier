@@ -60,6 +60,14 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
 
         annotation_suffices = {}
 
+        def get_ann_hash(s):
+            h = hashlib.sha256()
+            h.update(s.encode())
+            return h.hexdigest()
+        
+        empty_ann_hash = get_ann_hash("")
+        logger.info(f"NO_ANNOTATION => {empty_ann_hash}")
+
         with gzip.open(f"{self.db_path.replace('sqlite3', 'ffn.gz')}", "wt") as seq_out:
             for self.nseqs, line in enumerate(_in, start=1):
                 line = line.decode()
@@ -75,16 +83,13 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                     for category, features in line_d.items()
                     if features != self.na_char and features and category != self.seq_column
                 )
+                if not annotation:
+                    logger.info(f"Gene `{line[0]}` has no annotation.")
 
                 ann_str = ";".join(
                     f"{category}={','.join(features)}"
                     for category, features in annotation
-                )
-
-                def get_ann_hash(s):
-                    h = hashlib.sha256()
-                    h.update(s.encode())
-                    return h.hexdigest()
+                )                
 
                 ann_sfx = annotation_suffices.setdefault(
                     ann_str,
