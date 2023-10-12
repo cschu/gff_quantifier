@@ -76,7 +76,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
             for self.nseqs, line in enumerate(get_lines(_in), start=1):
                 if self.nseqs % 100000 == 0:
                     logger.info("\tProcessed %s records", self.nseqs)
-                line = line.decode()
+                # line = line.decode()
                 line = line.strip().split(self.delimiter)
                 line_d = {
                     colname: value.strip()
