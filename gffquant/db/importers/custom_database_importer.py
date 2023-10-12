@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 class GqCustomDatabaseImporter(GqDatabaseImporter):
     def __init__(
         self,
-        input_data,
         db_path=None,
         db_session=None,
         columns=None,
@@ -22,13 +21,13 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
         header=None,
         delimiter="\t",
     ):
-        
+
         self.columns = columns
         self.header = header.split(",") if header is not None else None
         self.delimiter = delimiter
         self.skip_header_lines = skip_header_lines
 
-        super().__init__(input_data, db_path=db_path, db_session=db_session)
+        super().__init__(db_path=db_path, db_session=db_session)
 
     def _validate_category_columns(self, header_line):
         category_cols = set(self.columns) if self.columns is not None else header_line[1:]
@@ -44,7 +43,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
 
         return category_cols
 
-    def parse_annotations(self, _in):
+    def parse_annotations(self, _in, _in2=None):
         if self.skip_header_lines > 0:
             try:
                 _ = [next(_in) for _ in range(self.header - 1)]
@@ -61,7 +60,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
                 logging.error(f"    {msg}")
                 raise ValueError(msg) from exc
         else:
-            header_line = self.header        
+            header_line = self.header
 
         category_cols = self._validate_category_columns(header_line)
 

@@ -16,7 +16,6 @@ class SmallDatabaseImporter(GqDatabaseImporter):
     """ Importer for small dict-based databases. """
     def __init__(
         self,
-        input_data,
         db_path=None,
         db_session=None,
         single_category="domain",
@@ -28,19 +27,9 @@ class SmallDatabaseImporter(GqDatabaseImporter):
         if self.db_settings is None:
             raise ValueError(f"{db_format=} is not recognised.")
 
-        super().__init__(input_data, db_path=db_path, db_session=db_session)
+        super().__init__(db_path=db_path, db_session=db_session)
 
-    def parse_categories(self, _in):
-        categories = {}
-
-        for self.nseqs, line in enumerate(_in, start=1):
-            line = line.decode().strip().split(self.db_settings.separator)
-            categories.setdefault(self.single_category, set()).update(line[self.db_settings.columns[-1]].split(","))
-
-        logger.info("    Parsed %s entries.", self.nseqs)
-        return categories
-
-    def parse_annotations(self, _in):
+    def parse_annotations(self, _in, _in2=None):
         for line in _in:
             line = line.decode().strip().split(self.db_settings.separator)
             gid, start, end, features = (c for i, c in enumerate(line) if i in self.db_settings.columns)

@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0902,R0913,W2301
+# pylint: disable=C0103,R0902,R0913,W2301,W1203
 
 """ module docstring """
 
@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 class GqDatabaseImporter(ABC):
     """ Base database importer class"""
     update_log_after_n_records = 100000
-    
-    def __init__(self, input_data, db_path=None, db_session=None, na_char="-"):
+
+    def __init__(self, db_path=None, db_session=None, na_char="-"):
         self.db_path = db_path
         self.db_session = db_session
         self.code_map = {}
@@ -25,13 +25,13 @@ class GqDatabaseImporter(ABC):
         self.nseqs = 0
         self.categories = {}
         self.features = {}
-        self.open_function = GqDatabaseImporter.get_open_function(input_data)
+        # self.open_function = GqDatabaseImporter.get_open_function(input_data)
         self.na_char = na_char
 
 
         # self.gather_category_and_feature_data(input_data)
         # self.process_annotations(input_data)
-        self.build_database(input_data)
+        # self.build_database(input_data)
 
     @staticmethod
     def get_open_function(f):
@@ -42,7 +42,7 @@ class GqDatabaseImporter(ABC):
         return gzip.open if gzipped else open
 
     @abstractmethod
-    def parse_annotations(self, input_data):
+    def parse_annotations(self, input_data, input_data2=None):
         """ abstract method to parse annotations from various data formats """
         ...
 
@@ -51,7 +51,7 @@ class GqDatabaseImporter(ABC):
         category_map, feature_map = {}, {}
         logger.info(f"{self.update_log_after_n_records=}")
 
-        with self.open_function(input_data, "rb") as _in:
+        with GqDatabaseImporter.get_open_function(input_data)(input_data, "rb") as _in:
             annotation_data = self.parse_annotations(_in)
 
             i = 0

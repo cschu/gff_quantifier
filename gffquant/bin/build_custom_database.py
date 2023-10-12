@@ -52,8 +52,7 @@ def main():
         "seqid_column": args.seqid_column,
     } if args.dbtype == "str" and args.seq_column else {}
 
-    _ = Importer(
-        args.input_data,
+    Importer(
         db_path=args.db_path,
         db_session=db_session,
         columns=args.columns.split(",") if args.columns is not None else None,
@@ -61,6 +60,8 @@ def main():
         header=args.header,
         delimiter=args.delimiter,
         **kwargs,
+    ).build_database(
+        args.input_data,
     )
 
     improve_concurrent_read_access(args.db_path)

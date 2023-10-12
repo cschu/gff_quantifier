@@ -15,10 +15,9 @@ logger = logging.getLogger(__name__)
 
 class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
     update_log_after_n_records = 1000
-    
+
     def __init__(
         self,
-        input_data,
         db_path=None,
         db_session=None,
         columns=None,
@@ -32,7 +31,6 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
         self.seqid_column = seqid_column
 
         super().__init__(
-            input_data,
             db_path=db_path,
             db_session=db_session,
             columns=columns,
@@ -42,7 +40,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
         )
 
 
-    def parse_annotations(self, _in):
+    def parse_annotations(self, _in, _in2=None):
 
         if self.header is None:
             header_line = next(_in, None)
@@ -69,7 +67,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
             h = hashlib.sha256()
             h.update(s.encode())
             return h.hexdigest()
-        
+
         empty_ann_hash = get_ann_hash("")
         logger.info(f"NO_ANNOTATION => {empty_ann_hash}")
 

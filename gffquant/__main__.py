@@ -34,7 +34,10 @@ def main():
         Quantifier, kwargs["reference_type"] = RegionQuantifier, args.mode
         if args.mode == "domain":
             annotation_db = SmallDatabaseImporter(
-                args.annotation_db, single_category="feature", db_format=args.db_format,
+                single_category="feature", db_format=args.db_format,
+            )
+            annotation_db.build_database(
+                args.annotation_db,
             )
             logger.info("Finished loading database.")
 
@@ -60,15 +63,15 @@ def main():
 
     if args.input_type == "fastq":
 
-        Aln_runner = {
+        AlnRunner = {
             "bwa": BwaMemRunner,
             "minimap2": Minimap2Runner,
         }.get(args.aligner)
 
-        if Aln_runner is None:
+        if AlnRunner is None:
             raise ValueError(f"Aligner `{args.aligner}` is not supported.")
 
-        aln_runner = Aln_runner(
+        aln_runner = AlnRunner(
             args.cpus_for_alignment,
             args.reference,
             sample_id=os.path.basename(args.out_prefix),

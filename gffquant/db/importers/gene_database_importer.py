@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 class GqGeneDatabaseImporter(GqDatabaseImporter):
     def __init__(
         self,
-        input_data,
         db_path=None,
         db_session=None,
         emapper_version=None,
@@ -26,9 +25,9 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
         self.emapper_version = emapper_version
         self.dbm_buffersize = dbm_buffersize
 
-        super().__init__(input_data, db_path=db_path, db_session=db_session)
+        super().__init__(db_path=db_path, db_session=db_session)
 
-    def parse_annotations(self, input_data):
+    def parse_annotations(self, input_data, input_data2=None):
         gffdbm = GffDatabaseManager(
             input_data,
             "genes",
