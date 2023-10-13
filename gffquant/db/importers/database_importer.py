@@ -6,6 +6,7 @@ import gzip
 import logging
 
 from abc import ABC, abstractmethod
+from contextlib import nullcontext
 
 from ..models import db
 
@@ -46,13 +47,15 @@ class GqDatabaseImporter(ABC):
         """ abstract method to parse annotations from various data formats """
         ...
 
-    def build_database(self, input_data):
+    def build_database(self, input_data, input_data2=None):
 
         category_map, feature_map = {}, {}
         logger.info(f"{self.update_log_after_n_records=}")
 
-        with GqDatabaseImporter.get_open_function(input_data)(input_data, "rb") as _in:
-            annotation_data = self.parse_annotations(_in)
+        _in2 = GqDatabaseImporter.get_open_function(input_data2)(input_data2, "rb") if input_data2 is not None else nullcontext()
+
+        with GqDatabaseImporter.get_open_function(input_data)(input_data, "rb") as _in, _in2:
+            annotation_data = self.parse_annotations(_in, _in2=_in2)
 
             i = 0
             for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
