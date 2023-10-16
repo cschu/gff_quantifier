@@ -77,7 +77,7 @@ class AnnotationDatabaseManager(ABC):
         itree = IntervalTree.from_tuples(db_sequences)
 
         for interval in itree[qstart:qend + 1]:
-            yield None, (interval.begin, interval.end - 1), db_sequences.get((interval.begin, interval.end))
+            yield None, interval.begin, interval.end - 1, db_sequences.get((interval.begin, interval.end))
 
 
 
