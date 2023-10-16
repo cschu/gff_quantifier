@@ -17,7 +17,7 @@ from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import CountManager
 from ..db.annotation_db import AnnotationDatabaseManager
 
-from .. import __tool__
+from .. import __tool__, RunMode
 
 
 logger = logging.getLogger(__name__)
@@ -79,19 +79,19 @@ class FeatureQuantifier(ABC):
         db=None,
         out_prefix=__tool__,
         ambig_mode="unique_only",
-        reference_type="genome",
+        run_mode=RunMode.GENE,
         strand_specific=False,
         paired_end_count=1,
     ):
         self.aln_counter = Counter()
         self.db = db
         self.adm = None
-        self.do_overlap_detection = reference_type in ("genome", "domain")
-        self.reference_type = reference_type
+        self.do_overlap_detection = run_mode.overlap_required
+        self.run_mode = run_mode
         self.count_manager = CountManager(
             distribution_mode=ambig_mode,
-            region_counts=reference_type in ("genome", "domain"),
-            strand_specific=strand_specific and reference_type not in ("genome", "domain"),
+            region_counts=run_mode.overlap_required,
+            strand_specific=strand_specific and not run_mode.overlap_required,
             paired_end_count=paired_end_count,
         )
         self.out_prefix = out_prefix
@@ -129,7 +129,7 @@ class FeatureQuantifier(ABC):
         if self.do_overlap_detection:
             overlaps = self.adm.get_overlaps(
                 ref, aln.start, aln.end,
-                domain_mode=self.reference_type == "domain"
+                domain_mode=self.run_mode == RunMode.DOMAIN
             )
 
             has_target, *_ = next(overlaps)

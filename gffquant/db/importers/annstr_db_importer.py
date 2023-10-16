@@ -73,7 +73,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
         logger.info(f"NO_ANNOTATION => {empty_ann_hash}")
 
         with gzip.open(f"{self.db_path.replace('sqlite3', 'ffn.gz')}", "wt") as seq_out:
-            for self.nseqs, line in enumerate(get_lines(_in), start=1):
+            for self.nseqs, line in enumerate(get_lines(input_data), start=1):
                 if self.nseqs % 100000 == 0:
                     logger.info("\tProcessed %s records", self.nseqs)
                 # line = line.decode()

@@ -47,21 +47,21 @@ class SmallGenomeDatabaseImporter(GqDatabaseImporter):
             if line[0] != "#"
         )
 
-        seq_features = {}            
+        seq_features = {}
         for self.nseqs, line in enumerate(genes_in, start=1):
             # k141_36810	Prodigal_v2.6.3	CDS	211	366	5.7	-	0	ID=1_1
             contig, _, _, start, end, _, strand, _, seq_id = line.split("\t")
             gene_id = "_".join((contig, seq_id[seq_id.rfind("_") + 1:]))
-            seq_features[gene_id] = db.AnnotatedSequence(                
+            seq_features[gene_id] = db.AnnotatedSequence(
                 seqid=contig,
                 featureid=gene_id,
                 start=int(start),
                 end=int(end),
                 strand=int(strand == "+") if strand is not None else None,
             )
-        
+
         annotations_in = (
-            line 
+            line
             for line in input_data2.read().decode().strip().split("\n")
             if line[:2] != "##"
         )
@@ -69,8 +69,8 @@ class SmallGenomeDatabaseImporter(GqDatabaseImporter):
         header_line = next(annotations_in, None)
         if header_line is None or header_line[0] != "#":
             raise ValueError("Missing header line.")
-        
-        header_line = header_line[1:].split("\t")        
+
+        header_line = header_line[1:].split("\t")
 
         for self.nseqs, line in enumerate(annotations_in, start=1):
             if line and line[0] != "#":
@@ -92,5 +92,5 @@ class SmallGenomeDatabaseImporter(GqDatabaseImporter):
                     if features and features != "-"
                 ]
 
-                if annotation:                    
+                if annotation:
                     yield seq_feature, annotation

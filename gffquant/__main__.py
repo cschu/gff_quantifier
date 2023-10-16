@@ -13,7 +13,7 @@ from .handle_args import handle_args
 from .profilers import GeneQuantifier, RegionQuantifier
 from .runners.alignment_runner import BwaMemRunner, Minimap2Runner
 from .ui.validation import check_input_reads
-from . import __version__
+from . import __version__, RunMode
 
 
 logger = logging.getLogger(__name__)
@@ -26,24 +26,26 @@ def main():
     logger.info("Version: %s", __version__)
     logger.info("Command: %s %s", os.path.basename(sys.argv[0]), " ".join(sys.argv[1:]))
 
+    run_mode = RunMode.parse(args.mode)
+
     kwargs = {}
     annotation_db = args.annotation_db
-    if args.mode in ("gene", "genes"):
+    if run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier
     else:
-        Quantifier, kwargs["reference_type"] = RegionQuantifier, args.mode
+        Quantifier, kwargs["run_mode"] = RegionQuantifier, run_mode
         db_args = {}
-        if args.mode == "domain":
+        if run_mode == RunMode.DOMAIN:
             annotation_db = SmallDatabaseImporter(
                 single_category="feature", db_format=args.db_format,
             )
             db_input = args.annotation_db
-        elif args.mode == "small_genome":
+        elif run_mode == RunMode.SMALL_GENOME:
             annotation_db = SmallGenomeDatabaseImporter()
             try:
                 db_input, db_args["input_data2"] = args.annotation_db.split(",")
-            except ValueError:
-                raise ValueError("Require two input files.")
+            except ValueError as exc:
+                raise ValueError("Require two input files.") from exc
 
         annotation_db.build_database(
             db_input,
@@ -134,7 +136,7 @@ def main():
 
     profiler.finalise(
         report_category=True,
-        report_unannotated=args.mode == "genome",
+        report_unannotated=run_mode.report_unannotated,
         dump_counters=args.debug,
         restrict_reports=args.restrict_metrics,
     )

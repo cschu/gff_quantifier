@@ -5,7 +5,7 @@
 import logging
 
 from .feature_quantifier import FeatureQuantifier
-from .. import __tool__
+from .. import __tool__, RunMode
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,6 @@ class GeneQuantifier(FeatureQuantifier):
             out_prefix=out_prefix,
             ambig_mode=ambig_mode,
             strand_specific=strand_specific,
-            reference_type="gene",
+            run_mode=RunMode.GENE,
             paired_end_count=paired_end_count,
         )
