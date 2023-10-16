@@ -52,11 +52,11 @@ class GqDatabaseImporter(ABC):
         category_map, feature_map = {}, {}
         logger.info(f"{self.update_log_after_n_records=}")
 
-        _in = GqDatabaseImporter.get_open_function(input_data)(input_data, "rb")
-        _in2 = GqDatabaseImporter.get_open_function(input_data2)(input_data2, "rb") if input_data2 is not None else nullcontext()
+        input_data = GqDatabaseImporter.get_open_function(input_data)(input_data, "rb")
+        input_data2 = GqDatabaseImporter.get_open_function(input_data2)(input_data2, "rb") if input_data2 is not None else nullcontext()
 
-        with _in, _in2:
-            annotation_data = self.parse_annotations(_in, input_data2=_in2)
+        with input_data, input_data2:
+            annotation_data = self.parse_annotations(input_data, input_data2=input_data2)
 
             i = 0
             for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):

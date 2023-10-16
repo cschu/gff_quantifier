@@ -43,10 +43,10 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
 
         return category_cols
 
-    def parse_annotations(self, _in, _in2=None):
+    def parse_annotations(self, input_data, input_data2=None):
         if self.skip_header_lines > 0:
             try:
-                _ = [next(_in) for _ in range(self.header - 1)]
+                _ = [next(input_data) for _ in range(self.header - 1)]
             except StopIteration as exc:
                 msg = f"Reached end of annotation file while skipping header comments ({self.header})."
                 logging.error(f"    {msg}")
@@ -54,7 +54,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
 
         if self.header is None:
             try:
-                header_line = next(_in).decode().strip().strip("#").split(self.delimiter)
+                header_line = next(input_data).decode().strip().strip("#").split(self.delimiter)
             except StopIteration as exc:
                 msg = "Reached end of annotation file while parsing header line."
                 logging.error(f"    {msg}")
@@ -64,7 +64,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
 
         category_cols = self._validate_category_columns(header_line)
 
-        for self.nseqs, line in enumerate(_in, start=1):
+        for self.nseqs, line in enumerate(input_data, start=1):
             line = line.decode()
             if line and line[0] != "#":
                 line = line.strip().split(self.delimiter)

@@ -39,11 +39,11 @@ class SmallGenomeDatabaseImporter(GqDatabaseImporter):
 
         super().__init__(db_path=db_path, db_session=db_session)
 
-    def parse_annotations(self, _in, _in2=None):
+    def parse_annotations(self, input_data, input_data2=None):
 
         genes_in = (
             line.split(";")[0]
-            for line in _in.read().decode().strip().split("\n")
+            for line in input_data.read().decode().strip().split("\n")
             if line[0] != "#"
         )
 
@@ -62,7 +62,7 @@ class SmallGenomeDatabaseImporter(GqDatabaseImporter):
         
         annotations_in = (
             line 
-            for line in _in2.read().decode().strip().split("\n")
+            for line in input_data2.read().decode().strip().split("\n")
             if line[:2] != "##"
         )
 

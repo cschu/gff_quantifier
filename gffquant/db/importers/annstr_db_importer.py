@@ -41,10 +41,10 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
         )
 
 
-    def parse_annotations(self, _in, _in2=None):
+    def parse_annotations(self, input_data, input_data2=None):
 
         if self.header is None:
-            header_line = next(_in, None)
+            header_line = next(input_data, None)
             if header_line is None:
                 msg = "Reached end of annotation file while parsing header line."
                 logging.error(f"    {msg}")
