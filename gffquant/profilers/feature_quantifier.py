@@ -31,6 +31,7 @@ class ReferenceHit:
     rev_strand: bool = None
     cov_start: int = None
     cov_end: int = None
+    has_annotation: bool = None
 
     def __hash__(self):
         return hash(tuple(self.__dict__.values()))
@@ -134,8 +135,8 @@ class FeatureQuantifier(ABC):
             has_target, *_ = next(overlaps)
 
             hits = [
-                ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse())
-                for _, start, end in overlaps
+                ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse(), has_annotation=(dbseq is not None and dbseq.annotation_str))
+                for _, start, end, dbseq in overlaps
             ]
 
         else:
@@ -159,8 +160,8 @@ class FeatureQuantifier(ABC):
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
-        annotator_type = (GeneCountAnnotator, RegionCountAnnotator)[self.do_overlap_detection]
-        count_annotator = annotator_type(self.strand_specific, report_scaling_factors=report_scaling_factors)
+        Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.do_overlap_detection]
+        count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
         count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
 
         count_writer = CountWriter(

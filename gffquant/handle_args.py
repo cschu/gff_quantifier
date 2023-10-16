@@ -221,8 +221,8 @@ def handle_args(args):
         "--mode",
         "-m",
         type=str,
-        default="genome",
-        choices=("genome", "genes", "gene", "domain"),
+        default="genes",
+        choices=("small_genome", "genome_catalogue", "genes", "gene", "domain"),
         help=textwrap.dedent(
             """\
             Run mode:"

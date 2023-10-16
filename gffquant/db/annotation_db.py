@@ -59,17 +59,34 @@ class AnnotationDatabaseManager(ABC):
             sorted((seq.start - 1, seq.end) for seq in db_sequences)
         )
 
+    @lru_cache(maxsize=10000)
     @abstractmethod
     def get_db_sequence(self, seqid):
         """ abstract method for sequence retrieval """
         # pylint: disable=W2301
         ...
+    
+    def get_interval_tree_overlaps(self, seqid, qstart, qend):
+        db_sequences = {
+            (seq.start, seq.end + 1): seq
+            for seq in self.get_db_sequence(seqid)
+        }
+
+        yield bool(db_sequences), None, None, None
+
+        itree = IntervalTree.from_tuples(db_sequences)
+
+        for interval in itree[qstart:qend + 1]:
+            yield None, (interval.begin, interval.end - 1), db_sequences.get((interval.begin, interval.end))
+
+
+
 
     def get_interval_overlaps(self, seqid, qstart, qend):
         """ return all intervals overlapping the query read """
         db_sequences = self.get_db_sequence(seqid)
 
-        yield bool(db_sequences), None, None
+        yield bool(db_sequences), None, None, None
 
         for seq in db_sequences:
             # we're assuming
@@ -78,7 +95,7 @@ class AnnotationDatabaseManager(ABC):
             if qend < seq.start - 1 or seq.end - 1 < qstart:
                 continue
 
-            yield None, seq.start, seq.end
+            yield None, seq.start, seq.end, None
 
             # interval = seq.start, seq.end
             # sstart, send = seq.start - 1, seq.end
@@ -118,10 +135,14 @@ class AnnotationDatabaseManager(ABC):
 
         if domain_mode:
             return self.get_interval_overlaps(seqid, start, end)
-        return (
-            (interval.begin + 1, interval.end)
-            for interval in self.get_interval_tree(seqid)[start:end]
-        )
+        
+        return self.get_interval_tree_overlaps(seqid, start, end)
+    
+        # return (
+        #     (interval.begin + 1, interval.end)
+        #     for interval in self.get_interval_tree(seqid)[start:end]
+        # )
+    
         #     overlaps = self.get_interval_tree(seqid)[start:end]
         #     covered = (
         #         calc_covered_fraction(start, end, interval)
@@ -133,6 +154,8 @@ class AnnotationDatabaseManager(ABC):
     def clear_caches(self):
         logger.info("%s", self.get_interval_tree.cache_info())
         self.get_interval_tree.cache_clear()
+        logger.info("%s", self.get_db_sequence.cache_info())
+        self.get_db_sequence.cache_clear()
 
 
 class SQL_ADM(AnnotationDatabaseManager):

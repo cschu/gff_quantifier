@@ -8,7 +8,7 @@ import pathlib
 import sys
 
 # pylint: disable=W0611
-from .db.importers import SmallDatabaseImporter
+from .db.importers import SmallDatabaseImporter, SmallGenomeDatabaseImporter
 from .handle_args import handle_args
 from .profilers import GeneQuantifier, RegionQuantifier
 from .runners.alignment_runner import BwaMemRunner, Minimap2Runner
@@ -32,14 +32,24 @@ def main():
         Quantifier = GeneQuantifier
     else:
         Quantifier, kwargs["reference_type"] = RegionQuantifier, args.mode
+        db_args = {}
         if args.mode == "domain":
             annotation_db = SmallDatabaseImporter(
                 single_category="feature", db_format=args.db_format,
             )
-            annotation_db.build_database(
-                args.annotation_db,
-            )
-            logger.info("Finished loading database.")
+            db_input = args.annotation_db
+        elif args.mode == "small_genome":
+            annotation_db = SmallGenomeDatabaseImporter()
+            try:
+                db_input, db_args["input_data2"] = args.annotation_db.split(",")
+            except ValueError:
+                raise ValueError("Require two input files.")
+
+        annotation_db.build_database(
+            db_input,
+            **db_args,
+        )
+        logger.info("Finished loading database.")
 
     if args.input_type == "fastq":
         input_data = check_input_reads(
