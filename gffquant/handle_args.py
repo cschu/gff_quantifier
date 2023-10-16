@@ -20,7 +20,9 @@ def validate_args(args):
 
     logger.info(f"args: {args.__dict__}")
 
-    if not os.path.isfile(args.annotation_db):
+    db_files = args.annotation_db.split(",") if args.annotation_db else [None]
+
+    if not all(os.path.isfile(f) for f in db_files):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
     if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
         raise ValueError(f"Cannot find reference index at `{args.reference}`.")
