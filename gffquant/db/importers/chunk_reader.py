@@ -1,8 +1,9 @@
 """ chunked file reader """
 
+
 def get_lines(stream, bufsize=4000000):
-     tail = ""
-     while 1:
+    tail = ""
+    while 1:
         chunk = "".join((tail, stream.read(bufsize).decode()))
         if not chunk:
             break

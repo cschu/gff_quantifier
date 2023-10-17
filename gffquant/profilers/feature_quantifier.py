@@ -135,7 +135,13 @@ class FeatureQuantifier(ABC):
             has_target, *_ = next(overlaps)
 
             hits = [
-                ReferenceHit(rid=aln.rid, start=start, end=end, rev_strand=aln.is_reverse(), has_annotation=(dbseq is not None and dbseq.annotation_str))
+                ReferenceHit(
+                    rid=aln.rid,
+                    start=start,
+                    end=end,
+                    rev_strand=aln.is_reverse(),
+                    has_annotation=(dbseq is not None and dbseq.annotation_str)
+                )
                 for _, start, end, dbseq in overlaps
             ]
 

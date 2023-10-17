@@ -65,7 +65,7 @@ class AnnotationDatabaseManager(ABC):
         """ abstract method for sequence retrieval """
         # pylint: disable=W2301
         ...
-    
+
     def get_interval_tree_overlaps(self, seqid, qstart, qend):
         db_sequences = {
             (seq.start, seq.end + 1): seq
@@ -78,9 +78,6 @@ class AnnotationDatabaseManager(ABC):
 
         for interval in itree[qstart:qend + 1]:
             yield None, interval.begin, interval.end - 1, db_sequences.get((interval.begin, interval.end))
-
-
-
 
     def get_interval_overlaps(self, seqid, qstart, qend):
         """ return all intervals overlapping the query read """
@@ -135,14 +132,14 @@ class AnnotationDatabaseManager(ABC):
 
         if domain_mode:
             return self.get_interval_overlaps(seqid, start, end)
-        
+
         return self.get_interval_tree_overlaps(seqid, start, end)
-    
+
         # return (
         #     (interval.begin + 1, interval.end)
         #     for interval in self.get_interval_tree(seqid)[start:end]
         # )
-    
+
         #     overlaps = self.get_interval_tree(seqid)[start:end]
         #     covered = (
         #         calc_covered_fraction(start, end, interval)

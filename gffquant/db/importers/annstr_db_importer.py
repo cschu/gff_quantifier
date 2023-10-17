@@ -40,7 +40,6 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
             skip_header_lines=skip_header_lines,
         )
 
-
     def parse_annotations(self, input_data, input_data2=None):
 
         if self.header is None:

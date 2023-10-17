@@ -1,4 +1,5 @@
 # pylint: disable=C0103,R0903,W1514,R1702
+# pylint: disable=duplicate-code
 
 """ module docstring """
 
@@ -8,7 +9,7 @@ from functools import lru_cache
 
 from intervaltree import IntervalTree
 
-from  .. import RunMode
+from .. import RunMode
 
 
 class EmapperFormat:

@@ -28,6 +28,7 @@ SPIRE_ANNOTATION_COLUMNS = ",".join(
     )
 )
 
+
 class SmallGenomeDatabaseImporter(GqDatabaseImporter):
     def __init__(
         self,
@@ -39,15 +40,16 @@ class SmallGenomeDatabaseImporter(GqDatabaseImporter):
 
         super().__init__(db_path=db_path, db_session=db_session)
 
-    def parse_annotations(self, input_data, input_data2=None):
+    def _read_gene_coords(self, gene_data):
 
         genes_in = (
             line.split(";")[0]
-            for line in input_data.read().decode().strip().split("\n")
+            for line in gene_data.read().decode().strip().split("\n")
             if line[0] != "#"
         )
 
         seq_features = {}
+
         for self.nseqs, line in enumerate(genes_in, start=1):
             # k141_36810	Prodigal_v2.6.3	CDS	211	366	5.7	-	0	ID=1_1
             contig, _, _, start, end, _, strand, _, seq_id = line.split("\t")
@@ -59,6 +61,12 @@ class SmallGenomeDatabaseImporter(GqDatabaseImporter):
                 end=int(end),
                 strand=int(strand == "+") if strand is not None else None,
             )
+
+        return seq_features
+
+    def parse_annotations(self, input_data, input_data2=None):
+
+        seq_features = self._read_gene_coords(input_data)
 
         annotations_in = (
             line

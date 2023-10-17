@@ -25,4 +25,3 @@ class RunMode(Enum):
             string,
             cls.__members__.get(f"{string[:-1]}")
         )
-            

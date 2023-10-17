@@ -4,7 +4,6 @@
 
 import logging
 import os
-import pathlib
 import sys
 
 # pylint: disable=W0611
@@ -12,11 +11,15 @@ from .db.importers import SmallDatabaseImporter, SmallGenomeDatabaseImporter
 from .handle_args import handle_args
 from .profilers import GeneQuantifier, RegionQuantifier
 from .runners.alignment_runner import BwaMemRunner, Minimap2Runner
-from .ui.validation import check_input_reads
 from . import __version__, RunMode
 
 
 logger = logging.getLogger(__name__)
+
+
+
+
+
 
 
 def main():
@@ -26,21 +29,19 @@ def main():
     logger.info("Version: %s", __version__)
     logger.info("Command: %s %s", os.path.basename(sys.argv[0]), " ".join(sys.argv[1:]))
 
-    run_mode = RunMode.parse(args.mode)
-
     kwargs = {}
     annotation_db = args.annotation_db
-    if run_mode == RunMode.GENE:
+    if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier
     else:
-        Quantifier, kwargs["run_mode"] = RegionQuantifier, run_mode
+        Quantifier, kwargs["run_mode"] = RegionQuantifier, args.run_mode
         db_args = {}
-        if run_mode == RunMode.DOMAIN:
+        if args.run_mode == RunMode.DOMAIN:
             annotation_db = SmallDatabaseImporter(
                 single_category="feature", db_format=args.db_format,
             )
             db_input = args.annotation_db
-        elif run_mode == RunMode.SMALL_GENOME:
+        elif args.run_mode == RunMode.SMALL_GENOME:
             annotation_db = SmallGenomeDatabaseImporter()
             try:
                 db_input, db_args["input_data2"] = args.annotation_db.split(",")
@@ -52,17 +53,6 @@ def main():
             **db_args,
         )
         logger.info("Finished loading database.")
-
-    if args.input_type == "fastq":
-        input_data = check_input_reads(
-            fwd_reads=args.reads1, rev_reads=args.reads2,
-            single_reads=args.singles, orphan_reads=args.orphans,
-        )
-
-    if os.path.dirname(args.out_prefix):
-        pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(
-            exist_ok=True, parents=True
-        )
 
     profiler = Quantifier(
         db=annotation_db,
@@ -89,7 +79,7 @@ def main():
             sample_id=os.path.basename(args.out_prefix),
         )
 
-        for input_type, *reads in input_data:
+        for input_type, *reads in args.input_data:
 
             logger.info("Running %s alignment: %s", input_type, ",".join(reads))
             proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=args.keep_alignment_file)
@@ -136,7 +126,7 @@ def main():
 
     profiler.finalise(
         report_category=True,
-        report_unannotated=run_mode.report_unannotated,
+        report_unannotated=args.run_mode.report_unannotated,
         dump_counters=args.debug,
         restrict_reports=args.restrict_metrics,
     )

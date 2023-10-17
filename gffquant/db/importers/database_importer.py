@@ -26,13 +26,7 @@ class GqDatabaseImporter(ABC):
         self.nseqs = 0
         self.categories = {}
         self.features = {}
-        # self.open_function = GqDatabaseImporter.get_open_function(input_data)
         self.na_char = na_char
-
-
-        # self.gather_category_and_feature_data(input_data)
-        # self.process_annotations(input_data)
-        # self.build_database(input_data)
 
     @staticmethod
     def get_open_function(f):
@@ -53,7 +47,10 @@ class GqDatabaseImporter(ABC):
         logger.info(f"{self.update_log_after_n_records=}")
 
         input_data = GqDatabaseImporter.get_open_function(input_data)(input_data, "rb")
-        input_data2 = GqDatabaseImporter.get_open_function(input_data2)(input_data2, "rb") if input_data2 is not None else nullcontext()
+        if input_data2 is not None:
+            input_data2 = GqDatabaseImporter.get_open_function(input_data2)(input_data2, "rb")
+        else:
+            input_data2 = nullcontext()
 
         with input_data, input_data2:
             annotation_data = self.parse_annotations(input_data, input_data2=input_data2)
