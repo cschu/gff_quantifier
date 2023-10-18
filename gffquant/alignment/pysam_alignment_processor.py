@@ -4,7 +4,8 @@ from contextlib import nullcontext
 
 import pysam
 
-from .bamreader import BamAlignment, SamFlags
+from .bamreader import BamAlignment
+from .samflags import SamFlags
 
 
 class AlignmentProcessor:

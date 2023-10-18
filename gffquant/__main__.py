@@ -17,7 +17,54 @@ from . import __version__, RunMode
 logger = logging.getLogger(__name__)
 
 
+def stream_alignments(args, profiler):
+    AlnRunner = {
+        "bwa": BwaMemRunner,
+        "minimap2": Minimap2Runner,
+    }.get(args.aligner)
 
+    if AlnRunner is None:
+        raise ValueError(f"Aligner `{args.aligner}` is not supported.")
+
+    aln_runner = AlnRunner(
+        args.cpus_for_alignment,
+        args.reference,
+        sample_id=os.path.basename(args.out_prefix),
+    )
+
+    for input_type, *reads in args.input_data:
+
+        logger.info("Running %s alignment: %s", input_type, ",".join(reads))
+        proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=args.keep_alignment_file)
+
+        # if proc.returncode != 0:
+        #     logger.error("Encountered problems aligning.")
+        #     logger.error("Aligner call was:")
+        #     logger.error("%s", call)
+        #     logger.error("Shutting down.")
+        #     sys.exit(1)
+
+        # pylint: disable=W0718
+        try:
+
+            profiler.count_alignments(
+                proc.stdout, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
+            )
+
+        except Exception as err:
+            if isinstance(err, ValueError) and str(err).strip() == "file does not contain alignment data":
+                # pylint: disable=W1203
+                logger.error(f"Failed to align. Is `{args.aligner}` installed and on the path?")
+                logger.error("Aligner call was:")
+                logger.error("%s", call)
+                sys.exit(1)
+
+            logger.error("Encountered problems digesting the alignment stream:")
+            logger.error("%s", err)
+            logger.error("Aligner call was:")
+            logger.error("%s", call)
+            logger.error("Shutting down.")
+            sys.exit(1)
 
 
 
@@ -65,56 +112,12 @@ def main():
 
     if args.input_type == "fastq":
 
-        AlnRunner = {
-            "bwa": BwaMemRunner,
-            "minimap2": Minimap2Runner,
-        }.get(args.aligner)
-
-        if AlnRunner is None:
-            raise ValueError(f"Aligner `{args.aligner}` is not supported.")
-
-        aln_runner = AlnRunner(
-            args.cpus_for_alignment,
-            args.reference,
-            sample_id=os.path.basename(args.out_prefix),
-        )
-
-        for input_type, *reads in args.input_data:
-
-            logger.info("Running %s alignment: %s", input_type, ",".join(reads))
-            proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=args.keep_alignment_file)
-
-            # if proc.returncode != 0:
-            #     logger.error("Encountered problems aligning.")
-            #     logger.error("Aligner call was:")
-            #     logger.error("%s", call)
-            #     logger.error("Shutting down.")
-            #     sys.exit(1)
-
-            # pylint: disable=W0718
-            try:
-
-                profiler.count_alignments(
-                    proc.stdout, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
-                )
-
-            except Exception as err:
-                if isinstance(err, ValueError) and str(err).strip() == "file does not contain alignment data":
-                    # pylint: disable=W1203
-                    logger.error(f"Failed to align. Is `{args.aligner}` installed and on the path?")
-                    logger.error("Aligner call was:")
-                    logger.error("%s", call)
-                    sys.exit(1)
-
-                logger.error("Encountered problems digesting the alignment stream:")
-                logger.error("%s", err)
-                logger.error("Aligner call was:")
-                logger.error("%s", call)
-                logger.error("Shutting down.")
-                sys.exit(1)
+        stream_alignments(args, profiler)
 
     else:
+
         input_file = args.bam if args.input_type == "bam" else args.sam
+
         profiler.count_alignments(
             sys.stdin if input_file == "-" else input_file,
             aln_format=args.input_type,
