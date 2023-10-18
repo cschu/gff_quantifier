@@ -17,8 +17,6 @@ from .samflags import SamFlags
 
 # https://stackoverflow.com/questions/22216076/unicodedecodeerror-utf8-codec-cant-decode-byte-0xa5-in-position-0-invalid-s
 
-
-
 class BamAlignment:
     TAG_PARAMS = {
         "A": ("c", 1),
@@ -100,7 +98,6 @@ class BamAlignment:
         self.read_group = tags.get("RG")
         if self.read_group not in (1, 2):
             self.read_group = None
-
 
     def get_hash(self):
         md5 = hashlib.md5()

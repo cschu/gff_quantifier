@@ -230,8 +230,9 @@ class FeatureQuantifier(ABC):
         for aln_count, aln in enumerate(aln_stream, start=1):
             if self.ambig_mode == "primary_only" and not aln.is_primary():
                 continue
-            if self.ambig_mode in ("uniq_only", "unique_only") and not aln.is_unique():
-                continue
+            # TODO: this is not the correct way -> aln_group
+            # if self.ambig_mode in ("uniq_only", "unique_only") and not aln.is_unique():
+            #     continue
 
             if current_aln_group is None or current_aln_group.qname != aln.qname:
                 if current_aln_group is not None:

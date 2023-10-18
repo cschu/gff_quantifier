@@ -1,5 +1,6 @@
 """ CIGAR Ops """
 
+
 class CigarOps:
     CIGAR_OPS = "MIDNSHP=X"
     #  MIDNSHP=X

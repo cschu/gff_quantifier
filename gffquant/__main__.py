@@ -67,8 +67,6 @@ def stream_alignments(args, profiler):
             sys.exit(1)
 
 
-
-
 def main():
 
     args = handle_args(sys.argv[1:])

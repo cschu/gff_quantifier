@@ -90,31 +90,28 @@ class AlignmentProcessor:
                 if read_unmapped:
                     continue
 
-                aln = BamAlignment.from_pysam_alignment(pysam_aln)
-
-                if aln.flag & filter_flags:
+                if pysam_aln.flag & filter_flags:
                     continue
 
-                if aln.flag & required_flags != required_flags:
+                if pysam_aln.flag & required_flags != required_flags:
                     continue
 
-                if (aln.is_ambiguous() and not allow_multiple):
-                    continue
-
-                if (not aln.is_ambiguous() and not allow_unique):
-                    continue
-
-                if aln.len_seq < min_seqlen:
+                if pysam_aln.alen < min_seqlen:
                     self.stat_counter[AlignmentProcessor.LENGTH_FILTERED] += 1
                     continue
 
-                seqid = 1 - aln.tags.get("NM", 0) / aln.len_seq
+                try:
+                    mismatches = pysam_aln.get_tag("NM")
+                except KeyError:
+                    mismatches = 0
+
+                seqid = 1 - mismatches / pysam_aln.alen
                 if seqid < min_identity:
                     self.stat_counter[AlignmentProcessor.SEQID_FILTERED] += 1
                     continue
 
-                rname = self.aln_stream.get_reference_name(aln.rid)
-                self.used_refs[aln.rid] = rname, self.aln_stream.get_reference_length(rname)
+                rname = self.aln_stream.get_reference_name(pysam_aln.reference_id)
+                self.used_refs[pysam_aln.reference_id] = rname, self.aln_stream.get_reference_length(rname)
 
                 self.stat_counter[AlignmentProcessor.PASS_FILTER] += 1
 
@@ -125,4 +122,4 @@ class AlignmentProcessor:
                 if filtered_sam is not None:
                     print(pysam_aln.to_string(), file=filtered_out)
 
-                yield aln
+                yield BamAlignment.from_pysam_alignment(pysam_aln)

@@ -1,5 +1,6 @@
 """ SamFlags (partial) """
 
+
 class SamFlags:
     PAIRED = 0x1
     PROPERLY_PAIRED = 0x2

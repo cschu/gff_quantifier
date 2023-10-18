@@ -11,18 +11,22 @@ from .cigarops import CigarOps
 
 
 @dataclass
-class Alignment:
-    read_id: int = None
+class EncodedAlignment:
+    """ class to reduce alignment data """
+    qname: int = None
     flag: int = None
-    reference_id: int = None
+    rid: int = None
     start: int = None
     end: int = None
-    mapq: int = None
-    length: int = None
-    counts: int = None
+    read_group: int = None
 
     @classmethod
     def from_pysam_alignment(cls, pysam_aln, read_id, rid):
+        try:
+            rg_tag = pysam_aln.get_tag("RG")
+        except KeyError:
+            rg_tag = None
+
         return cls(
             read_id,
             pysam_aln.flag,
@@ -32,7 +36,22 @@ class Alignment:
                 pysam_aln.pos,
                 [(y, x) for x, y in pysam_aln.cigar]
             ),
-            pysam_aln.mapq,
-            pysam_aln.alen,
-            dict(pysam_aln.tags).get("RG")
+            rg_tag,
         )
+
+    # various flag checks -- only needed ones are implemented
+    def is_primary(self):
+        """ is this flagged as primary alignment? """
+        return not bool(self.flag & SamFlags.SECONDARY_ALIGNMENT)
+
+    def is_second(self):
+        """ is this flagged as second in pair? """
+        return bool(self.flag & SamFlags.SECOND_IN_PAIR == SamFlags.SECOND_IN_PAIR)
+
+    def is_paired(self):
+        """ is this flagged as paired? """
+        return bool(self.flag & SamFlags.PAIRED)
+
+    def is_reverse(self):
+        """ is this flagged as reversed? """
+        return bool(self.flag & SamFlags.REVERSE)
