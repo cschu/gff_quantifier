@@ -4,6 +4,7 @@
 
 from collections import Counter
 
+from .. import DistributionMode
 from .alignment_counter import AlignmentCounter
 
 
@@ -13,7 +14,7 @@ class RegionCounter(AlignmentCounter):
     with multiple regions of interest (features).
     """
 
-    def __init__(self, distribution_mode="uniq_only", strand_specific=False):
+    def __init__(self, distribution_mode=DistributionMode.ONE_OVER_N, strand_specific=False):
         AlignmentCounter.__init__(
             self, distribution_mode=distribution_mode, strand_specific=strand_specific
         )
@@ -41,7 +42,7 @@ class UniqueRegionCounter(RegionCounter):
     with multiple regions of interest (features).
     """
 
-    def __init__(self, distribution_mode="uniq_only", strand_specific=False):
+    def __init__(self, distribution_mode=DistributionMode.ONE_OVER_N, strand_specific=False):
         RegionCounter.__init__(
             self, distribution_mode=distribution_mode, strand_specific=strand_specific,
         )
@@ -73,7 +74,7 @@ class AmbiguousRegionCounter(RegionCounter):
     with multiple regions of interest (features).
     """
 
-    def __init__(self, distribution_mode="uniq_only", strand_specific=False):
+    def __init__(self, distribution_mode=DistributionMode.ONE_OVER_N, strand_specific=False):
         RegionCounter.__init__(
             self, distribution_mode=distribution_mode, strand_specific=strand_specific,
         )

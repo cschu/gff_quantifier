@@ -2,6 +2,7 @@
 
 from collections import Counter
 
+from .. import DistributionMode
 from .alignment_counter import AlignmentCounter
 from .region_counter import RegionCounter
 
@@ -38,7 +39,7 @@ class CountManager:
     def __init__(
         # pylint: disable=W0613,R0913
         self,
-        distribution_mode="1overN",
+        distribution_mode=DistributionMode.ONE_OVER_N,
         region_counts=True,
         strand_specific=False,
         paired_end_count=1,

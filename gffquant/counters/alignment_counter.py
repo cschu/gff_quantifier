@@ -8,6 +8,8 @@ import gzip
 
 from collections import Counter
 
+from .. import DistributionMode
+
 
 class AlignmentCounter(Counter):
     COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled"]
@@ -21,9 +23,9 @@ class AlignmentCounter(Counter):
 
     def get_increment(self, n_aln, increment):
         # 1overN = lavern. Maya <3
-        return (increment / n_aln) if self.distribution_mode == "1overN" else increment
+        return (increment / n_aln) if self.distribution_mode == DistributionMode.ONE_OVER_N else increment
 
-    def __init__(self, distribution_mode="uniq_only", strand_specific=False):
+    def __init__(self, distribution_mode=DistributionMode.ONE_OVER_N, strand_specific=False):
         Counter.__init__(self)
         self.distribution_mode = distribution_mode
         self.strand_specific = strand_specific

@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0914
+# pylint: disable=C0103,R0914,W1203
 
 """ module docstring """
 
@@ -17,7 +17,7 @@ from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import CountManager
 from ..db.annotation_db import AnnotationDatabaseManager
 
-from .. import __tool__, RunMode
+from .. import __tool__, DistributionMode, RunMode
 
 
 logger = logging.getLogger(__name__)
@@ -72,13 +72,12 @@ class FeatureQuantifier(ABC):
         - these could also be multimappers in all1-mode!
         """
     # pylint: disable=R0902,R0913
-    TRUE_AMBIG_MODES = ("dist1", "1overN")
 
     def __init__(
         self,
         db=None,
         out_prefix=__tool__,
-        ambig_mode="unique_only",
+        distribution_mode=DistributionMode.ONE_OVER_N,
         run_mode=RunMode.GENE,
         strand_specific=False,
         paired_end_count=1,
@@ -86,37 +85,17 @@ class FeatureQuantifier(ABC):
         self.aln_counter = Counter()
         self.db = db
         self.adm = None
-        self.do_overlap_detection = run_mode.overlap_required
         self.run_mode = run_mode
         self.count_manager = CountManager(
-            distribution_mode=ambig_mode,
+            distribution_mode=distribution_mode,
             region_counts=run_mode.overlap_required,
             strand_specific=strand_specific and not run_mode.overlap_required,
             paired_end_count=paired_end_count,
         )
         self.out_prefix = out_prefix
-        self.ambig_mode = ambig_mode
-        self.bamfile = None
-        self.alp = None
+        self.distribution_mode = distribution_mode
         self.reference_manager = {}
         self.strand_specific = strand_specific
-
-    def allow_ambiguous_alignments(self):
-        """All distribution modes support ambiguous alignments,
-        with the exception of `unique_only."""
-        return self.ambig_mode != "unique_only"
-
-    def treat_ambiguous_as_unique(self):
-        """In 'non-true' ambig modes (all1, primary_only),
-        ambiguous alignments are treated as unique alignments."""
-        return self.ambig_mode not in FeatureQuantifier.TRUE_AMBIG_MODES
-
-    def require_ambig_bookkeeping(self):
-        """'Ambiguous bookkeeping' is a special treatment for true ambig modes.
-        It requires all alignments of a read to be processed together."""
-        return (
-            self.allow_ambiguous_alignments() and not self.treat_ambiguous_as_unique()
-        )
 
     def check_hits(self, ref, aln):
         """ Check if an alignment hits a region of interest on a reference sequence.
@@ -126,7 +105,7 @@ class FeatureQuantifier(ABC):
               - `has_target`, indicating if the reference sequence contains one or more potential hits
               - list of hits (alignment can overlap multiple regions)
         """
-        if self.do_overlap_detection:
+        if self.run_mode.overlap_required:
             overlaps = self.adm.get_overlaps(
                 ref, aln.start, aln.end,
                 domain_mode=self.run_mode == RunMode.DOMAIN
@@ -166,7 +145,7 @@ class FeatureQuantifier(ABC):
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
-        Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.do_overlap_detection]
+        Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
         count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
 
@@ -215,7 +194,7 @@ class FeatureQuantifier(ABC):
         aln_stream = aln_reader.get_alignments(
             min_identity=min_identity,
             min_seqlen=min_seqlen,
-            allow_multiple=self.allow_ambiguous_alignments(),
+            allow_multiple=self.distribution_mode.allow_ambiguous,
             allow_unique=True,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
             filtered_sam=f"{self.out_prefix}.filtered.sam",
@@ -228,11 +207,6 @@ class FeatureQuantifier(ABC):
         current_aln_group = None
 
         for aln_count, aln in enumerate(aln_stream, start=1):
-            if self.ambig_mode == "primary_only" and not aln.is_primary():
-                continue
-            # TODO: this is not the correct way -> aln_group
-            # if self.ambig_mode in ("uniq_only", "unique_only") and not aln.is_unique():
-            #     continue
 
             if current_aln_group is None or current_aln_group.qname != aln.qname:
                 if current_aln_group is not None:
@@ -369,42 +343,63 @@ class FeatureQuantifier(ABC):
         """ Checks an alignment group for hits and passes the hit list
         to the counters.
         """
-        ambig_counts = aln_group.get_ambig_align_counts()
-        is_ambig_alignment = any(ambig_counts) and self.require_ambig_bookkeeping()
-        # hit counts are mode-dependent:
-        # ambiguous alignments in overlap modes require the number of alternative locations
-        # (we handle first/second PE-alignments separately, hence a 2x2 list)
-        # otherwise the hit count is always 1
-        hit_counts = [[1, 1], [0, 0]]
-        all_hits = []
+        is_ambiguous_group = aln_group.is_ambiguous()
+        is_ambig_alignment = self.distribution_mode.require_ambig_tracking and is_ambiguous_group
 
-        # process each alignment of the group individually
-        for aln in aln_group.get_alignments():
-            current_ref = self.register_reference(aln.rid, aln_reader)
-            # check for region hits (in overlap modes, otherwise alignments always hit)
-            has_target, hits = self.check_hits(current_ref, aln)
-            if has_target and hits:
-                if is_ambig_alignment:
-                    # update the hit counts
-                    hit_counts[1][aln.is_second()] += 1
-                all_hits.append((aln, hits))
+        keep_group = False
 
-        # pass the hit lists to the counters
-        count_stream = (
-            (aln_hits, hit_counts[is_ambig_alignment][aln.is_second()])
-            for aln, aln_hits in all_hits
-        )
+        if not self.distribution_mode.allow_ambiguous and is_ambiguous_group:
+            # if the alignment group has ambiguous alignments, but we don't allow them: get out
+            keep_group = False
 
-        contributed_counts = self.count_manager.update_counts(
-            count_stream,
-            ambiguous_counts=any(ambig_counts),
-            pair=aln_group.is_paired(),
-            pe_library=aln_group.pe_library,
-        )
+        elif not self.distribution_mode.allow_secondary:
+            # if we only allow primary alignments, clear the secondaries
+            _ = [lst.clear() for lst in aln_group.secondaries]
 
-        # pylint: disable=W1203
+            keep_group = bool(aln_group.primaries)
+
+        if keep_group:
+            # hit counts are mode-dependent:
+            # ambiguous alignments in true ambig modes require the number of alternative locations
+            # (we handle first/second PE-alignments separately, hence a two-element list)
+            # otherwise the hit count is always 1
+            ambig_hit_counts = [0, 0]
+            all_hits = []
+
+            # process each alignment of the group individually
+            for aln in aln_group.get_alignments():
+                current_ref = self.register_reference(aln.rid, aln_reader)
+                # check for region hits (in overlap modes, otherwise alignments always hit)
+                has_target, hits = self.check_hits(current_ref, aln)
+                if has_target and hits:
+                    if is_ambig_alignment:
+                        # update the hit counts
+                        ambig_hit_counts[aln.is_second()] += 1
+                    all_hits.append((aln, hits))
+
+            # pass the hit lists to the counters
+            count_stream = (
+                (aln_hits, ambig_hit_counts[aln.is_second()] if is_ambig_alignment else 1)
+                for aln, aln_hits in all_hits
+            )
+
+            contributed_counts = self.count_manager.update_counts(
+                count_stream,
+                ambiguous_counts=is_ambiguous_group,
+                pair=aln_group.is_paired(),
+                pe_library=aln_group.pe_library,
+            )
+
+            msg = f"{ambig_hit_counts=} {contributed_counts=})"
+
+        else:
+
+            msg = f"--> DROPPED distribution_mode={self.distribution_mode.alias}"
+
         logger.debug(
             f"aln_group {aln_group.qname} "
             f"(ambig={is_ambig_alignment} size={aln_group.n_align()} "
-            f"{hit_counts=} {contributed_counts=})"
+            f"{msg}"
         )
+
+        return keep_group

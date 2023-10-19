@@ -1,3 +1,5 @@
+# pylint: disable=R0913
+
 """ module docstring """
 
 from enum import Enum, auto, unique
@@ -25,3 +27,26 @@ class RunMode(Enum):
             string,
             cls.__members__.get(f"{string[:-1]}")
         )
+
+
+@unique
+class DistributionMode(Enum):
+    ONE_OVER_N = (auto(), "1overN", True, True, True)
+    ALL_ONE = (auto(), "all1", True, True, False)
+    UNIQUE_ONLY = (auto(), "unique_only", False, False, False)
+    PRIMARY_ONLY = (auto(), "primary_only", True, False, False)
+
+    def __init__(self, num, alias, allow_ambiguous, allow_secondary, require_ambig_tracking):
+        self.num = num
+        self.alias = alias
+        self.allow_ambiguous = allow_ambiguous
+        self.allow_secondary = allow_secondary
+        # ambig tracking: all alignments of a read need to be processed together
+        self.require_ambig_tracking = require_ambig_tracking
+
+    @classmethod
+    def parse(cls, string):
+        for member in cls.__members__.values():
+            if member.alias == string:
+                return member
+        return None

@@ -49,6 +49,9 @@ class AlignmentGroup:
             bool(self.primaries[True]) + len(self.secondaries[True])
         ) if len(self.secondaries[False]) + len(self.secondaries[True]) else (0, 0)
 
+    def is_ambiguous(self):
+        return any(self.secondaries)
+
     def is_aligned_pair(self):
         aln1, aln2 = self.primaries
 

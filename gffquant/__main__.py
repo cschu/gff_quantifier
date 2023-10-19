@@ -102,7 +102,7 @@ def main():
     profiler = Quantifier(
         db=annotation_db,
         out_prefix=args.out_prefix,
-        ambig_mode=args.ambig_mode,
+        distribution_mode=args.ambig_mode,
         strand_specific=args.strand_specific,
         paired_end_count=args.paired_end_count,
         **kwargs,
