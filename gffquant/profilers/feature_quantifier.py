@@ -346,7 +346,7 @@ class FeatureQuantifier(ABC):
         is_ambiguous_group = aln_group.is_ambiguous()
         is_ambig_alignment = self.distribution_mode.require_ambig_tracking and is_ambiguous_group
 
-        keep_group = False
+        keep_group = True
 
         if not self.distribution_mode.allow_ambiguous and is_ambiguous_group:
             # if the alignment group has ambiguous alignments, but we don't allow them: get out
