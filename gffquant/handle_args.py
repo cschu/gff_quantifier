@@ -7,7 +7,7 @@ import os
 import pathlib
 import textwrap
 
-from . import __version__, __tool__, RunMode
+from . import __version__, __tool__, DistributionMode, RunMode
 
 from .ui.validation import check_bwa_index, check_minimap2_index, check_input_reads
 
@@ -21,6 +21,7 @@ def validate_args(args):
     logger.info(f"args: {args.__dict__}")
 
     args.run_mode = RunMode.parse(args.mode)
+    args.distribution_mode = DistributionMode.parse(args.ambig_mode)
 
     db_files = args.annotation_db.split(",") if args.annotation_db else [None]
 
