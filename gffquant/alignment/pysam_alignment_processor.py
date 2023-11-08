@@ -87,7 +87,7 @@ class AlignmentProcessor:
                     print(xa_tag, item, sep="\n", file=sys.stderr)
                     raise ValueError from err
 
-                aln = pysam.AlignedSegment(
+                aln = pysam.AlignedSegment.from_dict(
                     pysam_aln.to_dict(),
                     self.aln_stream.header,
                 )
