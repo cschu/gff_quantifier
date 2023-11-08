@@ -76,29 +76,30 @@ class AlignmentProcessor:
     
     def unfold_ambiguous_alignments(self, pysam_aln):
         yield pysam_aln
-        tags = dict(pysam_aln.tags)
-        xa_tag = tags.get("XA")
-        if xa_tag is not None:
+
+        if pysam_aln.has_tag("XA"):
+            xa_tag = pysam_aln.get_tag("XA")
+            aln_d = pysam_aln.to_dict()
+            flag = int(aln_d["flag"]) | 256
             for item in xa_tag.strip().strip(";").split(";"):
-                try:
-                    ref, pos, cigar, nm_tag = item.split(",")
-                except ValueError as err:
-                    import sys
-                    print(xa_tag, item, sep="\n", file=sys.stderr)
-                    raise ValueError from err
+                ref, pos, cigar, nm_tag = item.split(",")
+
+                aln_d["ref_name"] = ref
+                pos = int(pos)
+                aln_d["ref_pos"] = str(abs(pos))
+                                
+                if pos < 0:
+                    flag |= 16
+                aln_d["flag"] = str(flag)
+
+                aln_d["cigar"] = cigar
+                aln_d["tags"] = [f"NM:i:{nm_tag}"]
 
                 aln = pysam.AlignedSegment.from_dict(
-                    pysam_aln.to_dict(),
+                    aln_d,
                     self.aln_stream.header,
-                )
-                aln.reference_name = ref
-                pos = int(pos)
-                aln.pos = abs(pos)
-                if pos < 0:
-                    aln.flag |= 16
-                aln.flag |= 256
-                aln.cigarstring = cigar
-                aln.tags = [("NM", int(nm_tag))]
+                )                
+                
                 yield aln
                 
 
