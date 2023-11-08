@@ -79,7 +79,13 @@ class AlignmentProcessor:
         tags = dict(pysam_aln.tags)
         xa_tag = tags.get("XA", "")
         for item in xa_tag.strip().strip(";").split(";"):
-            ref, pos, cigar, nm_tag = item.split(",")
+            try:
+                ref, pos, cigar, nm_tag = item.split(",")
+            except ValueError as err:
+                import sys
+                print(xa_tag, item, sep="\n", file=sys.stderr)
+                raise ValueError from err
+
             aln = pysam.AlignedSegment(
                 pysam_aln.to_dict(),
                 self.aln_stream.header,
