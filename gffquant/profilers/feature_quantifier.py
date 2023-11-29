@@ -194,8 +194,6 @@ class FeatureQuantifier(ABC):
         aln_stream = aln_reader.get_alignments(
             min_identity=min_identity,
             min_seqlen=min_seqlen,
-            allow_multiple=self.distribution_mode.allow_ambiguous,
-            allow_unique=True,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
             filtered_sam=f"{self.out_prefix}.filtered.sam",
         )
@@ -348,7 +346,7 @@ class FeatureQuantifier(ABC):
 
         keep_group = True
 
-        if not self.distribution_mode.allow_ambiguous and is_ambiguous_group:
+        if is_ambiguous_group and not self.distribution_mode.allow_ambiguous:
             # if the alignment group has ambiguous alignments, but we don't allow them: get out
             keep_group = False
 
