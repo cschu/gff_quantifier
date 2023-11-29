@@ -39,7 +39,7 @@ class AlignmentProcessor:
                 [sum(self.stat_counter), ] + self.stat_counter
             )
         )
-    
+
     @staticmethod
     def get_alignment_stats_str(stat_counter, table=True):
         # pylint: disable=R1705
@@ -71,9 +71,9 @@ class AlignmentProcessor:
         if seqid < min_identity:
             self.stat_counter[AlignmentProcessor.SEQID_FILTERED] += 1
             return False
-        
+
         return True
-    
+
     def unfold_ambiguous_alignments(self, pysam_aln):
         yield pysam_aln
 
@@ -87,7 +87,7 @@ class AlignmentProcessor:
                 aln_d["ref_name"] = ref
                 pos = int(pos)
                 aln_d["ref_pos"] = str(abs(pos))
-                                
+
                 if pos < 0:
                     flag |= 16
                 aln_d["flag"] = str(flag)
@@ -95,34 +95,31 @@ class AlignmentProcessor:
                 aln_d["cigar"] = cigar
                 aln_d["tags"] = [f"NM:i:{nm_tag}"]
 
+                # pylint: disable=E1101
                 aln = pysam.AlignedSegment.from_dict(
                     aln_d,
                     self.aln_stream.header,
-                )                
-                
+                )
+
                 yield aln
-                
-
-
-        
 
     # pylint: disable=R0913,R0914,W0613
     def get_alignments(
         self,
         min_identity=0.97,
         min_seqlen=45,
-        allow_multiple=True,
-        allow_unique=True,
         filter_flags=0,
         required_flags=0,
-        verbose=True,
         filtered_sam=None,
+        unfold_xa_tag=False,
     ):
         last_read, last_passed_read = None, None
 
         # pylint: disable=R1732
         filtered_out = open(filtered_sam, "wt", encoding="UTF-8") if filtered_sam else nullcontext()
         # pylint: enable=R1732
+
+        alignment_f = self.unfold_ambiguous_alignments if unfold_xa_tag else (lambda x: (x for i in range(1)))
 
         with self.aln_stream, filtered_out:
             for pysam_aln in self.aln_stream:
@@ -145,25 +142,11 @@ class AlignmentProcessor:
                 if pysam_aln.flag & required_flags != required_flags:
                     continue
 
-
-                # if pysam_aln.alen < min_seqlen:
-                #     self.stat_counter[AlignmentProcessor.LENGTH_FILTERED] += 1
-                #     continue
-
-                # try:
-                #     mismatches = pysam_aln.get_tag("NM")
-                # except KeyError:
-                #     mismatches = 0
-
-                # seqid = 1 - mismatches / pysam_aln.alen
-                # if seqid < min_identity:
-                #     self.stat_counter[AlignmentProcessor.SEQID_FILTERED] += 1
-                #     continue
-                
-                for pysam_aln in self.unfold_ambiguous_alignments(pysam_aln):
+                # for pysam_aln in self.unfold_ambiguous_alignments(pysam_aln):
+                for pysam_aln in alignment_f(pysam_aln):
 
                     passed = self.check_alignment(pysam_aln, min_seqlen, min_identity)
-                    
+
                     if passed:
                         self.stat_counter[AlignmentProcessor.PASS_FILTER] += 1
 
