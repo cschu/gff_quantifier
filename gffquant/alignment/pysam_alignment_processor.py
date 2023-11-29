@@ -143,7 +143,8 @@ class AlignmentProcessor:
                     continue
 
                 # for pysam_aln in self.unfold_ambiguous_alignments(pysam_aln):
-                for pysam_aln in alignment_f(pysam_aln):
+                # for pysam_aln in alignment_f(pysam_aln):
+                for pysam_aln in (pysam_aln,):
 
                     passed = self.check_alignment(pysam_aln, min_seqlen, min_identity)
 
