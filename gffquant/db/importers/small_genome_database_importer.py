@@ -4,7 +4,6 @@
 
 import logging
 
-from . import extract_features
 from .database_importer import GqDatabaseImporter
 from ..models import db
 
@@ -107,7 +106,7 @@ class SmallGenomeDatabaseImporter(GqDatabaseImporter):
                 #     if len(cog_category) > 1:
                 #         annotation.append(("COG_category_composite", cog_category))
                 #     annotation.append(("COG_category", tuple(cog_category)))
-                annotation = extract_features(columns)
+                annotation = GqDatabaseImporter.extract_features(columns)
 
                 if annotation:
                     yield seq_feature, annotation
