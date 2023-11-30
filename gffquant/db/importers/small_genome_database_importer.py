@@ -104,7 +104,7 @@ class SmallGenomeDatabaseImporter(GqDatabaseImporter):
                 # if cog_category and cog_category != "-":
                 #     cog_category = cog_category.replace(",", "")
                 #     if len(cog_category) > 1:
-                #         annotation.append(("COG_category_composite", cog_category))
+                #         annotation.append(("COG_category_composite", (cog_category,)))
                 #     annotation.append(("COG_category", tuple(cog_category)))
                 annotation = GqDatabaseImporter.extract_features(columns)
 
