@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0902,R0913,W2301,R0914
+# pylint: disable=C0103,R0902,R0913,W2301,W1203
 
 """ module docstring """
 
@@ -6,8 +6,7 @@ import gzip
 import logging
 
 from abc import ABC, abstractmethod
-
-from sqlalchemy import insert, Index
+from contextlib import nullcontext
 
 from ..models import db
 
@@ -17,20 +16,40 @@ logger = logging.getLogger(__name__)
 
 class GqDatabaseImporter(ABC):
     """ Base database importer class"""
-    def __init__(self, input_data, db_path=None, db_session=None, db_engine=None, na_char="-"):
+    update_log_after_n_records = 100000
+
+    def __init__(self, db_path=None, db_session=None, na_char="-"):
         self.db_path = db_path
         self.db_session = db_session
-        self.db_engine = db_engine
         self.code_map = {}
         self.annotations = {}
         self.nseqs = 0
         self.categories = {}
         self.features = {}
-        self.open_function = GqDatabaseImporter.get_open_function(input_data)
         self.na_char = na_char
 
-        self.build_database(input_data)
+    @staticmethod
+    def extract_features(columns):
+        annotation = [
+            (category, tuple(features.split(",")))
+            for category, features in columns.items()
+            if features and features != "-" and category != "COG_category"
+        ]
 
+        # COG_categories are single letters, but genes can have composite annotations
+        # we profile both, the single letters (split composites into individual categories),
+        # and the composites
+        cog_category = columns.get("COG_category")
+        if cog_category and cog_category != "-":
+            cog_category = cog_category.replace(",", "")
+            if len(cog_category) > 1:
+                # composites need to be passed as 1-tuples,
+                # otherwise downstream ops with iterate over the string!
+                annotation.append(("COG_category_composite", (cog_category,)))
+            annotation.append(("COG_category", tuple(cog_category)))
+
+        return annotation
+    
     @staticmethod
     def get_open_function(f):
         """ Returns a file open function corresponding to gzip-compression status. """
@@ -40,36 +59,30 @@ class GqDatabaseImporter(ABC):
         return gzip.open if gzipped else open
 
     @abstractmethod
-    def parse_annotations(self, input_data):
+    def parse_annotations(self, input_data, input_data2=None):
         """ abstract method to parse annotations from various data formats """
         ...
 
-    def build_database(self, input_data):
+    def build_database(self, input_data, input_data2=None):
 
         category_map, feature_map = {}, {}
-        annotations = []
+        logger.info(f"{self.update_log_after_n_records=}")
 
-        with self.open_function(input_data, "rb") as _in, self.db_engine.connect() as conn:
-            annotation_data = self.parse_annotations(_in)
+        input_data = GqDatabaseImporter.get_open_function(input_data)(input_data, "rb")
+        if input_data2 is not None:
+            input_data2 = GqDatabaseImporter.get_open_function(input_data2)(input_data2, "rb")
+        else:
+            input_data2 = nullcontext()
+
+        with input_data, input_data2:
+            annotation_data = self.parse_annotations(input_data, input_data2=input_data2)
 
             i = 0
             for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
-                if not annotation:
-                    continue
+                if i % self.update_log_after_n_records == 0:
+                    if self.db_session is not None:
+                        self.db_session.commit()
 
-                if i % 100000 == 0:
-                    if self.db_session is not None:  # and annotations:
-                        # conn.execute(
-                        #     db.AnnotatedSequence.__table__.insert(),
-                        #     [ann.__dict__ for ann in annotations],
-                        # )
-                        # self.db_session.execute(
-                        #     insert(db.AnnotatedSequence),
-                        #     [ann.__dict__ for ann in annotations],
-                        # )
-
-                        self.db_session.flush()
-                        # annotations.clear()
                     logger.info("    Loaded %s entries.", str(i))
 
                 encoded = []
@@ -87,52 +100,35 @@ class GqDatabaseImporter(ABC):
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
 
-                if self.db_session is not None:
+                if self.db_session:
                     self.db_session.add(seq_feature)
                 else:
-                    # annotations.append(seq_feature)
                     self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
 
-            logger.info("    Loaded %s entries.", str(self.nseqs))
+            logger.info("Finished loading %s entries.", str(i))
 
-            self.categories = {
-                cat_id: db.Category(id=cat_id, name=cat_name)
-                for cat_name, cat_id in category_map.items()
-            }
+            logger.info("Loading categories and features.")
 
-            self.features = {
-                feat_id: db.Feature(id=feat_id, name=feat_name, category_id=cat_id)
-                for (cat_id, feat_name), feat_id in feature_map.items()
-            }
+            self.categories.update(
+                {
+                    cat_id: db.Category(id=cat_id, name=cat_name)
+                    for cat_name, cat_id in category_map.items()
+                }
+            )
+
+            self.features.update(
+                {
+                    feat_id: db.Feature(id=feat_id, name=feat_name, category_id=cat_id)
+                    for (cat_id, feat_name), feat_id in feature_map.items()
+                }
+            )
 
             if self.db_session is not None:
-
-                # self.db_session.execute(
-                #     insert(db.AnnotatedSequence),
-                #     [ann.__dict__ for ann in annotations],
-                # )
-                # annotations.clear()
-
-                self.db_session.execute(
-                    insert(db.Category),
-                    [cat.__dict__ for cat in self.categories.values()],
-                )
-                self.categories.clear()
-
-                self.db_session.execute(
-                    insert(db.Feature),
-                    [feat.__dict__ for feat in self.features.values()],
-                )
-                self.features.clear()
+                for category in self.categories.values():
+                    self.db_session.add(category)
+                for feature in self.features.values():
+                    self.db_session.add(feature)
 
                 self.db_session.commit()
 
-                # Index(
-                #     "seqid_idx",
-                #     db.AnnotatedSequence.__table__.c.seqid,
-                #     unique=True,
-                # ).create(self.db_engine)
-
-            # else:
-            #     for seq_feature in annotations:
-            #         self.annotations.setdefault(seq_feature.seqid, []).append(seq_feature)
+            logger.info("Finished loading categories and features.")

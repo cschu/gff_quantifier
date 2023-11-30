@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 class GqGeneDatabaseImporter(GqDatabaseImporter):
     def __init__(
         self,
-        input_data,
         db_path=None,
         db_session=None,
         emapper_version=None,
@@ -26,15 +25,14 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
         self.emapper_version = emapper_version
         self.dbm_buffersize = dbm_buffersize
 
-        super().__init__(input_data, db_path=db_path, db_session=db_session)
+        super().__init__(db_path=db_path, db_session=db_session)
 
-    def parse_annotations(self, input_data):
+    def parse_annotations(self, input_data, input_data2=None):
         gffdbm = GffDatabaseManager(
             input_data,
             "genes",
             emapper_version=self.emapper_version,
         )
-
         for self.nseqs, (ref, region_annotation) in enumerate(
             gffdbm.iterate(bufsize=self.dbm_buffersize),
             start=1
@@ -46,11 +44,16 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
                 featureid=None,
                 strand=int(strand == "+") if strand is not None else None,
             )
+            annotation = (
+                (category, set(features).difference({"-"}))
+                for category, features in region_annotation[1:]
+            )
 
             annotation = [
-                (category, set(features.strip().split(",")))
-                for category, features in region_annotation[1:]
-                if features.strip() != self.na_char
+                (category, features)
+                for category, features in annotation
+                if features
             ]
 
-            yield seq_feature, annotation
+            if annotation:
+                yield seq_feature, annotation

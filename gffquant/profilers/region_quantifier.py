@@ -7,7 +7,7 @@ import logging
 from ..db.annotation_db import AnnotationDatabaseManager
 from .feature_quantifier import FeatureQuantifier
 
-from .. import __tool__
+from .. import __tool__, DistributionMode, RunMode
 
 logger = logging.getLogger(__name__)
 
@@ -18,18 +18,18 @@ class RegionQuantifier(FeatureQuantifier):
         self,
         db=None,
         out_prefix=__tool__,
-        ambig_mode="uniq_only",
+        distribution_mode=DistributionMode.ONE_OVER_N,
         strand_specific=False,
         paired_end_count=1,
-        reference_type="genome",
+        run_mode=RunMode.DOMAIN,
     ):
         FeatureQuantifier.__init__(
             self,
             db=db,
             out_prefix=out_prefix,
-            ambig_mode=ambig_mode,
+            distribution_mode=distribution_mode,
             strand_specific=strand_specific,
-            reference_type=reference_type,
+            run_mode=run_mode,
             paired_end_count=paired_end_count,
         )
 

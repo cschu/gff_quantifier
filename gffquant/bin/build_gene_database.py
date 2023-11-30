@@ -46,11 +46,12 @@ def main():
     if args.initialise_db and not args.extract_map_only:
         initialise_db(engine)
 
-    _ = GqGeneDatabaseImporter(
-        args.input_data,
+    GqGeneDatabaseImporter(
         db_path=args.db_path,
         db_session=db_session,
         emapper_version=args.emapper_version,
+    ).build_database(
+        args.input_data,
     )
 
     improve_concurrent_read_access(args.db_path)

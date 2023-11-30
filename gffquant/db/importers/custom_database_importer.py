@@ -14,36 +14,22 @@ logger = logging.getLogger(__name__)
 class GqCustomDatabaseImporter(GqDatabaseImporter):
     def __init__(
         self,
-        input_data,
         db_path=None,
         db_session=None,
-        db_engine=None,
         columns=None,
+        skip_header_lines=0,
         header=None,
         delimiter="\t",
     ):
+
         self.columns = columns
-        self.header = header
+        self.header = header.split(",") if header is not None else None
         self.delimiter = delimiter
+        self.skip_header_lines = skip_header_lines
 
-        super().__init__(input_data, db_path=db_path, db_session=db_session, db_engine=db_engine)
+        super().__init__(db_path=db_path, db_session=db_session)
 
-    def parse_annotations(self, _in):
-        if self.header:
-            try:
-                _ = [next(_in) for _ in range(self.header - 1)]
-            except StopIteration as exc:
-                msg = f"Reached end of annotation file while skipping header comments ({self.header})."
-                logging.error(f"    {msg}")
-                raise ValueError(msg) from exc
-
-        try:
-            header_line = next(_in).decode().strip().strip("#").split(self.delimiter)
-        except StopIteration as exc:
-            msg = "Reached end of annotation file while parsing header line."
-            logging.error(f"    {msg}")
-            raise ValueError(msg) from exc
-
+    def _validate_category_columns(self, header_line):
         category_cols = set(self.columns) if self.columns is not None else header_line[1:]
         logging.info("    Got header: %s", header_line)
         logging.info("    Got columns: %s", category_cols)
@@ -51,24 +37,52 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
         if self.columns is not None:
             for col in category_cols:
                 if col not in header_line:
-                    logging.error("    column %s is not present in headers", col)
-                    raise ValueError(f"column {col} is not present in headers.")
+                    msg = f"column {col} is not present in headers."
+                    logging.error(msg)
+                    raise ValueError(msg)
 
-        for self.nseqs, line in enumerate(_in, start=1):
+        return category_cols
+
+    def parse_annotations(self, input_data, input_data2=None):
+        if self.skip_header_lines > 0:
+            try:
+                _ = [next(input_data) for _ in range(self.header - 1)]
+            except StopIteration as exc:
+                msg = f"Reached end of annotation file while skipping header comments ({self.header})."
+                logging.error(f"    {msg}")
+                raise ValueError(msg) from exc
+
+        if self.header is None:
+            try:
+                header_line = next(input_data).decode().strip().strip("#").split(self.delimiter)
+            except StopIteration as exc:
+                msg = "Reached end of annotation file while parsing header line."
+                logging.error(f"    {msg}")
+                raise ValueError(msg) from exc
+        else:
+            header_line = self.header
+
+        category_cols = self._validate_category_columns(header_line)
+
+        for self.nseqs, line in enumerate(input_data, start=1):
             line = line.decode()
             if line and line[0] != "#":
                 line = line.strip().split(self.delimiter)
-                line_d = dict(zip(header_line, line))
-
-                seq_feature = db.AnnotatedSequence(
-                    seqid=line[0],
-                    featureid=None,
-                )
+                columns = {
+                    colname: coldata.strip()
+                    for colname, coldata in zip(header_line, line)
+                    if colname in category_cols
+                }
 
                 annotation = [
-                    (category, set(features.strip().split(",")))
-                    for category, features in line_d.items()
-                    if features.strip() != self.na_char and features.strip()
+                    (category, tuple(features.split(",")))
+                    for category, features in columns.items()
+                    if features and features != self.na_char
                 ]
 
-                yield seq_feature, annotation
+                if annotation:
+                    seq_feature = db.AnnotatedSequence(
+                        seqid=line[0],
+                        featureid=None,
+                    )
+                    yield seq_feature, annotation

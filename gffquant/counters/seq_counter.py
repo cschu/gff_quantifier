@@ -2,6 +2,7 @@
 
 """ module docstring """
 
+from .. import DistributionMode
 from .alignment_counter import AlignmentCounter
 
 
@@ -39,7 +40,7 @@ class UniqueSeqCounter(AlignmentCounter):
 
 
 class AmbiguousSeqCounter(AlignmentCounter):
-    def __init__(self, strand_specific=False, distribution_mode="1overN"):
+    def __init__(self, strand_specific=False, distribution_mode=DistributionMode.ONE_OVER_N):
         AlignmentCounter.__init__(
             self, distribution_mode=distribution_mode, strand_specific=strand_specific
         )

@@ -4,12 +4,12 @@
 import argparse
 import logging
 import os
+import pathlib
 import textwrap
 
-from . import __version__
-from . import __tool__
+from . import __version__, __tool__, DistributionMode, RunMode
 
-from .ui.validation import check_bwa_index, check_minimap2_index
+from .ui.validation import check_bwa_index, check_minimap2_index, check_input_reads
 
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,12 @@ def validate_args(args):
 
     logger.info(f"args: {args.__dict__}")
 
-    if not os.path.isfile(args.annotation_db):
+    args.run_mode = RunMode.parse(args.mode)
+    args.distribution_mode = DistributionMode.parse(args.ambig_mode)
+
+    db_files = args.annotation_db.split(",") if args.annotation_db else [None]
+
+    if not all(os.path.isfile(f) for f in db_files):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
     if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
         raise ValueError(f"Cannot find reference index at `{args.reference}`.")
@@ -44,6 +49,12 @@ def validate_args(args):
     if bool(args.reference and args.aligner) != has_fastq:
         raise ValueError("--fastq requires --reference and --aligner to be set.")
 
+    if args.input_type == "fastq":
+        args.input_data = check_input_reads(
+            fwd_reads=args.reads1, rev_reads=args.reads2,
+            single_reads=args.singles, orphan_reads=args.orphans,
+        )
+
     if args.restrict_metrics:
         restrict_metrics = set(args.restrict_metrics.split(","))
         invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
@@ -53,6 +64,11 @@ def validate_args(args):
 
     if os.path.isdir(os.path.dirname(args.out_prefix)) and not args.force_overwrite:
         raise ValueError(f"Output directory exists {os.path.dirname(args.out_prefix)}. Specify -f to overwrite.")
+
+    if os.path.dirname(args.out_prefix):
+        pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(
+            exist_ok=True, parents=True
+        )
 
     return args
 
@@ -221,8 +237,8 @@ def handle_args(args):
         "--mode",
         "-m",
         type=str,
-        default="genome",
-        choices=("genome", "genes", "gene", "domain"),
+        default="genes",
+        choices=("small_genome", "genome_catalogue", "genes", "gene", "domain"),
         help=textwrap.dedent(
             """\
             Run mode:"
