@@ -30,7 +30,7 @@ class GqDatabaseImporter(ABC):
 
     def extract_features(self, columns):
 
-        for category, features in columns.items():
+        for category, features in columns:
             if features and features != self.na_char and category != "COG_category":
                 yield category, tuple(set(sorted(features.split(","))))
 

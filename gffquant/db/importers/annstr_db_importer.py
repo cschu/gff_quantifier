@@ -90,7 +90,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                 # )
                 annotation = tuple(
                     (category, features)
-                    for category, features in self.extract_features(columns)
+                    for category, features in self.extract_features(columns.items())
                     if category not in (self.seq_column, self.seqid_column)
                 )
 
