@@ -29,6 +29,23 @@ class GqDatabaseImporter(ABC):
         self.na_char = na_char
 
     @staticmethod
+    def extract_features(columns):
+        annotation = [
+            (category, tuple(features.split(",")))
+            for category, features in columns.items()
+            if features and features != "-" and category != "COG_category"
+        ]
+
+        cog_category = columns.get("COG_category")
+        if cog_category and cog_category != "-":
+            cog_category = cog_category.replace(",", "")
+            if len(cog_category) > 1:
+                annotation.append(("COG_category_composite", cog_category))
+            annotation.append(("COG_category", tuple(cog_category)))
+
+        return annotation
+    
+    @staticmethod
     def get_open_function(f):
         """ Returns a file open function corresponding to gzip-compression status. """
         gz_magic = b"\x1f\x8b\x08"
