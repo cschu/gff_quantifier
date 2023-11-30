@@ -45,7 +45,7 @@ class GqDatabaseImporter(ABC):
             if len(cog_category) > 1:
                 # composites need to be passed as 1-tuples,
                 # otherwise downstream ops with iterate over the string!
-                annotation.append(("COG_category_composite", tuple(cog_category,)))
+                annotation.append(("COG_category_composite", (cog_category,)))
             annotation.append(("COG_category", tuple(cog_category)))
 
         return annotation
