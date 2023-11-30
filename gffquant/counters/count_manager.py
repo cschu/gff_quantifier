@@ -2,8 +2,9 @@
 
 from collections import Counter
 
-from .region_counter import UniqueRegionCounter, AmbiguousRegionCounter
-from .seq_counter import UniqueSeqCounter, AmbiguousSeqCounter
+from .. import DistributionMode
+from .alignment_counter import AlignmentCounter
+from .region_counter import RegionCounter
 
 
 # pylint: disable=R0902
@@ -38,7 +39,7 @@ class CountManager:
     def __init__(
         # pylint: disable=W0613,R0913
         self,
-        distribution_mode="1overN",
+        distribution_mode=DistributionMode.ONE_OVER_N,
         region_counts=True,
         strand_specific=False,
         paired_end_count=1,
@@ -53,15 +54,15 @@ class CountManager:
         self.uniq_regioncounts, self.ambig_regioncounts = None, None
 
         if region_counts:
-            self.uniq_regioncounts = UniqueRegionCounter(strand_specific=strand_specific)
-            self.ambig_regioncounts = AmbiguousRegionCounter(
+            self.uniq_regioncounts = RegionCounter(strand_specific=strand_specific)
+            self.ambig_regioncounts = RegionCounter(
                 strand_specific=strand_specific,
                 distribution_mode=distribution_mode,
             )
 
         else:
-            self.uniq_seqcounts = UniqueSeqCounter(strand_specific=strand_specific)
-            self.ambig_seqcounts = AmbiguousSeqCounter(
+            self.uniq_seqcounts = AlignmentCounter(strand_specific=strand_specific)
+            self.ambig_seqcounts = AlignmentCounter(
                 strand_specific=strand_specific,
                 distribution_mode=distribution_mode
             )
@@ -90,9 +91,11 @@ class CountManager:
             increment = self.increments[pair]
 
         if seq_counter is not None:
-            seq_counter.update_counts(count_stream, increment=increment)
+            contributed_counts = seq_counter.update_counts(count_stream, increment=increment)
         elif region_counter is not None:
-            region_counter.update_counts(count_stream, increment=increment)
+            contributed_counts = region_counter.update_counts(count_stream, increment=increment)
+
+        return contributed_counts
 
     def dump_raw_counters(self, prefix, refmgr):
         if self.uniq_seqcounts is not None:

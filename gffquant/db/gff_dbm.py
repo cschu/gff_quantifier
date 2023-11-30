@@ -1,4 +1,5 @@
 # pylint: disable=C0103,R0903,W1514,R1702
+# pylint: disable=duplicate-code
 
 """ module docstring """
 
@@ -7,6 +8,8 @@ import gzip
 from functools import lru_cache
 
 from intervaltree import IntervalTree
+
+from .. import RunMode
 
 
 class EmapperFormat:
@@ -137,13 +140,17 @@ class GffDatabaseManager:
                 line = line.strip().split("\t")
                 self.db_index.setdefault(line[0], []).append(list(map(int, line[1:3])))
 
-    def __init__(self, db, reference_type, db_index=None, emapper_version="v2"):
-        gz_magic = b"\x1f\x8b\x08"
-        # pylint: disable=R1732,W0511
-        gzipped = open(db, "rb").read(3).startswith(gz_magic)
-        # TODO: can dbm be written as contextmanager?
-        _open = gzip.open if gzipped else open
-        self.reference_type = reference_type
+    def __init__(self, db, run_mode, db_index=None, emapper_version="v2"):
+        if isinstance(db, str):
+            gz_magic = b"\x1f\x8b\x08"
+            # pylint: disable=R1732,W0511
+            gzipped = open(db, "rb").read(3).startswith(gz_magic)
+            # TODO: can dbm be written as contextmanager?
+            _open = gzip.open if gzipped else open
+            stream = _open(db, "rt")
+        else:
+            stream = db
+        self.run_mode = run_mode
         if db_index:
             if gzipped:
                 raise ValueError(
@@ -152,20 +159,22 @@ class GffDatabaseManager:
                 )
             self._read_index(db_index)
             self.db = _open(db, "rt")
-        elif self.reference_type == "domain":  # bed
+        elif self.run_mode == RunMode.DOMAIN:  # bed
             self.db = {}
-            for line in _open(db, "rt"):
+            # for line in _open(db, "rt"):
+            for line in stream:
                 line = line.strip().split("\t")
                 self.db.setdefault(line[0], {}).setdefault(
                     (int(line[1]), int(line[2])), []
                 ).append(line[3])
         else:
-            _open = gzip.open if gzipped else open
-            self.db = _open(db, "rb")
+            # _open = gzip.open if gzipped else open
+            # self.db = _open(db, "rb")
+            self.db = stream
             self.db_index = None
 
         self.emapper_format = EMAPPER_FORMATS.get(emapper_version)
-        if self.reference_type in ("gene", "genes") and not self.emapper_format:
+        if self.run_mode == RunMode.GENE and not self.emapper_format:
             raise ValueError(
                 f"Cannot find emapper parse instructions for version {emapper_version}."
             )
@@ -200,7 +209,7 @@ class GffDatabaseManager:
 
     @lru_cache(maxsize=4096)
     def _get_tree(self, ref, cache_data=False):
-        if self.reference_type == "domain":
+        if self.run_mode == RunMode.DOMAIN:
             return IntervalTree.from_tuples(
                 sorted((start, end) for start, end in self.db.get(ref, {}))
             )
@@ -212,7 +221,7 @@ class GffDatabaseManager:
         )
 
     def get_data(self, ref, start, end):
-        if self.reference_type == "domain":
+        if self.run_mode == RunMode.DOMAIN:
             dom_features = self.db.get(ref, {}).get((start, end), [])
             features = (("strand", None), ("ID", ref))
             features += (("domtype", tuple(dom_features)),)

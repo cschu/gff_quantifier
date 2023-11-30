@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0914
+# pylint: disable=C0103,R0914,W1203
 
 """ module docstring """
 
@@ -8,115 +8,127 @@ import logging
 import os
 import time
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections import Counter
+from dataclasses import dataclass
 
 from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import CountManager
 from ..db.annotation_db import AnnotationDatabaseManager
 
-from .. import __tool__
+from .. import __tool__, DistributionMode, RunMode
 
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class ReferenceHit:
+    rid: int = None
+    start: int = None
+    end: int = None
+    rev_strand: bool = None
+    cov_start: int = None
+    cov_end: int = None
+    has_annotation: bool = None
+
+    def __hash__(self):
+        return hash(tuple(self.__dict__.values()))
+
+    def __eq__(self, other):
+        return all(
+            item[0][1] == item[1][1]
+            for item in zip(
+                sorted(self.__dict__.items()),
+                sorted(other.__dict__.items())
+            )
+        )
+
+    def __str__(self):
+        return "\t".join(map(str, self.__dict__.values()))
+
+    def __repr__(self):
+        return str(self)
+
+
 class FeatureQuantifier(ABC):
+    """
+        Three groups of alignments:
+        1. Ambiguous alignments ('multimappers')
+        - single-end
+        - input orphans
+        - newly orphaned (one mate didn't align)
+        - complete pairs
+        2. Properly aligning pairs, which have to be
+        + unique (each mate aligns once)
+        + concordant (mates align to the same reference)
+        3. Other uniques. Here we could have uniquely aligning
+        - single-end reads
+        - input orphan reads
+        - newly orphaned reads, e.g. if only one mate of an input pair aligns
+        - pairs, with mates aligning to different references
+            -> i.e. reads could be derived from either kind of library
+        - these could also be multimappers in all1-mode!
+        """
     # pylint: disable=R0902,R0913
-    TRUE_AMBIG_MODES = ("dist1", "1overN")
 
     def __init__(
         self,
         db=None,
         out_prefix=__tool__,
-        ambig_mode="unique_only",
-        reference_type="genome",
+        distribution_mode=DistributionMode.ONE_OVER_N,
+        run_mode=RunMode.GENE,
         strand_specific=False,
         paired_end_count=1,
     ):
         self.aln_counter = Counter()
         self.db = db
         self.adm = None
-        self.do_overlap_detection = reference_type in ("genome", "domain")
-        self.reference_type = reference_type
+        self.run_mode = run_mode
         self.count_manager = CountManager(
-            distribution_mode=ambig_mode,
-            region_counts=reference_type in ("genome", "domain"),
-            strand_specific=strand_specific and reference_type not in ("genome", "domain"),
+            distribution_mode=distribution_mode,
+            region_counts=run_mode.overlap_required,
+            strand_specific=strand_specific and not run_mode.overlap_required,
             paired_end_count=paired_end_count,
         )
         self.out_prefix = out_prefix
-        self.ambig_mode = ambig_mode
-        self.bamfile = None
-        self.alp = None
+        self.distribution_mode = distribution_mode
         self.reference_manager = {}
         self.strand_specific = strand_specific
 
-    def allow_ambiguous_alignments(self):
-        """All distribution modes support ambiguous alignments,
-        with the exception of `unique_only."""
-        return self.ambig_mode != "unique_only"
-
-    def treat_ambiguous_as_unique(self):
-        """In 'non-true' ambig modes (all1, primary_only),
-        ambiguous alignments are treated as unique alignments."""
-        return self.ambig_mode not in FeatureQuantifier.TRUE_AMBIG_MODES
-
-    def require_ambig_bookkeeping(self):
-        """'Ambiguous bookkeeping' is a special treatment for true ambig modes.
-        It requires all alignments of a read to be processed together."""
-        return (
-            self.allow_ambiguous_alignments() and not self.treat_ambiguous_as_unique()
-        )
-
-    def process_alignments_sameref(self, ref, alignments, aln_count=1):
+    def check_hits(self, ref, aln):
+        """ Check if an alignment hits a region of interest on a reference sequence.
+            - in overlap modes, this performs an overlap check against the annotation database
+            - in gene mode, every alignment is a hit
+            - Returns
+              - `has_target`, indicating if the reference sequence contains one or more potential hits
+              - list of hits (alignment can overlap multiple regions)
         """
-        Process a group of alignments against the same reference sequence.
+        if self.run_mode.overlap_required:
+            overlaps = self.adm.get_overlaps(
+                ref, aln.start, aln.end,
+                domain_mode=self.run_mode == RunMode.DOMAIN
+            )
 
-        The weird output format is due to compatibility reasons with ambiguous alignments
-        when one of the TRUE_AMBIG_MODES is chosen.
+            has_target, *_ = next(overlaps)
 
-        input:
-          - reference clear text identifier (required for overlap detection)
-          - list of alignments (reference short id, start, end, is_reverse)
+            hits = [
+                ReferenceHit(
+                    rid=aln.rid,
+                    start=start,
+                    end=end,
+                    rev_strand=aln.is_reverse(),
+                    has_annotation=(dbseq is not None and dbseq.annotation_str)
+                )
+                for _, start, end, dbseq in overlaps
+            ]
 
-        output:
-          - generator! with the following items:
-            in overlap mode:
-              {reference_id:
-                  [(begin overlap, end overlap,
-				    is_reverse, begin covered region, end covered region)
-               for each overlapped region]}
-                  + alignment count: 1 if the alignment overlaps any region of interest, else 0
-                  + unalignment count: 1 - alignment count
-            else:
-                  {reference_id:(-1, -1, is_reverse, -1, -1)
-                  + alignment count: 1
-				  (each reference is already a feature, i.e. everything is aligned)
-                  + unalignment count: 0
-        """
+        else:
 
-        for rid, start, end, rev_strand in alignments:
-            if self.do_overlap_detection:
+            has_target, hits = True, [ReferenceHit(rid=aln.rid, rev_strand=aln.is_reverse())]
 
-                hits = {
-                    (sstart, send, rev_strand, None, None)
-                    for (sstart, send)
-                    in self.adm.get_overlaps(
-                        ref, start, end,
-                        domain_mode=self.reference_type == "domain",
-                    )
-                }
-
-                # if the alignment overlaps multiple features, each one gets a count
-                aln_count = int(bool(hits)) * aln_count
-
-            else:
-                hits = {(None, None, rev_strand, None, None)}
-                # aln_count = 1 / aln_count
-
-            yield ({rid: hits}, aln_count, 0 if aln_count else 1)
+        return has_target, hits
 
     def process_counters(
         self,
@@ -133,8 +145,8 @@ class FeatureQuantifier(ABC):
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
-        annotator_type = (GeneCountAnnotator, RegionCountAnnotator)[self.do_overlap_detection]
-        count_annotator = annotator_type(self.strand_specific, report_scaling_factors=report_scaling_factors)
+        Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
+        count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
         count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
 
         count_writer = CountWriter(
@@ -175,10 +187,6 @@ class FeatureQuantifier(ABC):
 
         return new_ref[0]
 
-    @abstractmethod
-    def process_alignment_group(self, aln_group, aln_reader):
-        ...
-
     def process_alignments(self, aln_reader, min_identity=None, min_seqlen=None, unmarked_orphans=False):
         # pylint: disable=R0914
         t0 = time.time()
@@ -186,9 +194,8 @@ class FeatureQuantifier(ABC):
         aln_stream = aln_reader.get_alignments(
             min_identity=min_identity,
             min_seqlen=min_seqlen,
-            allow_multiple=self.allow_ambiguous_alignments(),
-            allow_unique=True,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
+            filtered_sam=f"{self.out_prefix}.filtered.sam",
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)
@@ -196,11 +203,8 @@ class FeatureQuantifier(ABC):
         aln_count = 0
         read_count = 0
         current_aln_group = None
+
         for aln_count, aln in enumerate(aln_stream, start=1):
-            if self.ambig_mode == "primary_only" and not aln.is_primary():
-                continue
-            if self.ambig_mode in ("uniq_only", "unique_only") and not aln.is_unique():
-                continue
 
             if current_aln_group is None or current_aln_group.qname != aln.qname:
                 if current_aln_group is not None:
@@ -313,9 +317,6 @@ class FeatureQuantifier(ABC):
                 dump_counters=dump_counters,
             )
 
-            # for metric, value in self.aln_counter.items():
-            #     logger.info("%s: %s", metric, value)
-
             for metric, value in (
                 ("Input reads", "full_read_count"),
                 ("Aligned reads", "read_count"),
@@ -335,3 +336,68 @@ class FeatureQuantifier(ABC):
             )
 
         logger.info("Finished.")
+
+    def process_alignment_group(self, aln_group, aln_reader):
+        """ Checks an alignment group for hits and passes the hit list
+        to the counters.
+        """
+        is_ambiguous_group = aln_group.is_ambiguous()
+        is_ambig_alignment = self.distribution_mode.require_ambig_tracking and is_ambiguous_group
+
+        keep_group = True
+
+        if is_ambiguous_group and not self.distribution_mode.allow_ambiguous:
+            # if the alignment group has ambiguous alignments, but we don't allow them: get out
+            keep_group = False
+
+        elif not self.distribution_mode.allow_secondary:
+            # if we only allow primary alignments, clear the secondaries
+            _ = [lst.clear() for lst in aln_group.secondaries]
+
+            keep_group = bool(aln_group.primaries)
+
+        if keep_group:
+            # hit counts are mode-dependent:
+            # ambiguous alignments in true ambig modes require the number of alternative locations
+            # (we handle first/second PE-alignments separately, hence a two-element list)
+            # otherwise the hit count is always 1
+            ambig_hit_counts = [0, 0]
+            all_hits = []
+
+            # process each alignment of the group individually
+            for aln in aln_group.get_alignments():
+                current_ref = self.register_reference(aln.rid, aln_reader)
+                # check for region hits (in overlap modes, otherwise alignments always hit)
+                has_target, hits = self.check_hits(current_ref, aln)
+                if has_target and hits:
+                    if is_ambig_alignment:
+                        # update the hit counts
+                        ambig_hit_counts[aln.is_second()] += 1
+                    all_hits.append((aln, hits))
+
+            # pass the hit lists to the counters
+            count_stream = (
+                (aln_hits, ambig_hit_counts[aln.is_second()] if is_ambig_alignment else 1)
+                for aln, aln_hits in all_hits
+            )
+
+            contributed_counts = self.count_manager.update_counts(
+                count_stream,
+                ambiguous_counts=is_ambiguous_group,
+                pair=aln_group.is_paired(),
+                pe_library=aln_group.pe_library,
+            )
+
+            msg = f"{ambig_hit_counts=} {contributed_counts=})"
+
+        else:
+
+            msg = f"--> DROPPED distribution_mode={self.distribution_mode.alias}"
+
+        logger.debug(
+            f"aln_group {aln_group.qname} "
+            f"(ambig={is_ambig_alignment} size={aln_group.n_align()} "
+            f"{msg}"
+        )
+
+        return keep_group

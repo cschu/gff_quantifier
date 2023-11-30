@@ -4,19 +4,67 @@
 
 import logging
 import os
-import pathlib
 import sys
 
 # pylint: disable=W0611
-from .db.db_import import SmallDatabaseImporter
+from .db.importers import SmallDatabaseImporter, SmallGenomeDatabaseImporter
 from .handle_args import handle_args
-from .ui.validation import check_input_reads
 from .profilers import GeneQuantifier, RegionQuantifier
 from .runners.alignment_runner import BwaMemRunner, Minimap2Runner
-from . import __version__
+from . import __version__, RunMode
 
 
 logger = logging.getLogger(__name__)
+
+
+def stream_alignments(args, profiler):
+    AlnRunner = {
+        "bwa": BwaMemRunner,
+        "minimap2": Minimap2Runner,
+    }.get(args.aligner)
+
+    if AlnRunner is None:
+        raise ValueError(f"Aligner `{args.aligner}` is not supported.")
+
+    aln_runner = AlnRunner(
+        args.cpus_for_alignment,
+        args.reference,
+        sample_id=os.path.basename(args.out_prefix),
+    )
+
+    for input_type, *reads in args.input_data:
+
+        logger.info("Running %s alignment: %s", input_type, ",".join(reads))
+        proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=args.keep_alignment_file)
+
+        # if proc.returncode != 0:
+        #     logger.error("Encountered problems aligning.")
+        #     logger.error("Aligner call was:")
+        #     logger.error("%s", call)
+        #     logger.error("Shutting down.")
+        #     sys.exit(1)
+
+        # pylint: disable=W0718
+        try:
+
+            profiler.count_alignments(
+                proc.stdout, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
+            )
+
+        except Exception as err:
+            if isinstance(err, ValueError) and str(err).strip() == "file does not contain alignment data":
+                # pylint: disable=W1203
+                logger.error(f"Failed to align. Is `{args.aligner}` installed and on the path?")
+                logger.error("Aligner call was:")
+                logger.error("%s", call)
+                sys.exit(1)
+
+            logger.error("Encountered problems digesting the alignment stream:")
+            logger.error("%s", err)
+            logger.error("Aligner call was:")
+            logger.error("%s", call)
+            logger.error("Shutting down.")
+            sys.exit(1)
 
 
 def main():
@@ -28,31 +76,33 @@ def main():
 
     kwargs = {}
     annotation_db = args.annotation_db
-    if args.mode in ("gene", "genes"):
+    if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier
     else:
-        Quantifier, kwargs["reference_type"] = RegionQuantifier, args.mode
-        if args.mode == "domain":
+        Quantifier, kwargs["run_mode"] = RegionQuantifier, args.run_mode
+        db_args = {}
+        if args.run_mode == RunMode.DOMAIN:
             annotation_db = SmallDatabaseImporter(
-                logger, args.annotation_db, single_category="feature", db_format=args.db_format,
+                single_category="feature", db_format=args.db_format,
             )
-            logger.info("Finished loading database.")
+            db_input = args.annotation_db
+        elif args.run_mode == RunMode.SMALL_GENOME:
+            annotation_db = SmallGenomeDatabaseImporter()
+            try:
+                db_input, db_args["input_data2"] = args.annotation_db.split(",")
+            except ValueError as exc:
+                raise ValueError("Require two input files.") from exc
 
-    if args.input_type == "fastq":
-        input_data = check_input_reads(
-            fwd_reads=args.reads1, rev_reads=args.reads2,
-            single_reads=args.singles, orphan_reads=args.orphans,
+        annotation_db.build_database(
+            db_input,
+            **db_args,
         )
-
-    if os.path.dirname(args.out_prefix):
-        pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(
-            exist_ok=True, parents=True
-        )
+        logger.info("Finished loading database.")
 
     profiler = Quantifier(
         db=annotation_db,
         out_prefix=args.out_prefix,
-        ambig_mode=args.ambig_mode,
+        distribution_mode=args.distribution_mode,
         strand_specific=args.strand_specific,
         paired_end_count=args.paired_end_count,
         **kwargs,
@@ -60,60 +110,12 @@ def main():
 
     if args.input_type == "fastq":
 
-        Aln_runner = {
-            "bwa": BwaMemRunner,
-            "minimap2": Minimap2Runner,
-        }.get(args.aligner)
-
-        if Aln_runner is None:
-            raise ValueError(f"Aligner `{args.aligner}` is not supported.")
-
-        aln_runner = Aln_runner(
-            args.cpus_for_alignment,
-            args.reference,
-            sample_id=os.path.basename(args.out_prefix),
-        )
-
-        for input_type, *reads in input_data:
-
-            logger.info("Running %s alignment: %s", input_type, ",".join(reads))
-            proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=args.keep_alignment_file)
-
-            # if proc.returncode != 0:
-            #     logger.error("Encountered problems aligning.")
-            #     logger.error("Aligner call was:")
-            #     logger.error("%s", call)
-            #     logger.error("Shutting down.")
-            #     sys.exit(1)
-
-            # pylint: disable=W0718
-            try:
-
-                profiler.count_alignments(
-                    proc.stdout, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
-                )
-
-            except Exception as err:
-                if isinstance(err, ValueError) and str(err).strip() == "file does not contain alignment data":
-                    # pylint: disable=W1203
-                    logger.error(f"Failed to align. Is `{args.aligner}` installed and on the path?")
-                    logger.error("Aligner call was:")
-                    logger.error("%s", call)
-                    sys.exit(1)
-
-                logger.error("Encountered problems digesting the alignment stream:")
-                logger.error("%s", err)
-                logger.error("Aligner call was:")
-                logger.error("%s", call)
-                logger.error("Shutting down.")
-                sys.exit(1)
-
-
-
-
+        stream_alignments(args, profiler)
 
     else:
+
         input_file = args.bam if args.input_type == "bam" else args.sam
+
         profiler.count_alignments(
             sys.stdin if input_file == "-" else input_file,
             aln_format=args.input_type,
@@ -125,7 +127,7 @@ def main():
 
     profiler.finalise(
         report_category=True,
-        report_unannotated=args.mode == "genome",
+        report_unannotated=args.run_mode.report_unannotated,
         dump_counters=args.debug,
         restrict_reports=args.restrict_metrics,
     )

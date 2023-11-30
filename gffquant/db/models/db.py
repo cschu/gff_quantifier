@@ -8,6 +8,15 @@ from sqlalchemy.orm import relationship
 from .meta import Base
 
 
+class AnnotationString(Base):
+    __tablename__ = "annotationstring"
+
+    id = Column(Integer, primary_key=True)
+    annotation_hash = Column(String, index=True)
+
+    annotation_str = Column(String)
+
+
 class AnnotatedSequence(Base):
     __tablename__ = "annotatedsequence"
 

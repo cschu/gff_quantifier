@@ -6,3 +6,5 @@ gffquant.egg-info/
 slurm-*
 gffquant/counters/test.py
 *.pyc
+my_tests/
+.vscode/

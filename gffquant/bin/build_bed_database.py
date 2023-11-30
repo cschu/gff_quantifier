@@ -7,37 +7,19 @@ import contextlib
 import gzip
 import json
 import logging
-import sqlite3
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
+from os.path import basename, splitext
 
-from ..db import initialise_db
+from ..db import get_database, initialise_db, improve_concurrent_read_access
 from ..db.models import db
-from ..db.models.meta import Base
+
+from .. import __tool__, __version__
 
 
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(message)s'
 )
-
-
-def get_database(db_path):
-    engine = create_engine(f"sqlite:///{db_path}")
-
-    db_session = scoped_session(
-        sessionmaker(
-            autocommit=False,
-            autoflush=False,
-            enable_baked_queries=True,
-            bind=engine
-        )
-    )
-
-    Base.query = db_session.query_property()
-
-    return engine, db_session
 
 
 def gather_category_and_feature_data(input_data, db_path=None, db_session=None):
@@ -143,16 +125,19 @@ def process_annotations(input_data, db_session, code_map, nseqs):
 
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(prog=f"{__tool__}:{splitext(basename(__file__))[0]}")
     ap.add_argument("db_path", type=str)
     ap.add_argument("input_data", type=str)
     ap.add_argument("--initialise_db", action="store_true")
     ap.add_argument("--code_map", type=str)
     ap.add_argument("--nseqs", type=int)
     ap.add_argument("--extract_map_only", action="store_true")
+    ap.add_argument(
+        "--version", "-v", action="version", version="%(prog)s " + __version__
+    )
     args = ap.parse_args()
 
-    engine, db_session = get_database(args.db_path) if not args.extract_map_only else (None, None)
+    engine, db_session = get_database(args.db_path, in_memory=False) if not args.extract_map_only else (None, None)
 
     if args.initialise_db and not args.extract_map_only:
         initialise_db(engine)
@@ -169,13 +154,7 @@ def main():
 
     process_annotations(args.input_data, db_session, code_map, nseqs)
 
-    # https://www.sqlite.org/wal.html
-    # https://stackoverflow.com/questions/10325683/can-i-read-and-write-to-a-sqlite-database-concurrently-from-multiple-connections
-    # concurrent read-access from more than 3 processes seems to be an issue
-    with sqlite3.connect(args.db_path) as conn:
-        cur = conn.cursor()
-        cur.execute('PRAGMA journal_mode=wal')
-        cur.fetchall()
+    improve_concurrent_read_access(args.db_path)
 
 
 if __name__ == "__main__":

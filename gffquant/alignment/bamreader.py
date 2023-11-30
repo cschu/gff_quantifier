@@ -11,56 +11,11 @@ import struct
 import hashlib
 import re
 
+from .cigarops import CigarOps
+from .samflags import SamFlags
+
 
 # https://stackoverflow.com/questions/22216076/unicodedecodeerror-utf8-codec-cant-decode-byte-0xa5-in-position-0-invalid-s
-
-
-class SamFlags:
-    PAIRED = 0x1
-    PROPERLY_PAIRED = 0x2
-    UNMAPPED = 0x4
-    MATE_UNMAPPED = 0x8
-    REVERSE = 0x10
-    MATE_REVERSE = 0x20
-    FIRST_IN_PAIR = 0x40
-    SECOND_IN_PAIR = 0x80
-    SECONDARY_ALIGNMENT = 0x100
-    QUAL_CHECK_FAILURE = 0x200
-    PCR_OPTICAL_DUPLICATE = 0x400
-    SUPPLEMENTARY_ALIGNMENT = 0x800
-
-    @staticmethod
-    def is_reverse_strand(flag):
-        return bool(flag & SamFlags.REVERSE)
-
-    @staticmethod
-    def is_unmapped(flag):
-        return bool(flag & SamFlags.UNMAPPED)
-
-
-class CigarOps:
-    CIGAR_OPS = "MIDNSHP=X"
-    #  MIDNSHP=X
-    #  012345678; 02378 consume reference: 0000 0010 0011 0111 1000
-    REF_CONSUMERS = {0, 2, 3, 7, 8}
-
-    @staticmethod
-    def parse_cigar(cigar_ops):
-        #  op_len << 4 | op
-        return [(c >> 4, c & 0xF) for c in cigar_ops]
-
-    @staticmethod
-    def show_cigar(cigar):
-        return "".join([f"{c[0]}{CigarOps.CIGAR_OPS[c[1]]}" for c in cigar])
-
-    @staticmethod
-    def calculate_coordinates(start, cigar):
-        return start + CigarOps.calculate_seqlength(cigar)
-
-    @staticmethod
-    def calculate_seqlength(cigar):
-        return sum(oplen for oplen, op in cigar if op in CigarOps.REF_CONSUMERS)
-
 
 class BamAlignment:
     TAG_PARAMS = {
@@ -140,6 +95,9 @@ class BamAlignment:
         self.tlen = tlen
         self.len_seq = len_seq
         self.tags = tags
+        self.read_group = tags.get("RG")
+        if self.read_group not in (1, 2):
+            self.read_group = None
 
     def get_hash(self):
         md5 = hashlib.md5()
@@ -147,11 +105,19 @@ class BamAlignment:
         return int(md5.hexdigest(), 16)
 
     def __str__(self):
-        return (
-            f"{self.rid}:{self.start}-{self.end}"
-            f"({CigarOps.show_cigar(self.cigar)};{self.flag};{self.mapq};{self.tlen})"
-            f"{self.rnext}:{self.pnext}"
+        return "\t".join(
+            map(
+                str,
+                (
+                    self.qname, self.flag, self.rid, self.start, self.end, self.mapq,
+                    CigarOps.show_cigar(self.cigar), self.rnext, self.pnext, self.tlen,
+                    str(self.tags.items())
+                )
+            )
         )
+
+    def __repr__(self):
+        return str(self)
 
     def shorten(self):
         return (self.rid, self.start, self.end, self.is_reverse())
