@@ -5,4 +5,5 @@ channels:
   - defaults
 dependencies:
   - python>=3.7,<3.11
-  - nextflow>=21.10.4
+  - bwa
+  - minimap2
