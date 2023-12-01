@@ -130,7 +130,7 @@ class FeatureQuantifier(ABC):
                     cov_start=ovl_target.cov_start,
                     cov_end=ovl_target.cov_end,
                     # has_annotation=(dbseq is not None and dbseq.annotation_str),
-                    has_annotation=ovl_target.has_annotation(),
+                    has_annotation=ovl_target.has_annotation(),                    
                 )
                 # for _, start, end, dbseq in overlaps
                 for ovl_target in overlaps

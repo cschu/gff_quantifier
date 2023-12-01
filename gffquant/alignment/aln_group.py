@@ -64,6 +64,8 @@ class AlignmentGroup:
         for aln in self.get_alignments():
             if aln.hits:
                 n_aln = (1, self.ambig_hit_counts[aln.is_second()])[is_ambiguous]
+                for hit in aln.hits:
+                    hit.is_ambiguous = is_ambiguous
                 yield aln.hits, n_aln
 
     def get_ambig_align_counts(self):
