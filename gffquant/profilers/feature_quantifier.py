@@ -423,9 +423,10 @@ class FeatureQuantifier(ABC):
             ambig_hit_counts = aln_group.ambig_hit_counts
             msg = f"{ambig_hit_counts=} {contributed_counts=})"            
 
-            for hit, n_aln in count_stream:
-                hit.n_aln = n_aln
-                yield hit
+            for hits, n_aln in count_stream:
+                for hit in hits:
+                    hit.n_aln = n_aln
+                    yield hit
 
         else:
 
