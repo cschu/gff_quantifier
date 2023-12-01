@@ -35,6 +35,7 @@ class ReferenceHit:
     cov_end: int = None
     has_annotation: bool = None
     n_aln: int = None
+    is_ambiguous: bool = None
 
     def __hash__(self):
         return hash(tuple(self.__dict__.values()))
