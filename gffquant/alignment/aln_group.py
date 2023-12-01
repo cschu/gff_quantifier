@@ -66,6 +66,7 @@ class AlignmentGroup:
                 n_aln = (1, self.ambig_hit_counts[aln.is_second()])[is_ambiguous]
                 for hit in aln.hits:
                     hit.is_ambiguous = is_ambiguous
+                    hit.library_mod = [1, 2][self.pe_library]
                 yield aln.hits, n_aln
 
     def get_ambig_align_counts(self):
