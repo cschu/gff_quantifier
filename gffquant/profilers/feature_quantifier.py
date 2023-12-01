@@ -294,7 +294,7 @@ class FeatureQuantifier(ABC):
             unmarked_orphans=unmarked_orphans,
         )
 
-        pd.DataFrame.from_records(hits).to_csv(self.out_prefix + ".hits.tsv", sep="\t")
+        pd.DataFrame(hits).to_csv(self.out_prefix + ".hits.tsv", sep="\t")
 
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter
 
