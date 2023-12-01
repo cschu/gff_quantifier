@@ -60,7 +60,7 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
             #     for category, features in annotation
             #     if features
             # ]
-            annotation = tuple(self.extract_features(region_ann_d.items()))
+            annotation = tuple(self.extract_features(region_ann_d))
 
             if annotation:
                 yield seq_feature, annotation
