@@ -112,7 +112,7 @@ class FeatureQuantifier(ABC):
             overlaps = self.adm.get_overlaps(
                 ref, aln.start, aln.end,
                 domain_mode=self.run_mode == RunMode.DOMAIN,
-                with_overlaps=self.run_mode == RunMode.SMALL_GENOME,
+                with_coverage=self.run_mode == RunMode.SMALL_GENOME,
             )
 
             # has_target, *_ = next(overlaps)
