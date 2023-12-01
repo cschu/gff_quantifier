@@ -224,7 +224,7 @@ class FeatureQuantifier(ABC):
             if not has_target:
                 continue
 
-            self.reference_manager.setdefault(aln.rid, aln.refname)
+            self.reference_manager.setdefault(aln.rid, (aln.refname, aln.reflength))
             
             ac["alignments_on_target"] += 1
 
