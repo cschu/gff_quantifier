@@ -45,6 +45,11 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
                 strand=int(strand == "+") if strand is not None else None,
             )
 
+            region_ann_d = {
+                category: ",".join(features)
+                for category, features in region_annotation[1:]
+            }
+
             # annotation = (
             #     (category, set(features).difference({"-"}))
             #     for category, features in region_annotation[1:]
@@ -55,7 +60,7 @@ class GqGeneDatabaseImporter(GqDatabaseImporter):
             #     for category, features in annotation
             #     if features
             # ]
-            annotation = tuple(self.extract_features(dict(region_annotation[1:])))
+            annotation = tuple(self.extract_features(region_ann_d.items()))
 
             if annotation:
                 yield seq_feature, annotation
