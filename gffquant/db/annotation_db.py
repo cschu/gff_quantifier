@@ -211,7 +211,11 @@ class Dict_ADM(AnnotationDatabaseManager):
 
     def query_sequence_internal(self, seqid, start=None, end=None):
         if start is not None and end is not None:
-            seqs = [seq for seq in self.db.annotations.get(seqid, [None]) if seq.start == start and seq.end == end]
+            seqs = [
+                seq 
+                for seq in self.db.annotations.get(seqid, [])
+                if seq.start == start and seq.end == end
+            ] + [None]
             return seqs[0]
         return self.db.annotations.get(seqid, [None])[0]
 
