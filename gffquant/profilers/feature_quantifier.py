@@ -211,7 +211,7 @@ class FeatureQuantifier(ABC):
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)
-        ac = self.align_counter
+        ac = self.aln_counter
 
         read_count = 0
         current_aln_group = None
