@@ -5,6 +5,7 @@
 import logging
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from functools import lru_cache
 
 from intervaltree import IntervalTree
@@ -15,6 +16,23 @@ from .importers import GqDatabaseImporter
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class OverlapResultHeader:
+    has_target: bool
+
+@dataclass
+class OverlapTarget:
+    start: int = None
+    end: int = None
+    seq_feature: db.AnnotatedSequence = None
+    cov_start: int = None
+    cov_end: int = None
+
+    def has_annotation(self):
+        return self.seq_feature is not None and bool(self.seq_feature.annotation_str)
+
 
 
 class AnnotationDatabaseManager(ABC):
@@ -66,24 +84,28 @@ class AnnotationDatabaseManager(ABC):
         # pylint: disable=W2301
         ...
 
-    def get_interval_tree_overlaps(self, seqid, qstart, qend):
+    def get_interval_tree_overlaps(self, seqid, qstart, qend, with_coverage=False):
         db_sequences = {
             (seq.start, seq.end + 1): seq
             for seq in self.get_db_sequence(seqid)
         }
 
-        yield bool(db_sequences), None, None, None
+        # yield bool(db_sequences), None, None, None
+        yield OverlapResultHeader(bool(db_sequences))
 
         itree = IntervalTree.from_tuples(db_sequences)
 
         for interval in itree[qstart:qend + 1]:
-            yield None, interval.begin, interval.end - 1, db_sequences.get((interval.begin, interval.end))
+            # yield None, interval.begin, interval.end - 1, db_sequences.get((interval.begin, interval.end))
+            cov_start, cov_end = (max(qstart, interval.begin), min(qend, interval.end - 1)) if with_coverage else (None, None)
+            yield OverlapTarget(interval.begin, interval.end - 1, db_sequences.get((interval.begin, interval.end)), cov_start, cov_end)
 
     def get_interval_overlaps(self, seqid, qstart, qend):
         """ return all intervals overlapping the query read """
         db_sequences = self.get_db_sequence(seqid)
 
-        yield bool(db_sequences), None, None, None
+        # yield bool(db_sequences), None, None, None
+        yield OverlapResultHeader(bool(db_sequences))
 
         for seq in db_sequences:
             # we're assuming
@@ -92,7 +114,8 @@ class AnnotationDatabaseManager(ABC):
             if qend < seq.start - 1 or seq.end - 1 < qstart:
                 continue
 
-            yield None, seq.start, seq.end, None
+            # yield None, seq.start, seq.end, None
+            yield OverlapTarget(seq.start, seq.end, None)
 
             # interval = seq.start, seq.end
             # sstart, send = seq.start - 1, seq.end
@@ -119,7 +142,7 @@ class AnnotationDatabaseManager(ABC):
             return (max(qstart, sstart), send)
         raise ValueError(f"Cannot happen. interval=({sstart}, {send}) vs ({qstart}, {qend})")
 
-    def get_overlaps(self, seqid, start, end, domain_mode=False):
+    def get_overlaps(self, seqid, start, end, domain_mode=False, with_coverage=False):
 
         # def calc_covered_fraction(start, end, interval):
         #     if interval.begin <= start <= end <= interval.end:
@@ -133,7 +156,7 @@ class AnnotationDatabaseManager(ABC):
         if domain_mode:
             return self.get_interval_overlaps(seqid, start, end)
 
-        return self.get_interval_tree_overlaps(seqid, start, end)
+        return self.get_interval_tree_overlaps(seqid, start, end, with_coverage=with_coverage)
 
         # return (
         #     (interval.begin + 1, interval.end)

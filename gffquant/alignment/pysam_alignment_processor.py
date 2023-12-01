@@ -153,7 +153,8 @@ class AlignmentProcessor:
 
                         # rname = self.aln_stream.get_reference_name(pysam_aln.reference_id)
                         rname = pysam_aln.reference_name
-                        self.used_refs[pysam_aln.reference_id] = rname, self.aln_stream.get_reference_length(rname)
+                        rlength = self.aln_stream.get_reference_length(rname)
+                        self.used_refs[pysam_aln.reference_id] = rname, rlength
 
                         if last_passed_read is None or pysam_aln.qname != last_passed_read:
                             last_passed_read = pysam_aln.qname
@@ -162,4 +163,4 @@ class AlignmentProcessor:
                         if filtered_sam is not None:
                             print(pysam_aln.to_string(), file=filtered_out)
 
-                        yield BamAlignment.from_pysam_alignment(pysam_aln)
+                        yield BamAlignment.from_pysam_alignment(pysam_aln, rlength)

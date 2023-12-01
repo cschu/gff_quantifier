@@ -12,6 +12,8 @@ from abc import ABC
 from collections import Counter
 from dataclasses import dataclass
 
+import pandas as pd
+
 from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import CountManager
@@ -32,6 +34,7 @@ class ReferenceHit:
     cov_start: int = None
     cov_end: int = None
     has_annotation: bool = None
+    n_aln: int = None
 
     def __hash__(self):
         return hash(tuple(self.__dict__.values()))
@@ -108,20 +111,29 @@ class FeatureQuantifier(ABC):
         if self.run_mode.overlap_required:
             overlaps = self.adm.get_overlaps(
                 ref, aln.start, aln.end,
-                domain_mode=self.run_mode == RunMode.DOMAIN
+                domain_mode=self.run_mode == RunMode.DOMAIN,
+                with_overlaps=self.run_mode == RunMode.SMALL_GENOME,
             )
 
-            has_target, *_ = next(overlaps)
+            # has_target, *_ = next(overlaps)
+            # interrogate overlap stream header if overlaps were found
+            has_target = next(overlaps).has_target
 
             hits = [
                 ReferenceHit(
                     rid=aln.rid,
-                    start=start,
-                    end=end,
+                    # start=start,
+                    start=ovl_target.start,
+                    # end=end,
+                    end = ovl_target.end,
                     rev_strand=aln.is_reverse(),
-                    has_annotation=(dbseq is not None and dbseq.annotation_str)
+                    cov_start=ovl_target.cov_start,
+                    cov_end=ovl_target.cov_end,
+                    # has_annotation=(dbseq is not None and dbseq.annotation_str),
+                    has_annotation=ovl_target.has_annotation(),
                 )
-                for _, start, end, dbseq in overlaps
+                # for _, start, end, dbseq in overlaps
+                for ovl_target in overlaps
             ]
 
         else:
@@ -199,16 +211,27 @@ class FeatureQuantifier(ABC):
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)
+        ac = self.align_counter
 
-        aln_count = 0
         read_count = 0
         current_aln_group = None
+        for ac["aln_count"], aln in enumerate(aln_stream, start=1):
 
-        for aln_count, aln in enumerate(aln_stream, start=1):
+            has_target, aln.hits = self.check_hits(aln.refname, aln)
+            # do we care about alignments to unannotated regions?
+            # for quantification purposes i'd say, we don't, but maybe
+            # this needs to be a user-defined option
+            if not has_target:
+                continue
+
+            self.reference_manager.setdefault(aln.rid, aln.refname)
+            
+            ac["alignments_on_target"] += 1
 
             if current_aln_group is None or current_aln_group.qname != aln.qname:
                 if current_aln_group is not None:
-                    self.process_alignment_group(current_aln_group, aln_reader)
+                    for hit in self.process_alignment_group(current_aln_group, aln_reader):
+                        yield hit
                 current_aln_group = AlignmentGroup()
                 read_count += 1
 
@@ -218,15 +241,16 @@ class FeatureQuantifier(ABC):
             current_aln_group.add_alignment(aln)
 
         if current_aln_group is not None:
-            self.process_alignment_group(current_aln_group, aln_reader)
+            for hit in self.process_alignment_group(current_aln_group, aln_reader):
+                yield hit
 
-        if aln_count == 0:
+        if ac["aln_count"] == 0:
             logger.warning("No alignments present in stream.")
 
         t1 = time.time()
-        logger.info("Processed %s reads (%s alignments) in %s.", read_count, aln_count, f"{t1 - t0:.3f}s")
+        logger.info("Processed %s reads (%s alignments) in %s.", read_count, ac["aln_count"], f"{t1 - t0:.3f}s")
 
-        return aln_count, read_count, 0, None
+
 
     @staticmethod
     def get_readcount(internal_readcounts, external_readcounts, verbose=True):
@@ -263,24 +287,24 @@ class FeatureQuantifier(ABC):
     ):
         aln_reader = AlignmentProcessor(aln_stream, aln_format)
 
-        aln_count, _, unannotated_ambig, _ = self.process_alignments(
+        hits = self.process_alignments(
             aln_reader,
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             unmarked_orphans=unmarked_orphans,
         )
 
+        pd.DataFrame.from_records(hits).to_csv(self.out_prefix + ".hits.tsv", sep="\t")
+
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter
 
         if external_readcounts is not None:
-            full_readcount = external_readcounts
-            # FeatureQuantifier.get_readcount(full_read_count, external_readcounts)
+            full_readcount = external_readcounts            
 
         self.aln_counter.update(
-            {
-                "aln_count": aln_count,
+            {                
                 "read_count": read_count,
-                "unannotated_ambig": unannotated_ambig,
+                "unannotated_ambig": 0,
                 "full_read_count": full_readcount,
                 "filtered_read_count": filtered_readcount,
             }
@@ -337,6 +361,9 @@ class FeatureQuantifier(ABC):
 
         logger.info("Finished.")
 
+    def evaluate_alignment_group(self, aln_group, is_ambig_alignment):
+        ...
+
     def process_alignment_group(self, aln_group, aln_reader):
         """ Checks an alignment group for hits and passes the hit list
         to the counters.
@@ -357,29 +384,35 @@ class FeatureQuantifier(ABC):
             keep_group = bool(aln_group.primaries)
 
         if keep_group:
-            # hit counts are mode-dependent:
-            # ambiguous alignments in true ambig modes require the number of alternative locations
-            # (we handle first/second PE-alignments separately, hence a two-element list)
-            # otherwise the hit count is always 1
-            ambig_hit_counts = [0, 0]
-            all_hits = []
+            # # hit counts are mode-dependent:
+            # # ambiguous alignments in true ambig modes require the number of alternative locations
+            # # (we handle first/second PE-alignments separately, hence a two-element list)
+            # # otherwise the hit count is always 1
+            # ambig_hit_counts = [0, 0]
+            # all_hits = []
 
-            # process each alignment of the group individually
-            for aln in aln_group.get_alignments():
-                current_ref = self.register_reference(aln.rid, aln_reader)
-                # check for region hits (in overlap modes, otherwise alignments always hit)
-                has_target, hits = self.check_hits(current_ref, aln)
-                if has_target and hits:
-                    if is_ambig_alignment:
-                        # update the hit counts
-                        ambig_hit_counts[aln.is_second()] += 1
-                    all_hits.append((aln, hits))
+            # # process each alignment of the group individually
+            # for aln in aln_group.get_alignments():
+            #     current_ref = self.register_reference(aln.rid, aln_reader)
+            #     # check for region hits (in overlap modes, otherwise alignments always hit)
+            #     has_target, hits = self.check_hits(current_ref, aln)
+            #     if has_target and hits:
+            #         if is_ambig_alignment:
+            #             # update the hit counts
+            #             ambig_hit_counts[aln.is_second()] += 1
+            #         all_hits.append((aln, hits))
 
-            # pass the hit lists to the counters
-            count_stream = (
-                (aln_hits, ambig_hit_counts[aln.is_second()] if is_ambig_alignment else 1)
-                for aln, aln_hits in all_hits
+            # # pass the hit lists to the counters
+            # count_stream = (
+            #     (aln_hits, ambig_hit_counts[aln.is_second()] if is_ambig_alignment else 1)
+            #     for aln, aln_hits in all_hits
+            # )
+            count_stream = tuple(
+                aln_group.get_all_hits(
+                    as_ambiguous=self.distribution_mode.require_ambig_tracking
+                )
             )
+
 
             contributed_counts = self.count_manager.update_counts(
                 count_stream,
@@ -387,8 +420,12 @@ class FeatureQuantifier(ABC):
                 pair=aln_group.is_paired(),
                 pe_library=aln_group.pe_library,
             )
+            ambig_hit_counts = aln_group.ambig_hit_counts
+            msg = f"{ambig_hit_counts=} {contributed_counts=})"            
 
-            msg = f"{ambig_hit_counts=} {contributed_counts=})"
+            for hit, n_aln in count_stream:
+                hit.n_aln = n_aln
+                yield hit
 
         else:
 
@@ -400,4 +437,4 @@ class FeatureQuantifier(ABC):
             f"{msg}"
         )
 
-        return keep_group
+        # return keep_group
