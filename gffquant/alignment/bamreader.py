@@ -99,8 +99,9 @@ class BamAlignment:
         self.tlen = tlen
         self.len_seq = len_seq
         self.tags = tags
-        self.read_group = tags.get("RG")
-        if self.read_group not in (1, 2):
+        try:
+            self.read_group = int(tags.get("RG"))
+        except:
             self.read_group = None
         self.refname = refname
         self.reflength = reflength
