@@ -100,7 +100,7 @@ class BamAlignment:
         self.len_seq = len_seq
         self.tags = tags
         self.read_group = tags.get("RG")
-        if str(self.read_group) not in ("1", "2"):
+        if self.read_group not in (1, 2):
             self.read_group = None
         self.refname = refname
         self.reflength = reflength
