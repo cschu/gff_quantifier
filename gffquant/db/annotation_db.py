@@ -51,6 +51,10 @@ class AnnotationDatabaseManager(ABC):
     def query_sequence_internal(self, seqid, start=None, end=None):
         ...
 
+    @abstractmethod
+    def get_categories(self):
+        ...
+
     def query_sequence(self, seqid, start=None, end=None):
         db_sequence = self.query_sequence_internal(seqid, start=start, end=end)
 
@@ -224,6 +228,10 @@ class Dict_ADM(AnnotationDatabaseManager):
 
     def query_category(self, category_id):
         return self.db.categories.get(int(category_id))
+    
+    def get_categories(self):
+        for cat in self.db.categories.values():
+            yield cat
 
     @lru_cache(maxsize=10000)
     def get_db_sequence(self, seqid):

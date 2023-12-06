@@ -125,14 +125,22 @@ class FeatureQuantifier(ABC):
     def write_coverage(self):
         df = pd.DataFrame(self._calc_coverage())
         
+        categories = {
+            cat.id: cat.name 
+            for cat in self.adm.get_categories()
+        }
+
         annotated_cols = []
         for rid in df["rid"]:
             ref, reflen = self.reference_manager.get(rid)
             for annseq in self.adm.get_db_sequence(ref):
                 if annseq.annotation_str is not None:
-                    annotated_cols.append(
-                        {"refid": rid, "refname": ref, "annotation": annseq.annotation_str }
-                    )
+                    d = {"refid": rid, "refname": ref}
+                    d.update({name: None for name in categories.values()})
+                    annotated_cols.append(d)
+                    for item in annseq.annotation_str.split(";"):
+                        catid, features = item.split("=")
+                        d[categories.get(int(catid))] = tuple(int(feat) for feat in features.split(","))
 
         df2 = pd.DataFrame.from_records(annotated_cols)
 
