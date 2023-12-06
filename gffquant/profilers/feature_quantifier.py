@@ -101,6 +101,32 @@ class FeatureQuantifier(ABC):
         self.distribution_mode = distribution_mode
         self.reference_manager = {}
         self.strand_specific = strand_specific
+        self.coverage_counter = {}
+
+    def update_coverage(self, hits):
+        for hit in hits:
+            self.coverage_counter.setdefault(hit.is_ambiguous, {}).setdefault((hit.rid, hit.start, hit.end), Counter()).update({p: 1/hit.n_aln for p in range(hit.cov_start, hit.cov_end)})
+    def _calc_coverage(self):
+        for key in sorted(set(self.coverage_counter.get(True, {})).union(self.coverage_counter.get(False, {}))):
+            uniq_cov, ambig_cov = self.coverage_counter.get(True, {}).get(key, Counter()), self.coverage_counter.get(False, {}).get(key, Counter())
+            length = key[2] - key[1] + 1
+            len_both = len(set(uniq_cov).union(ambig_cov))
+            yield {
+                "rid": key[0],
+                "length": length,
+                "uniq_depth": sum(uniq_cov) / length,
+                "uniq_depth_covered": sum(uniq_cov) / len(uniq_cov),
+                "uniq_horizontal": len(uniq_cov) / length,
+                "combined_depth": (sum(uniq_cov) + sum(ambig_cov)) / length,
+                "combined_depth_covered": (sum(uniq_cov) + sum(ambig_cov)) / len_both,
+                "combined_horizontal": len_both / length,
+            }
+    def write_coverage(self):
+        pd.DataFrame(self._calc_coverage()).to_csv(self.out_prefix + ".coverage.txt", sep="\t")
+            
+
+
+    
 
     def check_hits(self, ref, aln):
         """ Check if an alignment hits a region of interest on a reference sequence.
@@ -298,6 +324,8 @@ class FeatureQuantifier(ABC):
 
         pd.DataFrame(hits).to_csv(self.out_prefix + ".hits.tsv", sep="\t")
 
+        self.write_coverage()
+
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter
 
         if external_readcounts is not None:
@@ -414,6 +442,7 @@ class FeatureQuantifier(ABC):
                     as_ambiguous=self.distribution_mode.require_ambig_tracking
                 )
             )
+            self.update_coverage(count_stream)
 
 
             contributed_counts = self.count_manager.update_counts(
