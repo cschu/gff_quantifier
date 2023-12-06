@@ -123,8 +123,21 @@ class FeatureQuantifier(ABC):
                 "combined_horizontal": len_both / length,
             }
     def write_coverage(self):
-        pd.DataFrame(self._calc_coverage()).to_csv(self.out_prefix + ".coverage.txt", sep="\t")
-            
+        df = pd.DataFrame(self._calc_coverage())
+        
+        annotated_cols = []
+        for rid in df["rid"]:
+            ref, reflen = self.reference_manager.get(rid)
+            annseq = self.adm.get_db_sequence(ref)
+            if annseq is not None and annseq.annotation_str is not None:
+                annotated_cols.append(
+                    {"refid": rid, "refname": ref, "annotation": annseq.annotation_str }
+                )
+
+        df2 = pd.DataFrame.from_records(annotated_cols)
+
+        df.to_csv(self.out_prefix + ".coverage.txt", index=False, sep="\t")
+        df2.to_csv(self.out_prefix + ".coverage_annotation.txt", index=False, sep="\t")
 
 
     
