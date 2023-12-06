@@ -64,6 +64,8 @@ class AlignmentGroup:
         for aln in self.get_alignments():
             if aln.hits:
                 n_aln = (1, self.ambig_hit_counts[aln.is_second()])[is_ambiguous]
+                if n_aln == 0:
+                    raise ValueError(f"-->{self.ambig_hit_counts}")
                 for hit in aln.hits:
                     hit.is_ambiguous = is_ambiguous
                     try:
