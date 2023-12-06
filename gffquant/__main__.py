@@ -64,8 +64,7 @@ def stream_alignments(args, profiler):
             logger.error("Aligner call was:")
             logger.error("%s", call)
             logger.error("Shutting down.")
-            sys.exit(1)
-
+            raise ValueError(f"{err}") from err
 
 def main():
 
