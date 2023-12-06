@@ -128,11 +128,11 @@ class FeatureQuantifier(ABC):
         annotated_cols = []
         for rid in df["rid"]:
             ref, reflen = self.reference_manager.get(rid)
-            annseq = self.adm.get_db_sequence(ref)
-            if annseq is not None and annseq.annotation_str is not None:
-                annotated_cols.append(
-                    {"refid": rid, "refname": ref, "annotation": annseq.annotation_str }
-                )
+            for annseq in self.adm.get_db_sequence(ref):
+                if annseq.annotation_str is not None:
+                    annotated_cols.append(
+                        {"refid": rid, "refname": ref, "annotation": annseq.annotation_str }
+                    )
 
         df2 = pd.DataFrame.from_records(annotated_cols)
 
