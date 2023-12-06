@@ -114,6 +114,8 @@ class FeatureQuantifier(ABC):
             len_both = len(set(uniq_cov).union(ambig_cov))
             yield {
                 "rid": key[0],
+                "start": key[1],
+                "end": key[2],
                 "length": length,
                 "uniq_depth": sum(uniq_cov) / length,
                 "uniq_depth_covered": (sum(uniq_cov) / len(uniq_cov)) if uniq_cov else None,
@@ -131,10 +133,10 @@ class FeatureQuantifier(ABC):
         }
 
         annotated_cols = []
-        for rid in df["rid"]:
+        for rid, start, end in zip(df["rid"], df["start"], df["end"]):
             ref, reflen = self.reference_manager.get(rid)
             for annseq in self.adm.get_db_sequence(ref):
-                if annseq.annotation_str is not None:
+                if annseq.annotation_str is not None and start == annseq.start and annseq.end == end:
                     d = {"refid": rid, "refname": ref}
                     d.update({name: None for name in categories.values()})
                     annotated_cols.append(d)
