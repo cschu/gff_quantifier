@@ -104,9 +104,9 @@ class FeatureQuantifier(ABC):
         self.coverage_counter = {}
 
     def update_coverage(self, aln_hits):
-        for hits, _ in aln_hits:
+        for hits, n_aln in aln_hits:
             for hit in hits:
-                self.coverage_counter.setdefault(hit.is_ambiguous, {}).setdefault((hit.rid, hit.start, hit.end), Counter()).update({p: 1/hit.n_aln for p in range(hit.cov_start, hit.cov_end)})
+                self.coverage_counter.setdefault(hit.is_ambiguous, {}).setdefault((hit.rid, hit.start, hit.end), Counter()).update({p: 1 / n_aln for p in range(hit.cov_start, hit.cov_end)})
     def _calc_coverage(self):
         for key in sorted(set(self.coverage_counter.get(True, {})).union(self.coverage_counter.get(False, {}))):
             uniq_cov, ambig_cov = self.coverage_counter.get(True, {}).get(key, Counter()), self.coverage_counter.get(False, {}).get(key, Counter())
