@@ -118,10 +118,10 @@ class FeatureQuantifier(ABC):
                 "end": key[2],
                 "length": length,
                 "uniq_depth": sum(uniq_cov) / length,
-                "uniq_depth_covered": (sum(uniq_cov) / len(uniq_cov)) if uniq_cov else None,
+                "uniq_depth_covered": (sum(uniq_cov) / len(uniq_cov)) if uniq_cov else 0.0,
                 "uniq_horizontal": len(uniq_cov) / length,
                 "combined_depth": (sum(uniq_cov) + sum(ambig_cov)) / length,
-                "combined_depth_covered": ((sum(uniq_cov) + sum(ambig_cov)) / len_both) if len_both else None,
+                "combined_depth_covered": ((sum(uniq_cov) + sum(ambig_cov)) / len_both) if len_both else 0.0,
                 "combined_horizontal": len_both / length,
             }
     def write_coverage(self):
