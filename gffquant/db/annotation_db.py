@@ -204,8 +204,14 @@ class SQL_ADM(AnnotationDatabaseManager):
         return self.db_session.query(db.Category).filter(db.Category.id == category_id).one_or_none()
 
     @lru_cache(maxsize=10000)
-    def get_db_sequence(self, seqid):
-        return self.db_session.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).all()
+    def get_db_sequence(self, seqid, start=None, end=None):
+        seqs = self.db_session.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).all()
+        return [
+            seq
+            for seq in seqs
+            if (start is None or start == seq.start) and (end is None or end == end.start)
+        ]
+
 
 
 class Dict_ADM(AnnotationDatabaseManager):
@@ -234,5 +240,10 @@ class Dict_ADM(AnnotationDatabaseManager):
             yield cat
 
     @lru_cache(maxsize=10000)
-    def get_db_sequence(self, seqid):
-        return self.db.annotations.get(seqid, [])
+    def get_db_sequence(self, seqid, start=None, end=None):
+        seqs = self.db.annotations.get(seqid, [])
+        return [
+            seq
+            for seq in seqs
+            if (start is None or start == seq.start) and (end is None or end == end.start)
+        ]

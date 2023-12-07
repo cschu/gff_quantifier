@@ -131,13 +131,21 @@ class FeatureQuantifier(ABC):
             cat.id: cat.name 
             for cat in self.adm.get_categories()
         }
-
+# OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+# OOOOOOOOO              OOOOOOOO
+# OOOOOOOOO              OOOOOOOO
+# OOOOOOOOO              OOOOOOOO
+# OOOOOOOOO              OOOOOOOO
+# OOOOOOOOO              OOOOOOOO
+# OOOOOOOOO              OOOOOOOO
+# OOOOOOOOO              OOOOOOOO
+# OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
         annotated_cols = []
         for rid, start, end in zip(df["rid"], df["start"], df["end"]):
             ref, reflen = self.reference_manager.get(rid)
-            for annseq in self.adm.get_db_sequence(ref):
-                if annseq.annotation_str is not None and start == annseq.start and annseq.end == end:
-                    d = {"refid": rid, "refname": annseq.featureid}
+            for annseq in self.adm.get_db_sequence(ref, start=start, end=end):
+                if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
+                    d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
                     d.update({name: None for name in categories.values()})
                     annotated_cols.append(d)
                     for item in annseq.annotation_str.split(";"):
