@@ -156,7 +156,11 @@ class FeatureQuantifier(ABC):
         coverage_columns = ["uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal"]
 
         for category in categories.values():
-            features = {feat.id: feat.name for feat in self.adm.get_features(category=category.id)}
+            features = pd.DataFrame.from_records(
+                {"fid": feat.id, "feature": feat.name}
+                for feat in self.adm.get_features(category=category.id)
+                # {feat.id: feat.name for feat in self.adm.get_features(category=category.id)}
+            )
 
             cat_grouped = pd.merge(
                 df2[["refid", "start", "end", "refname", category.name]],
@@ -166,8 +170,20 @@ class FeatureQuantifier(ABC):
                 right_on=("rid", "start", "end",),
             ).explode(category.name, ignore_index=True)[[category.name,] + coverage_columns].groupby(category.name, as_index=False)
             # df3 = pd.merge(df1[["refid","start","end","refname","PFAMs"]], df2, left_index=False, right_index=False, left_on=("refid", "start", "end"), right_on=("rid","start","end"))
+            
+            pd.merge(
+                features,
+                cat_grouped,
+                left_index=False,
+                right_index=False,
+                left_on=("fid",),
+                right_on=(category.name,),
+            ).to_csv(
+                f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f"
+            )
 
-            cat_grouped.mean().to_csv(f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False)
+
+            # cat_grouped.mean().to_csv(f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f")
 
 
         df.to_csv(self.out_prefix + ".all.coverage.txt", index=False, sep="\t", na_rep="NA")
