@@ -170,15 +170,22 @@ class FeatureQuantifier(ABC):
                 right_on=("rid", "start", "end",),
             ).explode(category.name, ignore_index=True)[[category.name,] + coverage_columns].groupby(category.name, as_index=False)
             # df3 = pd.merge(df1[["refid","start","end","refname","PFAMs"]], df2, left_index=False, right_index=False, left_on=("refid", "start", "end"), right_on=("rid","start","end"))
+
+            # >>> df1.explode("PFAMs").groupby(by="PFAMs")[["start", "PFAMs"]].mean("start")
+            coverage_df = cat_grouped[[category.name, "uniq_horizontal", "combined_horizontal",]].mean()
+            depth_df = cat_grouped[[category.name, "uniq_depth", "uniq_depth_covered", "combined_depth", "combined_depth_covered",]].sum()
+
+            
             
             pd.merge(
                 features,
-                cat_grouped.mean(),
+                # cat_grouped.mean(),
+                pd.merge(coverage_df, depth_df, on=(category.name,), left_index=False, right_index=False),
                 left_index=False,
                 right_index=False,
                 left_on=("fid",),
                 right_on=(category.name,),
-            ).to_csv(
+            ).drop([category.name, "fid"]).to_csv(
                 f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f"
             )
 
