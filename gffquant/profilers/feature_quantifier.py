@@ -173,7 +173,7 @@ class FeatureQuantifier(ABC):
             
             pd.merge(
                 features,
-                cat_grouped,
+                cat_grouped.mean(),
                 left_index=False,
                 right_index=False,
                 left_on=("fid",),
