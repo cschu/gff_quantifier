@@ -185,7 +185,7 @@ class FeatureQuantifier(ABC):
                 right_index=False,
                 left_on=("fid",),
                 right_on=(category.name,),
-            ).drop([category.name, "fid"]).to_csv(
+            ).drop([category.name, "fid"], axis=1).to_csv(
                 f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f"
             )
 
