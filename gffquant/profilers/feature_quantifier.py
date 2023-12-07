@@ -128,7 +128,7 @@ class FeatureQuantifier(ABC):
         df = pd.DataFrame(self._calc_coverage())
         
         categories = {
-            cat.id: cat.name 
+            cat.id: category 
             for cat in self.adm.get_categories()
         }
 # OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
@@ -146,11 +146,11 @@ class FeatureQuantifier(ABC):
             for annseq in self.adm.get_db_sequence(ref, start=start, end=end):
                 if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
                     d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
-                    d.update({name: None for name in categories.values()})
+                    d.update({cat.name: None for cat in categories.values()})
                     annotated_cols.append(d)
                     for item in annseq.annotation_str.split(";"):
                         catid, features = item.split("=")
-                        d[categories.get(int(catid))] = [int(feat) for feat in features.split(",")]
+                        d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
 
         df2 = pd.DataFrame.from_records(annotated_cols)
         coverage_columns = ["uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth" "combined_depth_covered", "combined_horizontal"]
