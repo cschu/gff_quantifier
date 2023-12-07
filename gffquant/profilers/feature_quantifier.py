@@ -153,7 +153,7 @@ class FeatureQuantifier(ABC):
                         d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
 
         df2 = pd.DataFrame.from_records(annotated_cols)
-        coverage_columns = ["uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth" "combined_depth_covered", "combined_horizontal"]
+        coverage_columns = ["uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal"]
 
         for category in categories.values():
             features = {feat.id: feat.name for feat in self.adm.get_features(category=category.id)}
