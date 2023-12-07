@@ -238,6 +238,11 @@ class Dict_ADM(AnnotationDatabaseManager):
     def get_categories(self):
         for cat in self.db.categories.values():
             yield cat
+    
+    def get_features(self, category=None):
+        for feat in self.db.features.values():
+            if category is None or feat.category_id == category:
+                yield feat
 
     @lru_cache(maxsize=10000)
     def get_db_sequence(self, seqid, start=None, end=None):
