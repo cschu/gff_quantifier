@@ -137,7 +137,7 @@ class FeatureQuantifier(ABC):
             ref, reflen = self.reference_manager.get(rid)
             for annseq in self.adm.get_db_sequence(ref):
                 if annseq.annotation_str is not None and start == annseq.start and annseq.end == end:
-                    d = {"refid": rid, "refname": annseq.feature_id}
+                    d = {"refid": rid, "refname": annseq.featureid}
                     d.update({name: None for name in categories.values()})
                     annotated_cols.append(d)
                     for item in annseq.annotation_str.split(";"):
