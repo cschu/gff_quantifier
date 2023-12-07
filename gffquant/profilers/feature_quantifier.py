@@ -150,7 +150,7 @@ class FeatureQuantifier(ABC):
                     annotated_cols.append(d)
                     for item in annseq.annotation_str.split(";"):
                         catid, features = item.split("=")
-                        d[categories.get(int(catid))] = tuple(int(feat) for feat in features.split(","))
+                        d[categories.get(int(catid))] = [int(feat) for feat in features.split(",")]
 
         df2 = pd.DataFrame.from_records(annotated_cols)
 
