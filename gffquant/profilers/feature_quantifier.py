@@ -177,7 +177,7 @@ class FeatureQuantifier(ABC):
 
             
             
-            pd.merge(
+            out_df = pd.merge(
                 features,
                 # cat_grouped.mean(),
                 pd.merge(coverage_df, depth_df, on=(category.name,), left_index=False, right_index=False),
@@ -185,7 +185,10 @@ class FeatureQuantifier(ABC):
                 right_index=False,
                 left_on=("fid",),
                 right_on=(category.name,),
-            ).drop([category.name, "fid"], axis=1).to_csv(
+            ).drop([category.name, "fid"], axis=1)
+
+            new_order = ["feature", "uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal",]
+            out_df[new_order].to_csv(
                 f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f"
             )
 
