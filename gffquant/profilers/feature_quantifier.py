@@ -128,7 +128,7 @@ class FeatureQuantifier(ABC):
         df = pd.DataFrame(self._calc_coverage())
         
         categories = {
-            cat.id: category 
+            cat.id: cat
             for cat in self.adm.get_categories()
         }
 # OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
