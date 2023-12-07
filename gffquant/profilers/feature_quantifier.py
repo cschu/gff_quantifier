@@ -162,8 +162,8 @@ class FeatureQuantifier(ABC):
                 df2[["refid", "start", "end", "refname", category.name]],
                 df,
                 left_index=False, right_index=False,
-                left_on=("rid", "start", "end",),
-                right_on=("refid", "start", "end",),
+                left_on=("refid", "start", "end",),
+                right_on=("rid", "start", "end",),
             ).explode(category.name, ignore_index=True)[[category.name,] + coverage_columns].groupby(category.name, as_index=False)
             # df3 = pd.merge(df1[["refid","start","end","refname","PFAMs"]], df2, left_index=False, right_index=False, left_on=("refid", "start", "end"), right_on=("rid","start","end"))
 
