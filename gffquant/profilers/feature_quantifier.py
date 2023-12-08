@@ -173,9 +173,7 @@ class FeatureQuantifier(ABC):
 
             # >>> df1.explode("PFAMs").groupby(by="PFAMs")[["start", "PFAMs"]].mean("start")
             coverage_df = cat_grouped[[category.name, "uniq_horizontal", "combined_horizontal",]].mean()
-            depth_df = cat_grouped[[category.name, "uniq_depth", "uniq_depth_covered", "combined_depth", "combined_depth_covered",]].sum()
-
-            
+            depth_df = cat_grouped[[category.name, "uniq_depth", "uniq_depth_covered", "combined_depth", "combined_depth_covered",]].sum()            
             
             out_df = pd.merge(
                 features,
@@ -396,7 +394,7 @@ class FeatureQuantifier(ABC):
             unmarked_orphans=unmarked_orphans,
         )
 
-        pd.DataFrame(hits).to_csv(self.out_prefix + ".hits.tsv", sep="\t")
+        pd.DataFrame(hits).to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
 
         self.write_coverage()
 
