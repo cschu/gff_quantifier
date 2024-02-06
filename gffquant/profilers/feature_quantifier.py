@@ -168,12 +168,15 @@ class FeatureQuantifier(ABC):
                 left_index=False, right_index=False,
                 left_on=("refid", "start", "end",),
                 right_on=("rid", "start", "end",),
-            ).explode(category.name, ignore_index=True)[[category.name,] + coverage_columns].groupby(category.name, as_index=False)
+            ) \
+                .dropna(axis=0, subset=[category.name,], how="any") \
+                .explode(category.name, ignore_index=True)[[category.name,] + coverage_columns] \
+                .groupby(category.name, as_index=False)
             # df3 = pd.merge(df1[["refid","start","end","refname","PFAMs"]], df2, left_index=False, right_index=False, left_on=("refid", "start", "end"), right_on=("rid","start","end"))
 
             # >>> df1.explode("PFAMs").groupby(by="PFAMs")[["start", "PFAMs"]].mean("start")
-            coverage_df = cat_grouped[[category.name, "uniq_horizontal", "combined_horizontal",]].mean()
-            depth_df = cat_grouped[[category.name, "uniq_depth", "uniq_depth_covered", "combined_depth", "combined_depth_covered",]].sum()            
+            coverage_df = cat_grouped[[category.name, "uniq_horizontal", "combined_horizontal",]].mean(numeric_only=True)
+            depth_df = cat_grouped[[category.name, "uniq_depth", "uniq_depth_covered", "combined_depth", "combined_depth_covered",]].sum(numeric_only=True)            
             
             out_df = pd.merge(
                 features,
