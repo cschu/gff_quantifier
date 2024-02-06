@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 SPIRE_ANNOTATION_COLUMNS = ",".join(
     (
+        "eggNOG_OGs",
         "COG_category",
         "GOs",
         "EC",

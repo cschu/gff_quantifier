@@ -33,7 +33,7 @@ class GqDatabaseImporter(ABC):
         annotation = [
             (category, tuple(features.split(",")))
             for category, features in columns.items()
-            if features and features != "-" and category != "COG_category"
+            if features and features != "-" and category not in ("COG_category", "eggNOG_OGs")
         ]
 
         # COG_categories are single letters, but genes can have composite annotations
@@ -47,6 +47,11 @@ class GqDatabaseImporter(ABC):
                 # otherwise downstream ops with iterate over the string!
                 annotation.append(("COG_category_composite", (cog_category,)))
             annotation.append(("COG_category", tuple(cog_category)))
+
+        eggnog_og = columns.get("eggNOG_OGs")
+        if eggnog_og and eggnog_og != "-":
+            annotation.append(("eggNOG_OGs", eggnog_og))
+
 
         return annotation
     
