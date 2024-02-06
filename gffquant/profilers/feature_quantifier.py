@@ -138,7 +138,17 @@ class FeatureQuantifier(ABC):
                         d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
                     yield d
 
-        # return pd.DataFrame.from_records(annotated_cols)
+    def annotate_category_counts(self, counts_df, annotation_df, columns, category):
+        return pd.merge(
+            annotation_df[["refid", "start", "end", "refname", category]],
+            counts_df,
+            left_index=False, right_index=False,
+            left_on=("refid", "start", "end",),
+            right_on=("rid", "start", "end",),
+        ) \
+        .dropna(axis=0, subset=[category,], how="any") \
+        .explode(category, ignore_index=True)[[category.name,] + columns]  # \
+        # .groupby(category, as_index=False)
 
     def write_coverage(self):
         df = pd.DataFrame(self._calc_coverage())
@@ -179,19 +189,19 @@ class FeatureQuantifier(ABC):
                 # {feat.id: feat.name for feat in self.adm.get_features(category=category.id)}
             )
 
-            cat_grouped = pd.merge(
-                df2[["refid", "start", "end", "refname", category.name]],
-                df,
-                left_index=False, right_index=False,
-                left_on=("refid", "start", "end",),
-                right_on=("rid", "start", "end",),
-            ) \
-                .dropna(axis=0, subset=[category.name,], how="any") \
-                .explode(category.name, ignore_index=True)[[category.name,] + coverage_columns] \
-                .groupby(category.name, as_index=False)
-            # df3 = pd.merge(df1[["refid","start","end","refname","PFAMs"]], df2, left_index=False, right_index=False, left_on=("refid", "start", "end"), right_on=("rid","start","end"))
-
-            # >>> df1.explode("PFAMs").groupby(by="PFAMs")[["start", "PFAMs"]].mean("start")
+            cat_grouped = self.annotate_category_counts(
+                df, df2, coverage_columns, category.name
+            ).groupby(category.name, as_index=False)
+            # cat_grouped = pd.merge(
+            #     df2[["refid", "start", "end", "refname", category.name]],
+            #     df,
+            #     left_index=False, right_index=False,
+            #     left_on=("refid", "start", "end",),
+            #     right_on=("rid", "start", "end",),
+            # ) \
+            #     .dropna(axis=0, subset=[category.name,], how="any") \
+            #     .explode(category.name, ignore_index=True)[[category.name,] + coverage_columns] \
+            #     .groupby(category.name, as_index=False)
             coverage_df = cat_grouped[[category.name, "uniq_horizontal", "combined_horizontal",]].mean(numeric_only=True)
             depth_df = cat_grouped[[category.name, "uniq_depth", "uniq_depth_covered", "combined_depth", "combined_depth_covered",]].sum(numeric_only=True)            
             
@@ -203,7 +213,10 @@ class FeatureQuantifier(ABC):
                 right_index=False,
                 left_on=("fid",),
                 right_on=(category.name,),
-            ).drop([category.name, "fid"], axis=1)
+            ) \
+                .drop([category.name, "fid"], axis=1) \
+                .sort_values(by=["feature",])
+            
 
             new_order = ["feature", "uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal",]
             out_df[new_order].to_csv(
@@ -432,6 +445,39 @@ class FeatureQuantifier(ABC):
         raw_df["uniq_lnorm"] = raw_df["uniq_raw"] / (raw_df["end"] - raw_df["start"] + 1)
         raw_df["combined_lnorm"] = raw_df["combined_raw"] / (raw_df["end"] - raw_df["start"] + 1)
         raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
+
+        categories = {
+            cat.id: cat
+            for cat in self.adm.get_categories()
+        }
+        df2 = pd.DataFrame.from_records(self.get_gene_annotation(raw_df, categories))
+
+        count_columns = ["uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
+
+        for category in categories.values():
+            features = pd.DataFrame.from_records(
+                {"fid": feat.id, "feature": feat.name}
+                for feat in self.adm.get_features(category=category.id)
+                # {feat.id: feat.name for feat in self.adm.get_features(category=category.id)}
+            )
+            cat_grouped = self.annotate_category_counts(
+                raw_df, df2, count_columns, category.name
+            ).groupby(category.name, as_index=False)
+
+            out_df = pd.merge(
+                features,
+                cat_grouped.sum(numeric_only=True),
+                left_index=False, right_index=False,
+                left_on=("fid",),
+                right_on=(category.name,),
+            ) \
+                .drop([category.name, "fid",], axis=1) \
+                .sort_values(by=["feature",])  
+
+            out_df.to_csv(
+                f"{self.out_prefix}.{category.name}.pd.txt", sep="\t", index=False, float_format="%.5f",
+            )
+
         
         self.write_coverage()
 
