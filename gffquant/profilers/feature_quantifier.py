@@ -433,8 +433,8 @@ class FeatureQuantifier(ABC):
         raw_df["contrib"] = 1 / raw_df["n_aln"] / raw_df["library_mod"]
 
         keep_columns = ["rid", "start", "end", "contrib"]
-        contrib_sums_uniq = raw_df[raw_df["is_ambiguous"] == False][keep_columns].groupby(by=["rid", "start", "end"], as_index=False).sum()
-        contrib_sums_combined = raw_df[keep_columns].groupby(by=["rid", "start", "end"], as_index=False).sum()
+        contrib_sums_uniq = raw_df[raw_df["is_ambiguous"] == False][keep_columns].groupby(by=["rid", "start", "end"], as_index=False).sum(numeric_only=True)
+        contrib_sums_combined = raw_df[keep_columns].groupby(by=["rid", "start", "end"], as_index=False).sum(numeric_only=True)
         raw_df = pd.merge(
             contrib_sums_uniq,
             contrib_sums_combined,
