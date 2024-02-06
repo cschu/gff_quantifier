@@ -104,12 +104,13 @@ class GqDatabaseImporter(ABC):
 
                     encoded.append((cat_enc, ",".join(map(str, feat_enc))))
 
+                    if category in ("eggNOG_OGs", "COG_category"):
+                        logger.info("    Adding annotation %s: %s -> %s", category, features, encoded[-1])
+
                 seq_feature.annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
 
-                if seq_feature in ("eggNOG_OGs", "COG_category"):
-                    logger.info("    Adding annotation %s: %s -> %s", seq_feature, annotation, seq_feature.annotation_str)
 
                 if self.db_session:
                     self.db_session.add(seq_feature)
