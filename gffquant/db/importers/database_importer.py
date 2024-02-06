@@ -50,7 +50,9 @@ class GqDatabaseImporter(ABC):
 
         eggnog_og = columns.get("eggNOG_OGs")
         if eggnog_og and eggnog_og != "-":
-            annotation.append(("eggNOG_OGs", eggnog_og))
+            # composites need to be passed as 1-tuples,
+            # otherwise downstream ops with iterate over the string!
+            annotation.append(("eggNOG_OGs", (eggnog_og,)))
 
 
         return annotation
