@@ -147,7 +147,7 @@ class FeatureQuantifier(ABC):
             right_on=("rid", "start", "end",),
         ) \
         .dropna(axis=0, subset=[category,], how="any") \
-        .explode(category, ignore_index=True)[[category.name,] + columns]  # \
+        .explode(category, ignore_index=True)[[category,] + columns]  # \
         # .groupby(category, as_index=False)
 
     def write_coverage(self):
