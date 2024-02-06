@@ -197,7 +197,7 @@ class FeatureQuantifier(ABC):
         df.to_csv(self.out_prefix + ".all.coverage.txt", index=False, sep="\t", na_rep="NA")
         df2.to_csv(self.out_prefix + ".all.coverage_annotation.txt", index=False, sep="\t", na_rep="NA")
 
-
+        self.adm.dump(self.out_prefix + ".db")
     
 
     def check_hits(self, ref, aln):

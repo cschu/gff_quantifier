@@ -252,3 +252,13 @@ class Dict_ADM(AnnotationDatabaseManager):
             for seq in seqs
             if (start is None or start == seq.start) and (end is None or end == seq.end)
         ]
+    
+    def dump(self, prefix):
+        import pickle
+        with open(f"{prefix}.annotations.dat", "wb") as _out:
+            pickle.dump(self.db.annotations, _out)
+        with open(f"{prefix}.features.dat", "wb") as _out:
+            pickle.dump(self.db.features, _out)
+        with open(f"{prefix}.categories.dat", "wb") as _out:
+            pickle.dump(self.db.categories, _out)
+
