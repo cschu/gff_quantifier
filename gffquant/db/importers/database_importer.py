@@ -86,6 +86,7 @@ class GqDatabaseImporter(ABC):
 
             i = 0
             for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
+
                 if i % self.update_log_after_n_records == 0:
                     if self.db_session is not None:
                         self.db_session.commit()
@@ -106,6 +107,9 @@ class GqDatabaseImporter(ABC):
                 seq_feature.annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
+
+                if seq_feature in ("eggNOG_OGs", "COG_category"):
+                    logger.info("    Adding annotation %s: %s -> %s", seq_feature, annotation, seq_feature.annotation_str)
 
                 if self.db_session:
                     self.db_session.add(seq_feature)
