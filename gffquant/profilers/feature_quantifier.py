@@ -124,6 +124,22 @@ class FeatureQuantifier(ABC):
                 "combined_depth_covered": ((sum(uniq_cov) + sum(ambig_cov)) / len_both) if len_both else 0.0,
                 "combined_horizontal": len_both / length,
             }
+
+    def get_gene_annotation(self, df, categories):
+        for rid, start, end in zip(df["rid"], df["start"], df["end"]):
+            ref, _ = self.reference_manager.get(rid)
+            for annseq in self.adm.get_db_sequence(ref, start=start, end=end):
+                if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
+                    d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
+                    d.update({cat.name: None for cat in categories.values()})
+                    # annotated_cols.append(d)
+                    for item in annseq.annotation_str.split(";"):
+                        catid, features = item.split("=")
+                        d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
+                    yield d
+
+        # return pd.DataFrame.from_records(annotated_cols)
+
     def write_coverage(self):
         df = pd.DataFrame(self._calc_coverage())
         
@@ -140,19 +156,20 @@ class FeatureQuantifier(ABC):
 # OOOOOOOOO              OOOOOOOO
 # OOOOOOOOO              OOOOOOOO
 # OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-        annotated_cols = []
-        for rid, start, end in zip(df["rid"], df["start"], df["end"]):
-            ref, reflen = self.reference_manager.get(rid)
-            for annseq in self.adm.get_db_sequence(ref, start=start, end=end):
-                if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
-                    d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
-                    d.update({cat.name: None for cat in categories.values()})
-                    annotated_cols.append(d)
-                    for item in annseq.annotation_str.split(";"):
-                        catid, features = item.split("=")
-                        d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
+        # annotated_cols = []
+        # for rid, start, end in zip(df["rid"], df["start"], df["end"]):
+        #     ref, reflen = self.reference_manager.get(rid)
+        #     for annseq in self.adm.get_db_sequence(ref, start=start, end=end):
+        #         if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
+        #             d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
+        #             d.update({cat.name: None for cat in categories.values()})
+        #             annotated_cols.append(d)
+        #             for item in annseq.annotation_str.split(";"):
+        #                 catid, features = item.split("=")
+        #                 d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
 
-        df2 = pd.DataFrame.from_records(annotated_cols)
+        # df2 = pd.DataFrame.from_records(annotated_cols)
+        df2 = pd.DataFrame.from_records(self.get_gene_annotation(df, categories))
         coverage_columns = ["uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal"]
 
         for category in categories.values():
