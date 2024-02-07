@@ -445,18 +445,18 @@ class FeatureQuantifier(ABC):
         )
         
         hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "library_mod"]
-        pd.merge(
+        raw_df = pd.merge(
             raw_df, gene_df,
             on=("rid", "start", "end",),
             left_index=False, right_index=False,
             how="inner",
-        )[hit_cols].to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
+        )[hit_cols]
         
         # raw_df.to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
 
         raw_df["contrib"] = 1 / raw_df["n_aln"] / raw_df["library_mod"]
 
-        keep_columns = ["rid", "start", "end", "contrib"]
+        keep_columns = ["gene", "rid", "start", "end", "contrib"]
         contrib_sums_uniq = raw_df[raw_df["is_ambiguous"] == False][keep_columns].groupby(by=["rid", "start", "end"], as_index=False).sum(numeric_only=True)
         contrib_sums_combined = raw_df[keep_columns].groupby(by=["rid", "start", "end"], as_index=False).sum(numeric_only=True)
         raw_df = pd.merge(
@@ -471,13 +471,13 @@ class FeatureQuantifier(ABC):
 
 
         raw_cols = ["gene", "rid", "start", "end", "uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
-        pd.merge(
-            raw_df, gene_df,
-            on=("rid", "start", "end",),
-            left_index=False, right_index=False,
-            how="inner",
-        )[raw_cols].to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
-        # raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
+        # pd.merge(
+        #     raw_df, gene_df,
+        #     on=("rid", "start", "end",),
+        #     left_index=False, right_index=False,
+        #     how="inner",
+        # )[raw_cols].to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
+        raw_df[raw_cols].to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
 
         categories = {
             cat.id: cat
