@@ -332,7 +332,7 @@ class FeatureQuantifier(ABC):
 
         return new_ref[0]
 
-    def process_alignments(self, aln_reader, min_identity=None, min_seqlen=None, unmarked_orphans=False):
+    def process_alignments(self, aln_reader: AlignmentProcessor, min_identity=None, min_seqlen=None, unmarked_orphans=False):
         # pylint: disable=R0914
         t0 = time.time()
 
@@ -585,7 +585,7 @@ class FeatureQuantifier(ABC):
     def evaluate_alignment_group(self, aln_group, is_ambig_alignment):
         ...
 
-    def process_alignment_group(self, aln_group, aln_reader):
+    def process_alignment_group(self, aln_group: AlignmentGroup, aln_reader):
         """ Checks an alignment group for hits and passes the hit list
         to the counters.
         """
@@ -633,7 +633,8 @@ class FeatureQuantifier(ABC):
                     as_ambiguous=self.distribution_mode.require_ambig_tracking
                 )
             )
-            self.update_coverage(count_stream)
+            logger.info("count_stream: %s", count_stream)
+            # self.update_coverage(count_stream)
 
 
             contributed_counts = self.count_manager.update_counts(

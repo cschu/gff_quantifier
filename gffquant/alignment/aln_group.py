@@ -60,6 +60,11 @@ class AlignmentGroup:
                 yield aln
 
     def get_all_hits(self, as_ambiguous=False):
+        """
+        params:
+            as_ambiguous - treat ambiguous alignments as ambiguous (depends on distribution mode)
+        returns: generator of ([aln.hits], n_aln) - tuples
+        """
         is_ambiguous = as_ambiguous and self.is_ambiguous()
         for aln in self.get_alignments():
             if aln.hits:
