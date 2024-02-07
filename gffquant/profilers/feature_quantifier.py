@@ -434,6 +434,8 @@ class FeatureQuantifier(ABC):
         gene_df = pd.DataFrame.from_records(
             { 
                 "rid": rid,
+                "start": start,
+                "end": end,
                 "gene": self.adm.get_db_sequence(
                     self.reference_manager.get(rid[0] if isinstance(rid, tuple) else rid)[0],
                     start=start, end=end
@@ -442,12 +444,13 @@ class FeatureQuantifier(ABC):
 
         )
         
+        hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "library_mod"]
         pd.merge(
             raw_df, gene_df,
-            on=("rid",),
+            on=("rid", "start", "end",),
             left_index=False, right_index=False,
             how="inner",
-        ).to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
+        )[hit_cols].to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
         
         # raw_df.to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
 
@@ -465,7 +468,16 @@ class FeatureQuantifier(ABC):
         ).rename({"contrib_x": "uniq_raw", "contrib_y": "combined_raw"}, axis=1).fillna(0)
         raw_df["uniq_lnorm"] = raw_df["uniq_raw"] / (raw_df["end"] - raw_df["start"] + 1)
         raw_df["combined_lnorm"] = raw_df["combined_raw"] / (raw_df["end"] - raw_df["start"] + 1)
-        raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
+
+
+        raw_cols = ["gene", "rid", "start", "end", "uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
+        pd.merge(
+            raw_df, gene_df,
+            on=("rid", "start", "end",),
+            left_index=False, right_index=False,
+            how="inner",
+        )[raw_cols].to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
+        # raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
 
         categories = {
             cat.id: cat
