@@ -477,7 +477,9 @@ class FeatureQuantifier(ABC):
             on=("rid", "start", "end",),
             left_index=False, right_index=False,
             how="inner",
-        )[raw_cols].to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
+        )[raw_cols] \
+            .sort_values(by=["gene",]) \
+            .to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
         # raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
 
         categories = {
