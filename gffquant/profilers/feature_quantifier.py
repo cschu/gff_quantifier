@@ -437,7 +437,7 @@ class FeatureQuantifier(ABC):
                 "gene": self.adm.get_db_sequence(
                     self.reference_manager.get(rid[0] if isinstance(rid, tuple) else rid)[0],
                     start=start, end=end
-                ).feature_id }
+                )[0].feature_id }
             for rid, start, end in zip(raw_df["rid"], raw_df["start"], raw_df["end"])
 
         )
