@@ -460,16 +460,19 @@ class FeatureQuantifier(ABC):
 
         # keep_columns = ["gene", "rid", "start", "end", "contrib"]
         keep_columns = ["gene", "contrib", "length"]
-        contrib_sums_uniq = raw_df[raw_df["is_ambiguous"] == False][keep_columns].groupby(by=["gene"], as_index=False).sum(numeric_only=True)
+        contrib_sums_uniq = raw_df[raw_df["is_ambiguous"] == False][keep_columns].groupby(by=["gene", "length"], as_index=False).sum(numeric_only=True)
         contrib_sums_combined = raw_df[keep_columns].groupby(by=["gene", "length"], as_index=False).sum(numeric_only=True)
         raw_df = pd.merge(
-            contrib_sums_uniq,
+            contrib_sums_uniq.drop(("length",), axis=1),
             contrib_sums_combined,
             # on=("rid", "start", "end"),
             on=("gene",),
             left_index=False, right_index=False,
             how="outer",
         ).rename({"contrib_x": "uniq_raw", "contrib_y": "combined_raw"}, axis=1).fillna(0)
+
+        raw_df.to_csv(self.out_prefix + ".count_merge.tsv", sep="\t", index=False)
+
         raw_df["uniq_lnorm"] = raw_df["uniq_raw"] / raw_df["length"] #(raw_df["end"] - raw_df["start"] + 1)
         raw_df["combined_lnorm"] = raw_df["combined_raw"] / raw_df["length"] #(raw_df["end"] - raw_df["start"] + 1)
 
