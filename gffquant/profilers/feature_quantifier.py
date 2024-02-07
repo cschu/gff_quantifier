@@ -452,7 +452,7 @@ class FeatureQuantifier(ABC):
             how="inner",
         )[hit_cols]
         
-        # raw_df.to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
+        raw_df.to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
 
         raw_df["contrib"] = 1 / raw_df["n_aln"] / raw_df["library_mod"]
 
