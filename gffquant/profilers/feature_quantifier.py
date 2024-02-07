@@ -515,7 +515,7 @@ class FeatureQuantifier(ABC):
             )
 
         
-        self.write_coverage()
+        # self.write_coverage()
 
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter
 
