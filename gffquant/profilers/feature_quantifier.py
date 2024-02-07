@@ -442,7 +442,8 @@ class FeatureQuantifier(ABC):
                 )[0].featureid }
             for rid, start, end in zip(raw_df["rid"], raw_df["start"], raw_df["end"])
 
-        ).unique()
+        ).drop_duplicates(keep="first")
+        gene_df.to_csv(self.out_prefix + ".gene_d.tsv", sep="\t", index=False)
         
         hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "library_mod"]
         raw_df = pd.merge(
