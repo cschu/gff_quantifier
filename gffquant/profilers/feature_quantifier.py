@@ -429,7 +429,28 @@ class FeatureQuantifier(ABC):
 
         # pd.DataFrame(hits).to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
         raw_df = pd.DataFrame(hits)
-        raw_df.to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
+
+        #         count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
+        gene_df = pd.DataFrame.from_records(
+            { 
+                "rid": rid,
+                "gene": self.adm.get_db_sequence(
+                    self.reference_manager.get(rid[0] if isinstance(rid, tuple) else rid)[0],
+                    start=start, end=end
+                ).feature_id }
+            for rid, start, end in zip(raw_df["rid"], raw_df["start"], raw_df["end"])
+
+        )
+        
+        pd.merge(
+            raw_df, gene_df,
+            on=("rid",),
+            left_index=False, right_index=False,
+            how="inner",
+        ).to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
+        
+        # raw_df.to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
+
         raw_df["contrib"] = 1 / raw_df["n_aln"] / raw_df["library_mod"]
 
         keep_columns = ["rid", "start", "end", "contrib"]
