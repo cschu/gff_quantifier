@@ -463,7 +463,7 @@ class FeatureQuantifier(ABC):
         contrib_sums_uniq = raw_df[raw_df["is_ambiguous"] == False][keep_columns].groupby(by=["gene", "length"], as_index=False).sum(numeric_only=True)
         contrib_sums_combined = raw_df[keep_columns].groupby(by=["gene", "length"], as_index=False).sum(numeric_only=True)
         raw_df = pd.merge(
-            contrib_sums_uniq.drop(("length",), axis=1),
+            contrib_sums_uniq.drop(["length",], axis=1),
             contrib_sums_combined,
             # on=("rid", "start", "end"),
             on=("gene",),
