@@ -143,8 +143,9 @@ class FeatureQuantifier(ABC):
             annotation_df[["refid", "start", "end", "refname", category]],
             counts_df,
             left_index=False, right_index=False,
-            left_on=("refid", "start", "end",),
-            right_on=("rid", "start", "end",),
+            # left_on=("refid", "start", "end",),
+            # right_on=("rid", "start", "end",),
+            on=("gene",),
         ) \
         .dropna(axis=0, subset=[category,], how="any") \
         .explode(category, ignore_index=True)[[category,] + columns]  # \
@@ -444,6 +445,21 @@ class FeatureQuantifier(ABC):
 
         ).drop_duplicates(keep="first")
         gene_df.to_csv(self.out_prefix + ".gene_d.tsv", sep="\t", index=False)
+
+        categories = {
+            cat.id: cat
+            for cat in self.adm.get_categories()
+        }
+
+        df2 = pd.merge(
+            pd.DataFrame.from_records(self.get_gene_annotation(raw_df, categories)),
+            gene_df,
+            on=("rid", "start", "end"),
+            left_index=False, right_index=False,
+            how="inner",
+        )
+
+            
         
         hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "library_mod"]
         raw_df = pd.merge(
@@ -490,11 +506,8 @@ class FeatureQuantifier(ABC):
             .to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
         # raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
 
-        categories = {
-            cat.id: cat
-            for cat in self.adm.get_categories()
-        }
-        df2 = pd.DataFrame.from_records(self.get_gene_annotation(raw_df, categories))
+        
+        
 
         count_columns = ["uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
 
