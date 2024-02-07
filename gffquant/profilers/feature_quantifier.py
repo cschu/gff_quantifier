@@ -471,14 +471,14 @@ class FeatureQuantifier(ABC):
         raw_df["combined_lnorm"] = raw_df["combined_raw"] / (raw_df["end"] - raw_df["start"] + 1)
 
 
-        # raw_cols = ["gene", "rid", "start", "end", "uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
-        # pd.merge(
-        #     raw_df, gene_df,
-        #     on=("rid", "start", "end",),
-        #     left_index=False, right_index=False,
-        #     how="inner",
-        # )[raw_cols].to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
-        raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
+        raw_cols = ["gene", "rid", "start", "end", "uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
+        pd.merge(
+            raw_df, gene_df,
+            on=("rid", "start", "end",),
+            left_index=False, right_index=False,
+            how="inner",
+        )[raw_cols].to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
+        # raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
 
         categories = {
             cat.id: cat
