@@ -27,6 +27,8 @@ class PandaProfiler:
 			.drop_duplicates(keep="first")
 		# gene_df.to_csv(self.out_prefix + ".gene_d.tsv", sep="\t", index=False)
 		# hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "mate_id", "library_mod"]
+
+		# categories = { cat.id: cat for cat in seqdb.get_categories() }
 		
 		self.main_df = pd.merge(
 			self.main_df,
@@ -35,6 +37,10 @@ class PandaProfiler:
 			left_index=False, right_index=False,
 			how="inner",
 		) #[hit_cols]
+
+		self.main_df["length"] = (self.main_df["end"] - self.main_df["start"] + 1)
+		self.main_df["uniq_lnorm"] = self.main_df["uniq_raw"] / self.main_df["length"]
+		self.main_df["combined_lnorm"] = self.main_df["combined_raw"] / self.main_df["length"]
 
 	def profile(self, read_data_provider):
 		self._annotate_records(
