@@ -568,6 +568,7 @@ class FeatureQuantifier(ABC):
         dump_counters=False,
     ):
         
+        self.panda.profile(self)
         self.panda.dump(self.out_prefix)
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
