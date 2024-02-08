@@ -508,7 +508,7 @@ class FeatureQuantifier(ABC):
             .to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
         # raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
 
-        
+        df2.to_csv(self.out_prefix + ".df2.tsv", sep="\t", index=False)
         
 
         count_columns = ["uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
