@@ -73,7 +73,7 @@ class AlignmentGroup:
                     raise ValueError(f"-->{self.ambig_hit_counts}")
                 for hit in aln.hits:
                     hit.is_ambiguous = is_ambiguous
-                    hit.mate_id = [1, 2][aln.is_second]
+                    hit.mate_id = [1, 2][aln.is_second()]
                     try:
                         hit.library_mod = [1, 2][self.pe_library]
                     except TypeError as e:
