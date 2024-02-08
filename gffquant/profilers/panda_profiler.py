@@ -16,9 +16,9 @@ class PandaProfiler:
 
 		hits_df = pd.DataFrame(hits)
 		hits_df["contrib"] = 1 / hits_df["n_aln"] / hits_df["library_mod"]
-		hits_df["length"] = hits_df["end"] - hits_df["start"] + 1
+		# hits_df["length"] = hits_df["end"] - hits_df["start"] + 1
 
-		keep_columns = ["rid", "start", "end", "length", "contrib"]
+		keep_columns = ["rid", "start", "end", "contrib"]
 		contrib_sums_uniq = hits_df[hits_df["is_ambiguous"] == False][keep_columns] \
 			.groupby(by=keep_columns[:-1], as_index=False) \
 			.sum(numeric_only=True)
@@ -27,7 +27,7 @@ class PandaProfiler:
 			.sum(numeric_only=True)
 		
 		raw_counts_df = pd.merge(
-			contrib_sums_uniq.drop(["length",], axis=1),
+			contrib_sums_uniq,
 			contrib_sums_combined,
 			on=("rid", "start", "end",),
 			left_index=False, right_index=False,
@@ -41,5 +41,7 @@ class PandaProfiler:
 		else:
 			self.main_df = pd.concat(
 				(self.main_df, raw_counts_df,)
-			).groupby(by=["gene", "length"], as_index=False).sum(numeric_only=True)
+			) \
+				.groupby(by=["rid", "start", "end"], as_index=False) \
+				.sum(numeric_only=True)
 	
