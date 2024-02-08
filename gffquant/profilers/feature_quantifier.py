@@ -145,7 +145,8 @@ class FeatureQuantifier(ABC):
             left_index=False, right_index=False,
             # left_on=("refid", "start", "end",),
             # right_on=("rid", "start", "end",),
-            on=("gene",),
+            left_on=("gene",),
+            right_on=("refname",)
         ) \
         .dropna(axis=0, subset=[category,], how="any") \
         .explode(category, ignore_index=True)[[category,] + columns]  # \
