@@ -10,6 +10,17 @@ class PandaProfiler:
 		):
 			yield rid, start, end
 
+	def _annotate_category_counts(self, counts_df, annotation_df, columns, category) -> pd.DataFrame:
+		return pd.merge(
+            annotation_df[["refid", "start", "end", "refname", category]],
+            counts_df,
+            left_index=False, right_index=False,
+            left_on=("refname",),
+            right_on=("gene",),
+        ) \
+        .dropna(axis=0, subset=[category,], how="any") \
+        .explode(category, ignore_index=True)[[category,] + columns]
+
 	def _annotate_records(self, gene_coords, refmgr, seqdb):
 		gene_df = pd.DataFrame.from_records(
             { 
@@ -71,11 +82,37 @@ class PandaProfiler:
 			index=False,
 		)
 
-		# for category in categories.values():
-		# 	features = pd.DataFrame.from_records(
-		# 		{"fid": feat.id, "feature": feat.name }
-		# 		for feat in read_data_provider.adm.get_features(category=category.id)
-		# 	)
+		count_columns = ["uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
+		for category in categories.values():
+			features = pd.DataFrame.from_records(
+				{"fid": feat.id, "feature": feat.name }
+				for feat in read_data_provider.adm.get_features(category=category.id)
+			)
+			category_counts = self._annotate_category_counts(
+				self.main_df,
+				gene_category_map,
+				count_columns,
+				category.name,
+			) \
+				.groupby(category.name, as_index=False) \
+				.sum(numeric_only=True)
+			
+			cat_df = pd.merge(
+				features,
+				category_counts,
+				left_index=False, right_index=False,
+				left_on=("fid",),
+				right_on=(category.name,),
+			) \
+				.drop([category.name, "fid",], axis=1) \
+				.sort_values(by=["feature",])
+			
+			cat_df.to_csv(
+				f"{read_data_provider.out_prefix}.{category.name}.pd.txt",
+				sep="\t",
+				index=False,
+				float_format="%.5f",
+			)
 
 
 	def dump(self, out_prefix):
