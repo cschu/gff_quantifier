@@ -26,14 +26,15 @@ class PandaProfiler:
 		) \
 			.drop_duplicates(keep="first")
 		# gene_df.to_csv(self.out_prefix + ".gene_d.tsv", sep="\t", index=False)
-		hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "mate_id", "library_mod"]
+		# hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "mate_id", "library_mod"]
+		
 		self.main_df = pd.merge(
 			self.main_df,
 			gene_df,
 			on=("rid", "start", "end",),
 			left_index=False, right_index=False,
 			how="inner",
-		)[hit_cols]
+		) #[hit_cols]
 
 	def profile(self, read_data_provider):
 		self._annotate_records(
