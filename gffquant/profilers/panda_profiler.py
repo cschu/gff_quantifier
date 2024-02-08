@@ -49,7 +49,33 @@ class PandaProfiler:
 			read_data_provider.adm,
 		)
 		
+		categories = { cat.id: cat for cat in read_data_provider.adm.get_categories() }
 
+		gene_category_map = pd.merge(
+			pd.DataFrame.from_records(
+				read_data_provider.get_gene_annotation(
+					self.main_df[["rid", "start", "end"]],
+					categories,
+				)
+			),
+			self.main_df[["gene", "rid", "start", "end"]],
+			left_on=("refid", "start", "end",),
+			right_on=("rid", "start", "end",),
+			left_index=False, right_index=False,
+			how="inner",
+		)
+
+		gene_category_map.to_csv(
+			f"{read_data_provider.out_prefix}.gcmap.tsv",
+			sep="\t",
+			index=False,
+		)
+
+		# for category in categories.values():
+		# 	features = pd.DataFrame.from_records(
+		# 		{"fid": feat.id, "feature": feat.name }
+		# 		for feat in read_data_provider.adm.get_features(category=category.id)
+		# 	)
 
 
 	def dump(self, out_prefix):
