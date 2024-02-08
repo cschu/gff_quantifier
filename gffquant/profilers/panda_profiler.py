@@ -40,7 +40,6 @@ class PandaProfiler:
 			self.main_df = raw_counts_df
 		else:
 			self.main_df = pd.concat(
-				self.main_df,
-				raw_counts_df,
+				(self.main_df, raw_counts_df,)
 			).groupby(by=["gene", "length"], as_index=False).sum(numeric_only=True)
 	
