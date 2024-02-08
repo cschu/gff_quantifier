@@ -21,6 +21,19 @@ class PandaProfiler:
         .dropna(axis=0, subset=[category,], how="any") \
         .explode(category, ignore_index=True)[[category,] + columns]
 
+	def _get_gene_annotation(self, df, categories, refmgr, dbseq):
+		for rid, start, end in zip(df["rid"], df["start"], df["end"]):
+			ref, _ = refmgr.get(rid)
+			for annseq in dbseq.get_db_sequence(ref, start=start, end=end):
+				if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
+					d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
+					d.update({cat.name: None for cat in categories.values()})
+					# annotated_cols.append(d)
+					for item in annseq.annotation_str.split(";"):
+						catid, features = item.split("=")
+						d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
+					yield d
+
 	def _annotate_records(self, gene_coords, refmgr, seqdb):
 		gene_df = pd.DataFrame.from_records(
             { 
@@ -64,9 +77,11 @@ class PandaProfiler:
 
 		gene_category_map = pd.merge(
 			pd.DataFrame.from_records(
-				read_data_provider.get_gene_annotation(
+				self._get_gene_annotation(
 					self.main_df[["rid", "start", "end"]],
 					categories,
+					read_data_provider.reference_manager,
+					read_data_provider.adm,
 				)
 			),
 			self.main_df[["gene", "rid", "start", "end"]],
