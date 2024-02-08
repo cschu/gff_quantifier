@@ -463,7 +463,7 @@ class FeatureQuantifier(ABC):
 
             
         
-        hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "library_mod"]
+        hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "mate_id", "library_mod"]
         raw_df = pd.merge(
             raw_df, gene_df,
             on=("rid", "start", "end",),
