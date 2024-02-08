@@ -37,6 +37,7 @@ class ReferenceHit:
     n_aln: int = None
     is_ambiguous: bool = None
     library_mod: int = None
+    mate_id: int = None
 
     def __hash__(self):
         return hash(tuple(self.__dict__.values()))
