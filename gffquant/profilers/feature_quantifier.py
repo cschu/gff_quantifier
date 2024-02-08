@@ -454,8 +454,8 @@ class FeatureQuantifier(ABC):
         df2 = pd.merge(
             pd.DataFrame.from_records(self.get_gene_annotation(raw_df, categories)),
             gene_df,
-            # on=("rid", "start", "end"),
-            on=("gene",),
+            left_on=("refid", "start", "end"),
+            right_on=("rid", "start", "end"),
             left_index=False, right_index=False,
             how="inner",
         )
