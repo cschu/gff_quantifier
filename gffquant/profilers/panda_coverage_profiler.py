@@ -24,7 +24,7 @@ class PandaCoverageProfiler(PandaProfiler):
                     .union(self._coverage_data.get(False, {}))
             ):
                 uniq_cov = self._coverage_data.get(True, {}).get(key, Counter())
-                ambig_cov = self.coverage_counter.get(False, {}).get(key, Counter())
+                ambig_cov = self._coverage_data.get(False, {}).get(key, Counter())
                 length = key[2] - key[1] + 1
                 len_both = len(set(uniq_cov).union(ambig_cov))
                 yield {
