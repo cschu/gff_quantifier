@@ -43,6 +43,12 @@ class PandaCoverageProfiler(PandaProfiler):
     def dump(self, read_data_provider, out_prefix):
         self.main_df = pd.DataFrame(self._calc_coverage())
 
+        self._annotate_records(
+			self.get_gene_coords(),
+			read_data_provider.reference_manager,
+			read_data_provider.adm,
+		)
+
         categories = { cat.id: cat for cat in read_data_provider.adm.get_categories() }
 
         gene_category_map = self._get_gene_category_map(categories, read_data_provider)
