@@ -58,7 +58,7 @@ class PandaCoverageProfiler(PandaProfiler):
         for category in categories.values():
             features = pd.DataFrame.from_records(
                 {"fid": feat.id, "feature": feat.name}
-                for feat in self.adm.get_features(category=category.id)
+                for feat in read_data_provider.adm.get_features(category=category.id)
             )
 
             cat_grouped = self._annotate_category_counts(
