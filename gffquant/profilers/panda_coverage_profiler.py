@@ -45,7 +45,7 @@ class PandaCoverageProfiler(PandaProfiler):
 
         categories = { cat.id: cat for cat in read_data_provider.adm.get_categories() }
 
-        gene_category_map = self._get_gene_category_map(self, categories, read_data_provider)
+        gene_category_map = self._get_gene_category_map(categories, read_data_provider)
 
         coverage_columns = ["uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal"]
 

@@ -99,7 +99,7 @@ class PandaProfiler:
 		
 		categories = { cat.id: cat for cat in read_data_provider.adm.get_categories() }
 
-		gene_category_map = self._get_gene_category_map(self, categories, read_data_provider)
+		gene_category_map = self._get_gene_category_map(categories, read_data_provider)
 
 		count_columns = ["uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
 		for category in categories.values():
