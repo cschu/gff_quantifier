@@ -15,6 +15,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from .panda_profiler import PandaProfiler
+from .panda_coverage_profiler import PandaCoverageProfiler
 from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import CountManager
@@ -105,137 +106,116 @@ class FeatureQuantifier(ABC):
         self.strand_specific = strand_specific
         self.coverage_counter = {}
         self.panda = PandaProfiler()
+        self.panda_cv = PandaCoverageProfiler()
 
-    def update_coverage(self, aln_hits):
-        for hits, n_aln in aln_hits:
-            for hit in hits:
-                self.coverage_counter.setdefault(hit.is_ambiguous, {}).setdefault((hit.rid, hit.start, hit.end), Counter()).update({p: 1 / n_aln for p in range(hit.cov_start, hit.cov_end)})
-    def _calc_coverage(self):
-        for key in sorted(set(self.coverage_counter.get(True, {})).union(self.coverage_counter.get(False, {}))):
-            uniq_cov, ambig_cov = self.coverage_counter.get(True, {}).get(key, Counter()), self.coverage_counter.get(False, {}).get(key, Counter())
-            length = key[2] - key[1] + 1
-            len_both = len(set(uniq_cov).union(ambig_cov))
-            yield {
-                "rid": key[0],
-                "start": key[1],
-                "end": key[2],
-                "length": length,
-                "uniq_depth": sum(uniq_cov) / length,
-                "uniq_depth_covered": (sum(uniq_cov) / len(uniq_cov)) if uniq_cov else 0.0,
-                "uniq_horizontal": len(uniq_cov) / length,
-                "combined_depth": (sum(uniq_cov) + sum(ambig_cov)) / length,
-                "combined_depth_covered": ((sum(uniq_cov) + sum(ambig_cov)) / len_both) if len_both else 0.0,
-                "combined_horizontal": len_both / length,
-            }
+    # def get_gene_annotation(self, df, categories):
+    #     for rid, start, end in zip(df["rid"], df["start"], df["end"]):
+    #         ref, _ = self.reference_manager.get(rid)
+    #         for annseq in self.adm.get_db_sequence(ref, start=start, end=end):
+    #             if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
+    #                 d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
+    #                 d.update({cat.name: None for cat in categories.values()})
+    #                 # annotated_cols.append(d)
+    #                 for item in annseq.annotation_str.split(";"):
+    #                     catid, features = item.split("=")
+    #                     d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
+    #                 yield d
 
-    def get_gene_annotation(self, df, categories):
-        for rid, start, end in zip(df["rid"], df["start"], df["end"]):
-            ref, _ = self.reference_manager.get(rid)
-            for annseq in self.adm.get_db_sequence(ref, start=start, end=end):
-                if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
-                    d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
-                    d.update({cat.name: None for cat in categories.values()})
-                    # annotated_cols.append(d)
-                    for item in annseq.annotation_str.split(";"):
-                        catid, features = item.split("=")
-                        d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
-                    yield d
+    # def annotate_category_counts(self, counts_df, annotation_df, columns, category):
+    #     return pd.merge(
+    #         annotation_df[["refid", "start", "end", "refname", category]],
+    #         counts_df,
+    #         left_index=False, right_index=False,
+    #         # left_on=("refid", "start", "end",),
+    #         # right_on=("rid", "start", "end",),
+    #         left_on=("refname",),
+    #         right_on=("gene",),
+    #     ) \
+    #     .dropna(axis=0, subset=[category,], how="any") \
+    #     .explode(category, ignore_index=True)[[category,] + columns]  # \
+    #     # .groupby(category, as_index=False)
 
-    def annotate_category_counts(self, counts_df, annotation_df, columns, category):
-        return pd.merge(
-            annotation_df[["refid", "start", "end", "refname", category]],
-            counts_df,
-            left_index=False, right_index=False,
-            # left_on=("refid", "start", "end",),
-            # right_on=("rid", "start", "end",),
-            left_on=("refname",),
-            right_on=("gene",),
-        ) \
-        .dropna(axis=0, subset=[category,], how="any") \
-        .explode(category, ignore_index=True)[[category,] + columns]  # \
-        # .groupby(category, as_index=False)
-
-    def write_coverage(self):
-        df = pd.DataFrame(self._calc_coverage())
+#     def write_coverage(self):
+#         df = pd.DataFrame(self._calc_coverage())
         
-        categories = {
-            cat.id: cat
-            for cat in self.adm.get_categories()
-        }
-# OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-# OOOOOOOOO              OOOOOOOO
-# OOOOOOOOO              OOOOOOOO
-# OOOOOOOOO              OOOOOOOO
-# OOOOOOOOO              OOOOOOOO
-# OOOOOOOOO              OOOOOOOO
-# OOOOOOOOO              OOOOOOOO
-# OOOOOOOOO              OOOOOOOO
-# OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-        # annotated_cols = []
-        # for rid, start, end in zip(df["rid"], df["start"], df["end"]):
-        #     ref, reflen = self.reference_manager.get(rid)
-        #     for annseq in self.adm.get_db_sequence(ref, start=start, end=end):
-        #         if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
-        #             d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
-        #             d.update({cat.name: None for cat in categories.values()})
-        #             annotated_cols.append(d)
-        #             for item in annseq.annotation_str.split(";"):
-        #                 catid, features = item.split("=")
-        #                 d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
+#         categories = {
+#             cat.id: cat
+#             for cat in self.adm.get_categories()
+#         }
+# # OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+#         # annotated_cols = []
+#         # for rid, start, end in zip(df["rid"], df["start"], df["end"]):
+#         #     ref, reflen = self.reference_manager.get(rid)
+#         #     for annseq in self.adm.get_db_sequence(ref, start=start, end=end):
+#         #         if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
+#         #             d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
+#         #             d.update({cat.name: None for cat in categories.values()})
+#         #             annotated_cols.append(d)
+#         #             for item in annseq.annotation_str.split(";"):
+#         #                 catid, features = item.split("=")
+#         #                 d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
 
-        # df2 = pd.DataFrame.from_records(annotated_cols)
-        df2 = pd.DataFrame.from_records(self.get_gene_annotation(df, categories))
-        coverage_columns = ["uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal"]
+#         # df2 = pd.DataFrame.from_records(annotated_cols)
+#         df2 = pd.DataFrame.from_records(self.get_gene_annotation(df, categories))
+#         coverage_columns = ["uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal"]
 
-        for category in categories.values():
-            features = pd.DataFrame.from_records(
-                {"fid": feat.id, "feature": feat.name}
-                for feat in self.adm.get_features(category=category.id)
-                # {feat.id: feat.name for feat in self.adm.get_features(category=category.id)}
-            )
+#         for category in categories.values():
+#             features = pd.DataFrame.from_records(
+#                 {"fid": feat.id, "feature": feat.name}
+#                 for feat in self.adm.get_features(category=category.id)
+#                 # {feat.id: feat.name for feat in self.adm.get_features(category=category.id)}
+#             )
 
-            cat_grouped = self.annotate_category_counts(
-                df, df2, coverage_columns, category.name
-            ).groupby(category.name, as_index=False)
-            # cat_grouped = pd.merge(
-            #     df2[["refid", "start", "end", "refname", category.name]],
-            #     df,
-            #     left_index=False, right_index=False,
-            #     left_on=("refid", "start", "end",),
-            #     right_on=("rid", "start", "end",),
-            # ) \
-            #     .dropna(axis=0, subset=[category.name,], how="any") \
-            #     .explode(category.name, ignore_index=True)[[category.name,] + coverage_columns] \
-            #     .groupby(category.name, as_index=False)
-            coverage_df = cat_grouped[[category.name, "uniq_horizontal", "combined_horizontal",]].mean(numeric_only=True)
-            depth_df = cat_grouped[[category.name, "uniq_depth", "uniq_depth_covered", "combined_depth", "combined_depth_covered",]].sum(numeric_only=True)            
+#             cat_grouped = self.annotate_category_counts(
+#                 df, df2, coverage_columns, category.name
+#             ).groupby(category.name, as_index=False)
+#             # cat_grouped = pd.merge(
+#             #     df2[["refid", "start", "end", "refname", category.name]],
+#             #     df,
+#             #     left_index=False, right_index=False,
+#             #     left_on=("refid", "start", "end",),
+#             #     right_on=("rid", "start", "end",),
+#             # ) \
+#             #     .dropna(axis=0, subset=[category.name,], how="any") \
+#             #     .explode(category.name, ignore_index=True)[[category.name,] + coverage_columns] \
+#             #     .groupby(category.name, as_index=False)
+#             coverage_df = cat_grouped[[category.name, "uniq_horizontal", "combined_horizontal",]].mean(numeric_only=True)
+#             depth_df = cat_grouped[[category.name, "uniq_depth", "uniq_depth_covered", "combined_depth", "combined_depth_covered",]].sum(numeric_only=True)            
             
-            out_df = pd.merge(
-                features,
-                # cat_grouped.mean(),
-                pd.merge(coverage_df, depth_df, on=(category.name,), left_index=False, right_index=False),
-                left_index=False,
-                right_index=False,
-                left_on=("fid",),
-                right_on=(category.name,),
-            ) \
-                .drop([category.name, "fid"], axis=1) \
-                .sort_values(by=["feature",])
+#             out_df = pd.merge(
+#                 features,
+#                 # cat_grouped.mean(),
+#                 pd.merge(coverage_df, depth_df, on=(category.name,), left_index=False, right_index=False),
+#                 left_index=False,
+#                 right_index=False,
+#                 left_on=("fid",),
+#                 right_on=(category.name,),
+#             ) \
+#                 .drop([category.name, "fid"], axis=1) \
+#                 .sort_values(by=["feature",])
             
 
-            new_order = ["feature", "uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal",]
-            out_df[new_order].to_csv(
-                f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f"
-            )
+#             new_order = ["feature", "uniq_depth", "uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal",]
+#             out_df[new_order].to_csv(
+#                 f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f"
+#             )
 
 
-            # cat_grouped.mean().to_csv(f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f")
+#             # cat_grouped.mean().to_csv(f"{self.out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f")
 
 
-        df.to_csv(self.out_prefix + ".all.coverage.txt", index=False, sep="\t", na_rep="NA")
-        df2.to_csv(self.out_prefix + ".all.coverage_annotation.txt", index=False, sep="\t", na_rep="NA")
+#         df.to_csv(self.out_prefix + ".all.coverage.txt", index=False, sep="\t", na_rep="NA")
+#         df2.to_csv(self.out_prefix + ".all.coverage_annotation.txt", index=False, sep="\t", na_rep="NA")
 
-        self.adm.dump(self.out_prefix + ".db")
+#         self.adm.dump(self.out_prefix + ".db")
     
 
     def check_hits(self, ref, aln):
@@ -434,116 +414,6 @@ class FeatureQuantifier(ABC):
 
         self.panda.add_records(hits)
 
-        # raw_df = pd.DataFrame(hits)
-
-        # gene_df = pd.DataFrame.from_records(
-        #     { 
-        #         "rid": rid,
-        #         "start": start,
-        #         "end": end,
-        #         "gene": self.adm.get_db_sequence(
-        #             self.reference_manager.get(rid[0] if isinstance(rid, tuple) else rid)[0],
-        #             start=start, end=end
-        #         )[0].featureid }
-        #     for rid, start, end in zip(raw_df["rid"], raw_df["start"], raw_df["end"])
-
-        # ).drop_duplicates(keep="first")
-        # gene_df.to_csv(self.out_prefix + ".gene_d.tsv", sep="\t", index=False)
-
-        # categories = {
-        #     cat.id: cat
-        #     for cat in self.adm.get_categories()
-        # }
-
-        # df2 = pd.merge(
-        #     pd.DataFrame.from_records(self.get_gene_annotation(raw_df, categories)),
-        #     gene_df,
-        #     left_on=("refid", "start", "end"),
-        #     right_on=("rid", "start", "end"),
-        #     left_index=False, right_index=False,
-        #     how="inner",
-        # )
-
-            
-        
-        # hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "mate_id", "library_mod"]
-        # raw_df = pd.merge(
-        #     raw_df, gene_df,
-        #     on=("rid", "start", "end",),
-        #     left_index=False, right_index=False,
-        #     how="inner",
-        # )[hit_cols]
-        
-        # raw_df.to_csv(self.out_prefix + ".hits.tsv", sep="\t", index=False)
-
-        # raw_df["contrib"] = 1 / raw_df["n_aln"] / raw_df["library_mod"]
-        # raw_df["length"] = raw_df["end"] - raw_df["start"] + 1
-
-        # # keep_columns = ["gene", "rid", "start", "end", "contrib"]
-        # keep_columns = ["gene", "contrib", "length"]
-        # contrib_sums_uniq = raw_df[raw_df["is_ambiguous"] == False][keep_columns].groupby(by=["gene", "length"], as_index=False).sum(numeric_only=True)
-        # contrib_sums_combined = raw_df[keep_columns].groupby(by=["gene", "length"], as_index=False).sum(numeric_only=True)
-        # raw_df = pd.merge(
-        #     contrib_sums_uniq.drop(["length",], axis=1),
-        #     contrib_sums_combined,
-        #     # on=("rid", "start", "end"),
-        #     on=("gene",),
-        #     left_index=False, right_index=False,
-        #     how="outer",
-        # ).rename({"contrib_x": "uniq_raw", "contrib_y": "combined_raw"}, axis=1).fillna(0)
-
-        # raw_df.to_csv(self.out_prefix + ".count_merge.tsv", sep="\t", index=False)
-
-        # raw_df["uniq_lnorm"] = raw_df["uniq_raw"] / raw_df["length"] #(raw_df["end"] - raw_df["start"] + 1)
-        # raw_df["combined_lnorm"] = raw_df["combined_raw"] / raw_df["length"] #(raw_df["end"] - raw_df["start"] + 1)
-
-
-        # # raw_cols = ["gene", "rid", "start", "end", "uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
-        # raw_cols = ["gene", "length", "uniq_raw", "uniq_lnorm", "combined_raw", "combined_lnorm"]
-        # # pd.merge(
-        # #     raw_df, gene_df,
-        # #     # on=("rid", "start", "end",),
-        # #     on=("gene",),
-        # #     left_index=False, right_index=False,
-        # #     how="inner",
-        # # )
-        # raw_df[raw_cols] \
-        #     .sort_values(by=["gene",]) \
-        #     .to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
-        # # raw_df.to_csv(self.out_prefix + ".raw_lnorm.tsv", sep="\t", index=False)
-
-        # df2.to_csv(self.out_prefix + ".df2.tsv", sep="\t", index=False)
-        
-
-        # count_columns = ["uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
-
-        # for category in categories.values():
-        #     features = pd.DataFrame.from_records(
-        #         {"fid": feat.id, "feature": feat.name}
-        #         for feat in self.adm.get_features(category=category.id)
-        #         # {feat.id: feat.name for feat in self.adm.get_features(category=category.id)}
-        #     )
-        #     cat_grouped = self.annotate_category_counts(
-        #         raw_df, df2, count_columns, category.name
-        #     ).groupby(category.name, as_index=False)
-
-        #     out_df = pd.merge(
-        #         features,
-        #         cat_grouped.sum(numeric_only=True),
-        #         left_index=False, right_index=False,
-        #         left_on=("fid",),
-        #         right_on=(category.name,),
-        #     ) \
-        #         .drop([category.name, "fid",], axis=1) \
-        #         .sort_values(by=["feature",])  
-
-        #     out_df.to_csv(
-        #         f"{self.out_prefix}.{category.name}.pd.txt", sep="\t", index=False, float_format="%.5f",
-        #     )
-
-        
-        # self.write_coverage()
-
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter
 
         if external_readcounts is not None:
@@ -570,6 +440,8 @@ class FeatureQuantifier(ABC):
         
         self.panda.profile(self)
         self.panda.dump(self.out_prefix)
+        self.panda_cv.dump(self, self.out_prefix)
+        # self.write_coverage()
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
             print(
@@ -664,7 +536,7 @@ class FeatureQuantifier(ABC):
                 )
             )
             logger.info("count_stream: %s", count_stream)
-            # self.update_coverage(count_stream)
+            self.panda_cv.update_coverage(count_stream)
 
 
             contributed_counts = self.count_manager.update_counts(

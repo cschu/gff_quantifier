@@ -10,6 +10,30 @@ class PandaProfiler:
 		):
 			yield rid, start, end
 
+	def _get_gene_category_map(self, categories, read_data_provider):
+		gene_category_map = pd.merge(
+			pd.DataFrame.from_records(
+				self._get_gene_annotation(
+					self.main_df[["rid", "start", "end"]],
+					categories,
+					read_data_provider.reference_manager,
+					read_data_provider.adm,
+				)
+			),
+			self.main_df[["gene", "rid", "start", "end"]],
+			left_on=("refid", "start", "end",),
+			right_on=("rid", "start", "end",),
+			left_index=False, right_index=False,
+			how="inner",
+		)
+
+		gene_category_map.to_csv(
+			f"{read_data_provider.out_prefix}.gcmap.tsv",
+			sep="\t",
+			index=False,
+		)
+		return gene_category_map
+
 	def _annotate_category_counts(self, counts_df, annotation_df, columns, category) -> pd.DataFrame:
 		return pd.merge(
             annotation_df[["refid", "start", "end", "refname", category]],
@@ -75,27 +99,7 @@ class PandaProfiler:
 		
 		categories = { cat.id: cat for cat in read_data_provider.adm.get_categories() }
 
-		gene_category_map = pd.merge(
-			pd.DataFrame.from_records(
-				self._get_gene_annotation(
-					self.main_df[["rid", "start", "end"]],
-					categories,
-					read_data_provider.reference_manager,
-					read_data_provider.adm,
-				)
-			),
-			self.main_df[["gene", "rid", "start", "end"]],
-			left_on=("refid", "start", "end",),
-			right_on=("rid", "start", "end",),
-			left_index=False, right_index=False,
-			how="inner",
-		)
-
-		gene_category_map.to_csv(
-			f"{read_data_provider.out_prefix}.gcmap.tsv",
-			sep="\t",
-			index=False,
-		)
+		gene_category_map = self._get_gene_category_map(self, categories, read_data_provider)
 
 		count_columns = ["uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
 		for category in categories.values():
