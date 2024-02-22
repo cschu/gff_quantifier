@@ -85,10 +85,8 @@ class PandaProfiler:
 			left_index=False, right_index=False,
 			how="inner",
 		) #[hit_cols]
-
 		self.main_df["length"] = (self.main_df["end"] - self.main_df["start"] + 1)
-		self.main_df["uniq_lnorm"] = self.main_df["uniq_raw"] / self.main_df["length"]
-		self.main_df["combined_lnorm"] = self.main_df["combined_raw"] / self.main_df["length"]
+
 
 	def profile(self, read_data_provider):
 		self._annotate_records(
@@ -97,6 +95,8 @@ class PandaProfiler:
 			read_data_provider.adm,
 		)
 		
+		self.main_df["uniq_lnorm"] = self.main_df["uniq_raw"] / self.main_df["length"]
+		self.main_df["combined_lnorm"] = self.main_df["combined_raw"] / self.main_df["length"]
 		categories = { cat.id: cat for cat in read_data_provider.adm.get_categories() }
 
 		gene_category_map = self._get_gene_category_map(categories, read_data_provider)
