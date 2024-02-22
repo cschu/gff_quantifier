@@ -7,7 +7,7 @@ from .panda_profiler import PandaProfiler
 
 class PandaCoverageProfiler(PandaProfiler):
     def __init__(self):
-        super().__init__(self)
+        PandaProfiler.__init__(self)
         self._coverage_data = {}
         self.main_df = None
 
