@@ -126,7 +126,16 @@ class PandaProfiler:
 				.drop([category.name, "fid",], axis=1) \
 				.sort_values(by=["feature",])
 			
-			cat_df.to_csv(
+			cat_df["uniq_scaled"] = cat_df["uniq_lnorm"] * (
+				cat_df["uniq_raw"].sum(numeric_only=True) / cat_df["uniq_lnorm"].sum(numeric_only=True)
+			)
+			cat_df["combined_scaled"] = cat_df["combined_lnorm"] * (
+				cat_df["combined_raw"].sum(numeric_only=True) / cat_df["combined_lnorm"].sum(numeric_only=True)
+			)
+			out_cols = ["feature", "uniq_raw", "uniq_lnorm", "uniq_scaled", "combined_raw", "combined_lnorm", "combined_scaled"]
+
+
+			cat_df[out_cols].to_csv(
 				f"{read_data_provider.out_prefix}.{category.name}.pd.txt",
 				sep="\t",
 				index=False,
