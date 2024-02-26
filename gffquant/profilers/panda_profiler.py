@@ -134,13 +134,28 @@ class PandaProfiler:
 			)
 			out_cols = ["feature", "uniq_raw", "uniq_lnorm", "uniq_scaled", "combined_raw", "combined_lnorm", "combined_scaled"]
 
-
-			cat_df[out_cols].to_csv(
-				f"{read_data_provider.out_prefix}.{category.name}.pd.txt",
-				sep="\t",
-				index=False,
-				float_format="%.5f",
+			header_rows = pd.DataFrame(
+				[
+					["total_reads"] + [read_data_provider.aln_counter["read_count"]] * (len(out_cols) - 1),
+					["filtered_reads"] + [read_data_provider.aln_counter["filtered_read_count"]] * (len(out_cols) - 1),
+				],
+				columns = out_cols
 			)
+			
+
+
+			pd.concat(
+				[
+					header_rows,
+					cat_df[out_cols],
+				]
+			) \
+				.to_csv(
+					f"{read_data_provider.out_prefix}.{category.name}.pd.txt",
+					sep="\t",
+					index=False,
+					float_format="%.5f",
+				)
 
 
 	def dump(self, out_prefix):
