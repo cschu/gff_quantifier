@@ -317,7 +317,7 @@ class FeatureQuantifier(ABC):
 
         return new_ref[0]
 
-    def process_alignments(self, aln_reader: AlignmentProcessor, min_identity=None, min_seqlen=None, unmarked_orphans=False):
+    def process_alignments(self, aln_reader: AlignmentProcessor, sam_prefix="", min_identity=None, min_seqlen=None, unmarked_orphans=False):
         # pylint: disable=R0914
         t0 = time.time()
 
@@ -325,7 +325,7 @@ class FeatureQuantifier(ABC):
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
-            filtered_sam=f"{self.out_prefix}.filtered.sam",
+            filtered_sam=f"{self.out_prefix}{sam_prefix}.filtered.sam",
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)
@@ -402,6 +402,7 @@ class FeatureQuantifier(ABC):
         min_seqlen=None,
         external_readcounts=None,
         unmarked_orphans=False,
+        sam_prefix="",
     ):
         aln_reader = AlignmentProcessor(aln_stream, aln_format)
 
@@ -410,6 +411,7 @@ class FeatureQuantifier(ABC):
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             unmarked_orphans=unmarked_orphans,
+            sam_prefix=sam_prefix,
         )
 
         self.panda.add_records(hits)

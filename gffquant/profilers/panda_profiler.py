@@ -121,9 +121,13 @@ class PandaProfiler:
 				float_format="%.5f",
 			)
 
+			category_row = [
+				category_counts[col].sum(numeric_only=True)
+				for col in ["uniq_raw", "uniq_lnorm", "combined_raw", "combined_lnorm",]
+			]
 			
 			category_counts = category_counts \
-				.explode(category.name, ignore_index=True)[[category,] + count_columns] \
+				.explode(category.name, ignore_index=True)[[category.name,] + count_columns] \
 				.groupby(category.name, as_index=False) \
 				.sum(numeric_only=True)
 			
@@ -149,6 +153,7 @@ class PandaProfiler:
 				[
 					["total_reads"] + [read_data_provider.aln_counter["read_count"]] * (len(out_cols) - 1),
 					["filtered_reads"] + [read_data_provider.aln_counter["filtered_read_count"]] * (len(out_cols) - 1),
+					["category"] + category_row[:2] + [category_row[1] * (category_row[0] / category_row[1]),] + category_row[2:] + [category_row[3] * (category_row[2] / category_row[3]),],
 				],
 				columns = out_cols
 			)
