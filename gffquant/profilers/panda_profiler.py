@@ -42,8 +42,8 @@ class PandaProfiler:
             left_on=("refname",),
             right_on=("gene",),
         ) \
-        .dropna(axis=0, subset=[category,], how="any") \
-        .explode(category, ignore_index=True)[[category,] + columns]
+        .dropna(axis=0, subset=[category,], how="any") #\
+        # .explode(category, ignore_index=True)[[category,] + columns]
 
 	def _get_gene_annotation(self, df, categories, refmgr, dbseq):
 		for rid, start, end in zip(df["rid"], df["start"], df["end"]):
@@ -112,7 +112,18 @@ class PandaProfiler:
 				gene_category_map,
 				count_columns,
 				category.name,
-			) \
+			) 
+			
+			category_counts.to_csv(
+				f"{read_data_provider.out_prefix}.unexploded.{category.name}.pd.txt",
+				sep="\t",
+				index=False,
+				float_format="%.5f",
+			)
+
+			
+			category_counts = category_counts \
+				.explode(category.name, ignore_index=True)[[category,] + count_columns] \
 				.groupby(category.name, as_index=False) \
 				.sum(numeric_only=True)
 			
