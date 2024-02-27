@@ -1,3 +1,5 @@
+import pickle
+
 from collections import Counter
 
 import pandas as pd
@@ -41,6 +43,8 @@ class PandaCoverageProfiler(PandaProfiler):
                 }
 
     def dump(self, read_data_provider, out_prefix):
+        with open(f"{read_data_provider.out_prefix}.coverage.dat", "wb") as _out:
+            pickle.dump(self._coverage_data, _out)
         self.main_df = pd.DataFrame(self._calc_coverage())
 
         self._annotate_records(
