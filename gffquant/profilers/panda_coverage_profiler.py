@@ -29,16 +29,19 @@ class PandaCoverageProfiler(PandaProfiler):
                 ambig_cov = self._coverage_data.get(False, {}).get(key, Counter())
                 length = key[2] - key[1] + 1
                 len_both = len(set(uniq_cov).union(ambig_cov))
+
+                sum_uniq_cov, sum_ambig_cov = sum(uniq_cov.values()), sum(ambig_cov.values())
+
                 yield {
                     "rid": key[0],
                     "start": key[1],
                     "end": key[2],
                     "length": length,
-                    "uniq_depth": sum(uniq_cov) / length,
-                    "uniq_depth_covered": (sum(uniq_cov) / len(uniq_cov)) if uniq_cov else 0.0,
+                    "uniq_depth": sum_uniq_cov / length,
+                    "uniq_depth_covered": (sum_uniq_cov / len(uniq_cov)) if uniq_cov else 0.0,
                     "uniq_horizontal": len(uniq_cov) / length,
-                    "combined_depth": (sum(uniq_cov) + sum(ambig_cov)) / length,
-                    "combined_depth_covered": ((sum(uniq_cov) + sum(ambig_cov)) / len_both) if len_both else 0.0,
+                    "combined_depth": (sum_uniq_cov + sum_ambig_cov) / length,
+                    "combined_depth_covered": ((sum_uniq_cov + sum_ambig_cov) / len_both) if len_both else 0.0,
                     "combined_horizontal": len_both / length,
                 }
 
