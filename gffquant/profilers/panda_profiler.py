@@ -175,13 +175,33 @@ class PandaProfiler:
 
 
 	def dump(self, out_prefix):
+		
 		self.main_df.to_csv(
 			f"{out_prefix}.panda_main_df.tsv",
 			sep="\t",
 			index=False,
 			float_format="%.5f"
 		)
-	
+
+		out_cols = ["gene", "uniq_raw", "uniq_lnorm", "uniq_scaled", "combined_raw", "combined_lnorm", "combined_scaled"]
+
+		self.main_df["uniq_scaled"] = self.main_df["uniq_lnorm"] * (
+			self.main_df["uniq_raw"].sum(numeric_only=True) / self.main_df["uniq_lnorm"].sum(numeric_only=True)
+		)
+		self.main_df["combined_scaled"] = self.main_df["combined_lnorm"] * (
+			self.main_df["combined_raw"].sum(numeric_only=True) / self.main_df["combined_lnorm"].sum(numeric_only=True)
+		)
+
+		self.main_df[out_cols] \
+			.sort_values(by=["gene",]) \
+			.to_csv(
+				f"{out_prefix}.gene_counts.pd.txt",
+				sep="\t",
+				index=False,
+				float_format="%.5f"
+			)
+
+
 	def add_records(self, hits):
 
 		# [2024-02-08 14:51:17,846] count_stream: 
