@@ -66,7 +66,9 @@ class PandaCoverageProfiler(PandaProfiler):
                 gene_category_map,
                 coverage_columns,
                 category.name
-            ).groupby(category.name, as_index=False)
+            ) \
+                .explode(category.name, ignore_index=True)[[category.name,] + coverage_columns] \
+                .groupby(category.name, as_index=False)
             
             coverage_df = cat_grouped[[category.name, "uniq_horizontal", "combined_horizontal",]].mean(numeric_only=True)
             depth_df = cat_grouped[[category.name, "uniq_depth", "uniq_depth_covered", "combined_depth", "combined_depth_covered",]].sum(numeric_only=True)
