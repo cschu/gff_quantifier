@@ -14,51 +14,26 @@ class PandaCoverageProfiler(PandaProfiler):
         self.main_df = None
 
     def update_coverage(self, aln_hits):
-        # for hits, n_aln in aln_hits:
-        #     for hit in hits:
-        #         self._coverage_data[hit.is_ambiguous] \
-        #             .setdefault((hit.rid, hit.start, hit.end), Counter())[(hit.cov_start, hit.cov_end)] += (1 / hit.library_mod / n_aln)
         for hits, n_aln in aln_hits:
             for hit in hits:
                 self._coverage_data[hit.is_ambiguous] \
-                    .setdefault((hit.rid, hit.start, hit.end), Counter()) \
-                    .update({p: (1 / hit.library_mod / n_aln) for p in range(hit.cov_start, hit.cov_end + 1)})
+                    .setdefault((hit.rid, hit.start, hit.end), Counter())[(hit.cov_start, hit.cov_end)] += (1 / hit.library_mod / n_aln)
+        # for hits, n_aln in aln_hits:
+        #     for hit in hits:
+        #         self._coverage_data[hit.is_ambiguous] \
+        #             .setdefault((hit.rid, hit.start, hit.end), Counter()) \
+        #             .update({p: (1 / hit.library_mod / n_aln) for p in range(hit.cov_start, hit.cov_end + 1)})
 
     def _calc_coverage(self):
-            # for key in sorted(
-            #     set(self._coverage_data[False]).union(self._coverage_data[True])
-            # ):
-            #     uniq_cov, ambig_cov = Counter(), Counter()
-            #     for (cstart, cend), counts in self._coverage_data[False].get(key, Counter()).items():
-            #         uniq_cov.update({p: counts for p in range(cstart, cend + 1)})
-            #     for (cstart, cend), counts in self._coverage_data[True].get(key, Counter()).items():
-            #         ambig_cov.update({p: counts for p in range(cstart, cend + 1)})
-
-            #     length = key[2] - key[1] + 1
-            #     len_both = len(set(uniq_cov).union(ambig_cov))
-
-            #     sum_uniq_cov, sum_ambig_cov = sum(uniq_cov.values()), sum(ambig_cov.values())
-
-            #     yield {
-            #         "rid": key[0],
-            #         "start": key[1],
-            #         "end": key[2],
-            #         "length": length,
-            #         "uniq_depth": sum_uniq_cov / length,
-            #         "uniq_depth_covered": (sum_uniq_cov / len(uniq_cov)) if uniq_cov else 0.0,
-            #         "uniq_horizontal": len(uniq_cov) / length,
-            #         "combined_depth": (sum_uniq_cov + sum_ambig_cov) / length,
-            #         "combined_depth_covered": ((sum_uniq_cov + sum_ambig_cov) / len_both) if len_both else 0.0,
-            #         "combined_horizontal": len_both / length,
-            #     }
-
             for key in sorted(
-                # set(self._coverage_data.get(True, {})) \
-                #     .union(self._coverage_data.get(False, {}))
                 set(self._coverage_data[False]).union(self._coverage_data[True])
             ):
-                uniq_cov = self._coverage_data[False].get(key, Counter())
-                ambig_cov = self._coverage_data[True].get(key, Counter())
+                uniq_cov, ambig_cov = Counter(), Counter()
+                for (cstart, cend), counts in self._coverage_data[False].get(key, Counter()).items():
+                    uniq_cov.update({p: counts for p in range(cstart, cend + 1)})
+                for (cstart, cend), counts in self._coverage_data[True].get(key, Counter()).items():
+                    ambig_cov.update({p: counts for p in range(cstart, cend + 1)})
+
                 length = key[2] - key[1] + 1
                 len_both = len(set(uniq_cov).union(ambig_cov))
 
@@ -76,6 +51,31 @@ class PandaCoverageProfiler(PandaProfiler):
                     "combined_depth_covered": ((sum_uniq_cov + sum_ambig_cov) / len_both) if len_both else 0.0,
                     "combined_horizontal": len_both / length,
                 }
+
+            # for key in sorted(
+            #     # set(self._coverage_data.get(True, {})) \
+            #     #     .union(self._coverage_data.get(False, {}))
+            #     set(self._coverage_data[False]).union(self._coverage_data[True])
+            # ):
+            #     uniq_cov = self._coverage_data[False].get(key, Counter())
+            #     ambig_cov = self._coverage_data[True].get(key, Counter())
+            #     length = key[2] - key[1] + 1
+            #     len_both = len(set(uniq_cov).union(ambig_cov))
+
+            #     sum_uniq_cov, sum_ambig_cov = sum(uniq_cov.values()), sum(ambig_cov.values())
+
+            #     yield {
+            #         "rid": key[0],
+            #         "start": key[1],
+            #         "end": key[2],
+            #         "length": length,
+            #         "uniq_depth": sum_uniq_cov / length,
+            #         "uniq_depth_covered": (sum_uniq_cov / len(uniq_cov)) if uniq_cov else 0.0,
+            #         "uniq_horizontal": len(uniq_cov) / length,
+            #         "combined_depth": (sum_uniq_cov + sum_ambig_cov) / length,
+            #         "combined_depth_covered": ((sum_uniq_cov + sum_ambig_cov) / len_both) if len_both else 0.0,
+            #         "combined_horizontal": len_both / length,
+            #     }
 
     def dump(self, read_data_provider, out_prefix):
         with open(f"{read_data_provider.out_prefix}.coverage.dat", "wb") as _out:
