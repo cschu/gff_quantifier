@@ -113,6 +113,8 @@ def handle_args(args):
         help="Format of the annotation database.",
     )
 
+
+
     # ap.add_argument(
     #     "--db_coordinates",
     #     type=str,
@@ -329,6 +331,11 @@ def handle_args(args):
         "--cpus_for_alignment", "-t",
         type=int, default=1,
         help="",
+    )
+
+    ap.add_argument(
+        "--with_coverage",
+        action="store_true",
     )
 
     ap.add_argument(

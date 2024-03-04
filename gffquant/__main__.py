@@ -109,6 +109,7 @@ def main():
         distribution_mode=args.distribution_mode,
         strand_specific=args.strand_specific,
         paired_end_count=args.paired_end_count,
+        calculate_coverage=args.with_coverage,
         **kwargs,
     )
 

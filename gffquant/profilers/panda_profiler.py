@@ -1,28 +1,38 @@
 import pandas as pd
 
+from ..db.annotation_db import AnnotationDatabaseManager
+
+
 class PandaProfiler:
-	def __init__(self):
+	def __init__(self, with_overlap=False):		
 		self.main_df = None
+		self.with_overlap = with_overlap
+		self.index_columns = ["rid",] + (["start", "end",] if with_overlap else [])
 
 	def get_gene_coords(self):
-		for rid, start, end in zip(
-			self.main_df["rid"], self.main_df["start"], self.main_df["end"]
-		):
-			yield rid, start, end
+		if self.with_overlap:
+			for rid, start, end in zip(
+				self.main_df["rid"], self.main_df["start"], self.main_df["end"]
+			):
+				yield rid, start, end
+		else:
+			for rid in self.main_df["rid"]:
+				yield rid
 
 	def _get_gene_category_map(self, categories, read_data_provider):
 		gene_category_map = pd.merge(
 			pd.DataFrame.from_records(
 				self._get_gene_annotation(
-					self.main_df[["rid", "start", "end"]],
+					# self.main_df[["rid", "start", "end"]],
+					self.main_df[self.index_columns],
 					categories,
 					read_data_provider.reference_manager,
 					read_data_provider.adm,
 				)
 			),
-			self.main_df[["gene", "rid", "start", "end"]],
-			left_on=("refid", "start", "end",),
-			right_on=("rid", "start", "end",),
+			self.main_df[["gene",] + self.index_columns],
+			left_on=["refid",] + self.index_columns[1:],
+			right_on=self.index_columns,
 			left_index=False, right_index=False,
 			how="inner",
 		)
@@ -36,56 +46,68 @@ class PandaProfiler:
 
 	def _annotate_category_counts(self, counts_df, annotation_df, columns, category) -> pd.DataFrame:
 		return pd.merge(
-            annotation_df[["refid", "start", "end", "refname", category]],
+            annotation_df[["refid",] + self.index_columns[1:] + ["refname", category]],
             counts_df,
             left_index=False, right_index=False,
             left_on=("refname",),
             right_on=("gene",),
         ) \
-        .dropna(axis=0, subset=[category,], how="any") #\
-        # .explode(category, ignore_index=True)[[category,] + columns]
+        .dropna(axis=0, subset=[category,], how="any")
 
 	def _get_gene_annotation(self, df, categories, refmgr, dbseq):
-		for rid, start, end in zip(df["rid"], df["start"], df["end"]):
+		genes = zip(df["rid"], df["start"], df["end"]) if self.with_overlap else df["rid"]
+		# for rid, start, end in zip(df["rid"], df["start"], df["end"]):
+		for gene in genes:
+			rid, start, end = gene if self.with_overlap else (gene, None, None)
 			ref, _ = refmgr.get(rid)
 			for annseq in dbseq.get_db_sequence(ref, start=start, end=end):
-				if annseq.annotation_str is not None: #and start == annseq.start and annseq.end == end:
-					d = {"refid": rid, "start": start, "end": end, "refname": annseq.featureid}
+				if annseq.annotation_str is not None:
+					d = {"refid": rid, "refname": annseq.featureid}
+					if self.with_overlap:
+						d.update({"start": start, "end": end,})
 					d.update({cat.name: None for cat in categories.values()})
-					# annotated_cols.append(d)
 					for item in annseq.annotation_str.split(";"):
 						catid, features = item.split("=")
 						d[categories.get(int(catid)).name] = [int(feat) for feat in features.split(",")]
 					yield d
 
-	def _annotate_records(self, gene_coords, refmgr, seqdb):
-		gene_df = pd.DataFrame.from_records(
-            { 
-                "rid": rid,
-                "start": start,
-                "end": end,
-                "gene": seqdb.get_db_sequence(
-                    refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0],
-                    start=start, end=end
-                )[0].featureid,
-			}
-            # for rid, start, end in zip(df["rid"], df["start"], df["end"])
-			for rid, start, end in gene_coords
-		) \
-			.drop_duplicates(keep="first")
-		# gene_df.to_csv(self.out_prefix + ".gene_d.tsv", sep="\t", index=False)
-		# hit_cols = ["gene", "rid", "start", "end", "rev_strand", "cov_start", "cov_end", "has_annotation", "n_aln", "is_ambiguous", "mate_id", "library_mod"]
-
-		# categories = { cat.id: cat for cat in seqdb.get_categories() }
+	def _annotate_records(self, gene_coords, refmgr, seqdb: AnnotationDatabaseManager):
+		if self.with_overlap:
+			gene_df = pd.DataFrame.from_records(
+				{ 
+					"rid": rid,
+					"start": start,
+					"end": end,
+					"gene": seqdb.get_db_sequence(
+						refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0],
+						start=start, end=end
+					)[0].featureid,
+				}
+				for rid, start, end in gene_coords
+			) \
+				.drop_duplicates(keep="first")
+		else:
+			gene_df = pd.DataFrame.from_records(
+				{
+					"rid": rid,
+					"gene_data": refmgr.get(rid[0] if isinstance(rid, tuple) else rid),
+				}
+				for rid in gene_coords
+			) \
+				.drop_duplicates(keep="first")
+			gene_df[["gene", "length"]] = pd.DataFrame(gene_df["gene_data"].to_list(), index=gene_df.index) \
+				.drop(["gene_data",], axis=1)
 		
 		self.main_df = pd.merge(
 			self.main_df,
 			gene_df,
-			on=("rid", "start", "end",),
+			# on=("rid", "start", "end",),
+			on=self.index_columns,
 			left_index=False, right_index=False,
 			how="inner",
-		) #[hit_cols]
-		self.main_df["length"] = (self.main_df["end"] - self.main_df["start"] + 1)
+		)
+		if self.with_overlap:
+			self.main_df["length"] = (self.main_df["end"] - self.main_df["start"] + 1)
 
 
 	def profile(self, read_data_provider):
@@ -157,8 +179,6 @@ class PandaProfiler:
 				],
 				columns = out_cols
 			)
-			
-
 
 			pd.concat(
 				[
@@ -221,7 +241,7 @@ class PandaProfiler:
 		hits_df["contrib"] = 1 / hits_df["n_aln"] / hits_df["library_mod"]
 		# hits_df["length"] = hits_df["end"] - hits_df["start"] + 1
 
-		keep_columns = ["rid", "start", "end", "contrib"]
+		keep_columns = self.index_columns + ["contrib",]  # ["rid", "start", "end", "contrib"]
 		contrib_sums_uniq = hits_df[hits_df["is_ambiguous"] == False][keep_columns] \
 			.groupby(by=keep_columns[:-1], as_index=False) \
 			.sum(numeric_only=True)
@@ -232,7 +252,8 @@ class PandaProfiler:
 		raw_counts_df = pd.merge(
 			contrib_sums_uniq,
 			contrib_sums_combined,
-			on=("rid", "start", "end",),
+			# on=("rid", "start", "end",),
+			on=self.index_columns,
 			left_index=False, right_index=False,
 			how="outer"
 		) \
@@ -245,6 +266,6 @@ class PandaProfiler:
 			self.main_df = pd.concat(
 				(self.main_df, raw_counts_df,)
 			) \
-				.groupby(by=["rid", "start", "end"], as_index=False) \
+				.groupby(by=self.index_columns, as_index=False) \
 				.sum(numeric_only=True)
 	

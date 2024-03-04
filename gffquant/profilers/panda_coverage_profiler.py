@@ -7,6 +7,17 @@ import pandas as pd
 from .panda_profiler import PandaProfiler
 
 
+# # OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOO              OOOOOOOO
+# # OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+
+
 class PandaCoverageProfiler(PandaProfiler):
     def __init__(self):
         PandaProfiler.__init__(self)
@@ -133,7 +144,7 @@ class PandaCoverageProfiler(PandaProfiler):
         gene_columns = ["gene", "uniq_depth",	"uniq_depth_covered", "uniq_horizontal", "combined_depth", "combined_depth_covered", "combined_horizontal"]
         self.main_df[gene_columns] \
             .sort_values(by=["gene",]) \
-            .to_csv(out_prefix + ".genes.txt", index=False, sep="\t", na_rep="NA", float_format="%.5f")
+            .to_csv(out_prefix + ".genes.coverage.txt", index=False, sep="\t", na_rep="NA", float_format="%.5f")
 
         gene_category_map.to_csv(out_prefix + ".all.coverage_annotation.txt", index=False, sep="\t", na_rep="NA")
 
