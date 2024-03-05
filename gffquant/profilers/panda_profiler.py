@@ -95,6 +95,8 @@ class PandaProfiler:
 				for rid in gene_coords
 			) \
 				.drop_duplicates(keep="first")
+
+			gene_df.to_csv("GENE_DF.tsv", sep="\t", index=False)
 			gene_df[["gene", "length"]] = pd.DataFrame(gene_df["gene_data"].to_list(), index=gene_df.index) \
 				.drop(["gene_data",], axis=1)
 		
