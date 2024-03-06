@@ -88,17 +88,17 @@ class PandaProfiler:
 				.drop_duplicates(keep="first")
 		else:
 			gene_df = pd.DataFrame.from_records(
-				{
-					"rid": rid,
-					"gene_data": refmgr.get(rid[0] if isinstance(rid, tuple) else rid),
-				}
-				for rid in gene_coords
+				(
+					(rid,) + refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
+					for rid in gene_coords
+				),
+				columns = ("rid", "gene", "length",)
 			) \
 				.drop_duplicates(keep="first")
 
 			gene_df.to_csv("GENE_DF.tsv", sep="\t", index=False)
-			gene_df[["gene", "length"]] = pd.DataFrame(gene_df["gene_data"].to_list(), index=gene_df.index) \
-				.drop(["gene_data",], axis=1)
+			# gene_df[["gene", "length"]] = pd.DataFrame(gene_df["gene_data"].to_list(), index=gene_df.index) \
+			# 	.drop(["gene_data",], axis=1)
 		
 		self.main_df = pd.merge(
 			self.main_df,
