@@ -342,6 +342,9 @@ class FeatureQuantifier(ABC):
             )
 
         if self.aln_counter.get("aln_count"):
+            if self.adm is None:
+                self.adm = AnnotationDatabaseManager.from_db(self.db)
+
             self.panda.profile(self)
             self.panda.dump(self.out_prefix)
             if self.panda_cv is not None:
