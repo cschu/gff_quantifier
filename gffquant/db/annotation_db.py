@@ -205,6 +205,9 @@ class SQL_ADM(AnnotationDatabaseManager):
     
     def get_categories(self):
         return self.db_session.query(db.Category).all()
+    
+    def get_features(self, category=None):
+        return self.db_session.query(db.Feature).filter(db.Feature.category_id == category).all()
 
     @lru_cache(maxsize=10000)
     def get_db_sequence(self, seqid, start=None, end=None):
