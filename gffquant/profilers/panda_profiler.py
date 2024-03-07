@@ -1,7 +1,7 @@
 import pandas as pd
 
 from ..db.annotation_db import AnnotationDatabaseManager
-
+from ..profilers import FeatureQuantifier
 
 class PandaProfiler:
 	def __init__(self, with_overlap=False):		
@@ -62,7 +62,7 @@ class PandaProfiler:
 			ref, _ = refmgr.get(rid)
 			for annseq in dbseq.get_db_sequence(ref, start=start, end=end):
 				if annseq.annotation_str is not None:
-					d = {"refid": rid, "refname": annseq.featureid}
+					d = {"refid": rid, "refname": annseq.featureid if annseq.featureid is not None else annseq.seqid}
 					if self.with_overlap:
 						d.update({"start": start, "end": end,})
 					d.update({cat.name: None for cat in categories.values()})
@@ -112,7 +112,7 @@ class PandaProfiler:
 			self.main_df["length"] = (self.main_df["end"] - self.main_df["start"] + 1)
 
 
-	def profile(self, read_data_provider):
+	def profile(self, read_data_provider: FeatureQuantifier):
 		self._annotate_records(
 			self.get_gene_coords(),
 			read_data_provider.reference_manager,
