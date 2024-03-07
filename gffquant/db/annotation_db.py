@@ -202,6 +202,9 @@ class SQL_ADM(AnnotationDatabaseManager):
 
     def query_category(self, category_id):
         return self.db_session.query(db.Category).filter(db.Category.id == category_id).one_or_none()
+    
+    def get_categories(self):
+        return self.db_session.query(db.Category).all()
 
     @lru_cache(maxsize=10000)
     def get_db_sequence(self, seqid, start=None, end=None):
