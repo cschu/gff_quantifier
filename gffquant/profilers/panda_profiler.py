@@ -1,7 +1,7 @@
 import pandas as pd
 
 from ..db.annotation_db import AnnotationDatabaseManager
-from ..profilers import FeatureQuantifier
+from ..profilers.feature_quantifier import FeatureQuantifier
 
 class PandaProfiler:
 	def __init__(self, with_overlap=False):		
