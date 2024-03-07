@@ -164,7 +164,7 @@ class PandaProfiler:
 			) \
 				.drop([category.name, "fid",], axis=1) \
 				.sort_values(by=["feature",])
-			
+
 			cat_df["uniq_scaled"] = cat_df["uniq_lnorm"] * (
 				cat_df["uniq_raw"].sum(numeric_only=True) / cat_df["uniq_lnorm"].sum(numeric_only=True)
 			)
