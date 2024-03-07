@@ -1,7 +1,7 @@
 import pandas as pd
 
 from ..db.annotation_db import AnnotationDatabaseManager
-from ..profilers.feature_quantifier import FeatureQuantifier
+# from ..profilers.feature_quantifier import FeatureQuantifier
 
 class PandaProfiler:
 	def __init__(self, with_overlap=False):		
@@ -112,7 +112,7 @@ class PandaProfiler:
 			self.main_df["length"] = (self.main_df["end"] - self.main_df["start"] + 1)
 
 
-	def profile(self, read_data_provider: FeatureQuantifier):
+	def profile(self, read_data_provider):
 		self._annotate_records(
 			self.get_gene_coords(),
 			read_data_provider.reference_manager,
