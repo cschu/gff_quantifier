@@ -56,7 +56,7 @@ class GqDatabaseImporter(ABC):
 
 
         return annotation
-    
+
     @staticmethod
     def get_open_function(f):
         """ Returns a file open function corresponding to gzip-compression status. """

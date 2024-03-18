@@ -78,7 +78,7 @@ class AlignmentGroup:
                         hit.library_mod = [1, 2][self.pe_library]
                     except TypeError as e:
                         raise TypeError(f"{aln.tags}") from e
-                        
+
                 yield aln.hits, n_aln
 
     def get_ambig_align_counts(self):

@@ -19,8 +19,8 @@ def get_lines_from_chunks(f, bufsize=400000000):
                 break
             chunk = chunk.split("\n")
             *chunk, tail = chunk
-            for line in chunk:
-                yield line
+            yield from chunk
+
         if tail:
             yield tail
 

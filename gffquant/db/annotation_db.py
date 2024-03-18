@@ -202,10 +202,10 @@ class SQL_ADM(AnnotationDatabaseManager):
 
     def query_category(self, category_id):
         return self.db_session.query(db.Category).filter(db.Category.id == category_id).one_or_none()
-    
+
     def get_categories(self):
         return self.db_session.query(db.Category).all()
-    
+
     def get_features(self, category=None):
         return self.db_session.query(db.Feature).filter(db.Feature.category_id == category).all()
 
@@ -228,7 +228,7 @@ class Dict_ADM(AnnotationDatabaseManager):
     def query_sequence_internal(self, seqid, start=None, end=None):
         if start is not None and end is not None:
             seqs = [
-                seq 
+                seq
                 for seq in self.db.annotations.get(seqid, [])
                 if seq.start == start and seq.end == end
             ] + [None]
@@ -240,11 +240,10 @@ class Dict_ADM(AnnotationDatabaseManager):
 
     def query_category(self, category_id):
         return self.db.categories.get(int(category_id))
-    
+
     def get_categories(self):
-        for cat in self.db.categories.values():
-            yield cat
-    
+        yield from self.db.categories.values()
+
     def get_features(self, category=None):
         for feat in self.db.features.values():
             if category is None or feat.category_id == category:
@@ -258,8 +257,9 @@ class Dict_ADM(AnnotationDatabaseManager):
             for seq in seqs
             if (start is None or start == seq.start) and (end is None or end == seq.end)
         ]
-    
+
     def dump(self, prefix):
+        # pylint: disable=C0415
         import pickle
         with open(f"{prefix}.annotations.dat", "wb") as _out:
             pickle.dump(self.db.annotations, _out)
@@ -267,4 +267,3 @@ class Dict_ADM(AnnotationDatabaseManager):
             pickle.dump(self.db.features, _out)
         with open(f"{prefix}.categories.dat", "wb") as _out:
             pickle.dump(self.db.categories, _out)
-

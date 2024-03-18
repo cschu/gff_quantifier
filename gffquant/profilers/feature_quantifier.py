@@ -12,12 +12,12 @@ from abc import ABC
 from collections import Counter
 from dataclasses import dataclass
 
-import pandas as pd
+# import pandas as pd
 
 from .panda_profiler import PandaProfiler
 from .panda_coverage_profiler import PandaCoverageProfiler
 from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
-from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
+# from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import CountManager
 from ..db.annotation_db import AnnotationDatabaseManager
 
@@ -110,7 +110,6 @@ class FeatureQuantifier(ABC):
         self.debug = debug
         self.panda = PandaProfiler(with_overlap=run_mode.overlap_required, dump_dataframes=self.debug)
         self.panda_cv = PandaCoverageProfiler(dump_dataframes=self.debug) if calculate_coverage else None
-    
 
     def check_hits(self, ref, aln):
         """ Check if an alignment hits a region of interest on a reference sequence.
@@ -138,7 +137,7 @@ class FeatureQuantifier(ABC):
                     rev_strand=aln.is_reverse(),
                     cov_start=ovl_target.cov_start,
                     cov_end=ovl_target.cov_end,
-                    has_annotation=ovl_target.has_annotation(),                    
+                    has_annotation=ovl_target.has_annotation(),
                 )
                 for ovl_target in overlaps
             ]
@@ -206,7 +205,14 @@ class FeatureQuantifier(ABC):
 
         return new_ref[0]
 
-    def process_alignments(self, aln_reader: AlignmentProcessor, sam_prefix="", min_identity=None, min_seqlen=None, unmarked_orphans=False):
+    def process_alignments(
+        self,
+        aln_reader: AlignmentProcessor,
+        sam_prefix="",
+        min_identity=None,
+        min_seqlen=None,
+        unmarked_orphans=False
+    ):
         # pylint: disable=R0914
         t0 = time.time()
 
@@ -234,13 +240,12 @@ class FeatureQuantifier(ABC):
                 continue
 
             self.reference_manager.setdefault(aln.rid, (aln.refname, aln.reflength))
-            
+
             ac["alignments_on_target"] += 1
 
             if current_aln_group is None or current_aln_group.qname != aln.qname:
                 if current_aln_group is not None:
-                    for hit in self.process_alignment_group(current_aln_group, aln_reader):
-                        yield hit
+                    yield from self.process_alignment_group(current_aln_group, aln_reader)
                 current_aln_group = AlignmentGroup()
                 read_count += 1
 
@@ -250,8 +255,7 @@ class FeatureQuantifier(ABC):
             current_aln_group.add_alignment(aln)
 
         if current_aln_group is not None:
-            for hit in self.process_alignment_group(current_aln_group, aln_reader):
-                yield hit
+            yield from self.process_alignment_group(current_aln_group, aln_reader)
 
         if ac["aln_count"] == 0:
             logger.warning("No alignments present in stream.")
@@ -310,10 +314,10 @@ class FeatureQuantifier(ABC):
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter
 
         if external_readcounts is not None:
-            full_readcount = external_readcounts            
+            full_readcount = external_readcounts
 
         self.aln_counter.update(
-            {                
+            {
                 "read_count": read_count,
                 "unannotated_ambig": 0,
                 "full_read_count": full_readcount,
@@ -328,7 +332,7 @@ class FeatureQuantifier(ABC):
         restrict_reports=None,
         report_category=False,
         report_unannotated=False,
-    ):  
+    ):
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
             print(
@@ -347,8 +351,13 @@ class FeatureQuantifier(ABC):
             if self.adm is None:
                 self.adm = AnnotationDatabaseManager.from_db(self.db)
 
-            self.panda.profile(self, restrict_reports=restrict_reports, report_category=report_category, report_unannotated=report_unannotated)
-            self.panda.dump(self.out_prefix, restrict_reports=restrict_reports, report_category=report_category, report_unannotated=report_unannotated)
+            report_args = {
+                "restrict_reports": restrict_reports,
+                "report_category": report_category,
+                "report_unannotated": report_unannotated,
+            }
+            self.panda.profile(self, **report_args)
+            self.panda.dump(self.out_prefix, **report_args)
             if self.panda_cv is not None:
                 self.panda_cv.dump(self, self.out_prefix)
             # self.write_coverage()
@@ -442,7 +451,7 @@ class FeatureQuantifier(ABC):
             #     pe_library=aln_group.pe_library,
             # )
             ambig_hit_counts = aln_group.ambig_hit_counts
-            # msg = f"{ambig_hit_counts=} {contributed_counts=})"            
+            # msg = f"{ambig_hit_counts=} {contributed_counts=})"
             msg = f"{ambig_hit_counts=} contributed_counts=..."
 
             for hits, n_aln in count_stream:

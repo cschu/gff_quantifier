@@ -69,7 +69,6 @@ def stream_alignments(args, profiler: FeatureQuantifier):
             logger.error("%s", call)
             logger.error("Shutting down.")
             raise ValueError from err
-            sys.exit(1)
 
 def main():
 
