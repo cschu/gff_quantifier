@@ -108,6 +108,7 @@ class PandaCoverageProfiler(PandaProfiler):
             with open(f"{read_data_provider.out_prefix}.coverage.dat", "wb") as _out:
                 pickle.dump(self._coverage_data, _out)
         self.main_df = pd.DataFrame(self._calc_coverage())
+        self.main_df.to_csv(out_prefix + ".main_before_annotation.txt", index=False, sep="\t", na_rep="NA")
 
         self._annotate_records(
             self.get_gene_coords(),
