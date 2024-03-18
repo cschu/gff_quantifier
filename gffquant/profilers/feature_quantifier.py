@@ -108,8 +108,8 @@ class FeatureQuantifier(ABC):
         self.strand_specific = strand_specific
         self.coverage_counter = {}
         self.debug = debug
-        self.panda = PandaProfiler(with_overlap=run_mode.overlap_required, debug=self.debug)
-        self.panda_cv = PandaCoverageProfiler(debug=self.debug) if calculate_coverage else None
+        self.panda = PandaProfiler(with_overlap=run_mode.overlap_required, dump_dataframes=self.debug)
+        self.panda_cv = PandaCoverageProfiler(dump_dataframes=self.debug) if calculate_coverage else None
     
 
     def check_hits(self, ref, aln):
