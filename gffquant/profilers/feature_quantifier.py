@@ -431,7 +431,7 @@ class FeatureQuantifier(ABC):
                     as_ambiguous=self.distribution_mode.require_ambig_tracking
                 )
             )
-            logger.info("count_stream: %s", count_stream)
+            # logger.info("count_stream: %s", count_stream)
             if self.panda_cv is not None:
                 self.panda_cv.update_coverage(count_stream)
 
