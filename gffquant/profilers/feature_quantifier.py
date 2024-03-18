@@ -106,7 +106,7 @@ class FeatureQuantifier(ABC):
         self.distribution_mode = distribution_mode
         self.reference_manager = {}
         self.strand_specific = strand_specific
-        self.coverage_counter = {}
+        # self.coverage_counter = {}
         self.debug = debug
         self.panda = PandaProfiler(with_overlap=run_mode.overlap_required, dump_dataframes=self.debug)
         self.panda_cv = PandaCoverageProfiler(dump_dataframes=self.debug) if calculate_coverage else None

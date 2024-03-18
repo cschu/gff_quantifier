@@ -19,10 +19,11 @@ from .panda_profiler import PandaProfiler
 
 
 class PandaCoverageProfiler(PandaProfiler):
-    def __init__(self):
+    def __init__(self, dump_dataframes=False):
         PandaProfiler.__init__(self)
         self._coverage_data = [{}, {}]
         self.main_df = None
+        self.dump_dataframes = dump_dataframes
 
     def update_coverage(self, aln_hits):
         for hits, n_aln in aln_hits:
@@ -146,6 +147,7 @@ class PandaCoverageProfiler(PandaProfiler):
             .sort_values(by=["gene",]) \
             .to_csv(out_prefix + ".genes.coverage.txt", index=False, sep="\t", na_rep="NA", float_format="%.5f")
 
-        gene_category_map.to_csv(out_prefix + ".all.coverage_annotation.txt", index=False, sep="\t", na_rep="NA")
 
-        read_data_provider.adm.dump(out_prefix + ".db")
+        if self.dump_dataframes:
+            gene_category_map.to_csv(out_prefix + ".all.coverage_annotation.txt", index=False, sep="\t", na_rep="NA")
+            read_data_provider.adm.dump(out_prefix + ".db")
