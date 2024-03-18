@@ -36,9 +36,9 @@ class GqDatabaseImporter(ABC):
             if features and features != "-" and category not in ("COG_category", "eggNOG_OGs")
         ]
 
-        # COG_categories are single letters, but genes can have composite annotations
-        # we profile both, the single letters (split composites into individual categories),
-        # and the composites
+        # COG_categories are single letters, but genes can have composite annotations
+        # we profile both, the single letters (split composites into individual categories),
+        # and the composites
         cog_category = columns.get("COG_category")
         if cog_category and cog_category != "-":
             cog_category = cog_category.replace(",", "")
@@ -53,7 +53,6 @@ class GqDatabaseImporter(ABC):
             # composites need to be passed as 1-tuples,
             # otherwise downstream ops with iterate over the string!
             annotation.append(("eggNOG_OGs", (eggnog_og,)))
-
 
         return annotation
 
@@ -109,7 +108,6 @@ class GqDatabaseImporter(ABC):
                 seq_feature.annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
-
 
                 if self.db_session:
                     self.db_session.add(seq_feature)

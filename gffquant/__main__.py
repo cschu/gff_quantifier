@@ -70,6 +70,7 @@ def stream_alignments(args, profiler: FeatureQuantifier):
             logger.error("Shutting down.")
             raise ValueError from err
 
+
 def main():
 
     args = handle_args(sys.argv[1:])
@@ -77,7 +78,7 @@ def main():
     logger.info("Version: %s", __version__)
     logger.info("Command: %s %s", os.path.basename(sys.argv[0]), " ".join(sys.argv[1:]))
 
-    kwargs = { "debug": args.debug }
+    kwargs = {"debug": args.debug}
     annotation_db = args.annotation_db
     if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier

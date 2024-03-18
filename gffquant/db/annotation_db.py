@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 class OverlapResultHeader:
     has_target: bool
 
+
 @dataclass
 class OverlapTarget:
     start: int = None
@@ -32,7 +33,6 @@ class OverlapTarget:
 
     def has_annotation(self):
         return self.seq_feature is not None and bool(self.seq_feature.annotation_str)
-
 
 
 class AnnotationDatabaseManager(ABC):
@@ -217,7 +217,6 @@ class SQL_ADM(AnnotationDatabaseManager):
             for seq in seqs
             if (start is None or start == seq.start) and (end is None or end == end.start)
         ]
-
 
 
 class Dict_ADM(AnnotationDatabaseManager):

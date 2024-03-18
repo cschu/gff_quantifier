@@ -113,8 +113,6 @@ def handle_args(args):
         help="Format of the annotation database.",
     )
 
-
-
     # ap.add_argument(
     #     "--db_coordinates",
     #     type=str,

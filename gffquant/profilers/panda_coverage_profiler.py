@@ -29,8 +29,9 @@ class PandaCoverageProfiler(PandaProfiler):
         "combined_depth_covered",
         "combined_horizontal",
     ]
+    
     def __init__(self, dump_dataframes=False):
-        PandaProfiler.__init__(self)
+        PandaProfiler.__init__(self, with_overlap=True)
         self._coverage_data = [{}, {}]
         self.main_df = None
         self.dump_dataframes = dump_dataframes
@@ -116,7 +117,7 @@ class PandaCoverageProfiler(PandaProfiler):
             read_data_provider.adm,
         )
 
-        categories = { cat.id: cat for cat in read_data_provider.adm.get_categories() }
+        categories = {cat.id: cat for cat in read_data_provider.adm.get_categories()}
 
         gene_category_map = self._get_gene_category_map(categories, read_data_provider)
         if self.dump_dataframes:

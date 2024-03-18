@@ -5,6 +5,7 @@ import pandas as pd
 from ..db.annotation_db import AnnotationDatabaseManager
 # from ..profilers.feature_quantifier import FeatureQuantifier
 
+
 class PandaProfiler:
     COUNT_TYPES = ["raw", "lnorm", "scaled", "rpkm"]
 
@@ -19,8 +20,6 @@ class PandaProfiler:
 
         self.dump_dataframes = dump_dataframes
         self.mode = "counts"
-    
-
 
     def get_gene_coords(self):
         if self.with_overlap:
@@ -77,7 +76,7 @@ class PandaProfiler:
                 if annseq.annotation_str is not None:
                     d = {"refid": rid, "refname": annseq.featureid if annseq.featureid is not None else annseq.seqid}
                     if self.with_overlap:
-                        d.update({"start": start, "end": end,})
+                        d.update({"start": start, "end": end, })
                     d.update({cat.name: None for cat in categories.values()})
                     for item in annseq.annotation_str.split(";"):
                         catid, features = item.split("=")
@@ -105,7 +104,7 @@ class PandaProfiler:
                     (rid,) + refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
                     for rid in gene_coords
                 ),
-                columns = ("rid", "gene", "length",)
+                columns=("rid", "gene", "length",),
             ) \
                 .drop_duplicates(keep="first")
 
@@ -124,7 +123,6 @@ class PandaProfiler:
         )
         if self.with_overlap:
             self.main_df["length"] = self.main_df["end"] - self.main_df["start"] + 1
-
 
     # pylint: disable=W0612,W0613
     def profile(
@@ -147,14 +145,14 @@ class PandaProfiler:
 
         self.main_df["uniq_lnorm"] = self.main_df["uniq_raw"] / self.main_df["length"]
         self.main_df["combined_lnorm"] = self.main_df["combined_raw"] / self.main_df["length"]
-        categories = { cat.id: cat for cat in read_data_provider.adm.get_categories() }
+        categories = {cat.id: cat for cat in read_data_provider.adm.get_categories()}
 
         gene_category_map = self._get_gene_category_map(categories, read_data_provider)
 
         count_columns = ["uniq_raw", "combined_raw", "uniq_lnorm", "combined_lnorm"]
         for category in categories.values():
             features = pd.DataFrame.from_records(
-                {"fid": feat.id, "feature": feat.name }
+                {"fid": feat.id, "feature": feat.name}
                 for feat in read_data_provider.adm.get_features(category=category.id)
             )
             category_counts = self._annotate_category_counts(
@@ -207,7 +205,7 @@ class PandaProfiler:
                     ["filtered_reads"] + [read_data_provider.aln_counter["filtered_read_count"]] * (len(out_cols) - 1),
                     ["category"] + category_row[:2] + [category_row[1] * (category_row[0] / category_row[1]),] + category_row[2:] + [category_row[3] * (category_row[2] / category_row[3]),],
                 ],
-                columns = out_cols
+                columns=out_cols,
             )
 
             pd.concat(
@@ -260,9 +258,8 @@ class PandaProfiler:
                 f"{out_prefix}.gene_counts.pd.txt",
                 sep="\t",
                 index=False,
-                float_format="%.5f"
+                float_format="%.5f",
             )
-
 
     def add_records(self, hits):
 

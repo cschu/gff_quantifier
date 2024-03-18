@@ -126,14 +126,14 @@ class FeatureQuantifier(ABC):
                 with_coverage=self.run_mode == RunMode.SMALL_GENOME,
             )
 
-            # interrogate overlap stream header if overlaps were found
+            # interrogate overlap stream header if overlaps were found
             has_target = next(overlaps).has_target
 
             hits = [
                 ReferenceHit(
                     rid=aln.rid,
                     start=ovl_target.start,
-                    end = ovl_target.end,
+                    end=ovl_target.end,
                     rev_strand=aln.is_reverse(),
                     cov_start=ovl_target.cov_start,
                     cov_end=ovl_target.cov_end,
@@ -233,7 +233,7 @@ class FeatureQuantifier(ABC):
         for ac["aln_count"], aln in enumerate(aln_stream, start=1):
 
             has_target, aln.hits = self.check_hits(aln.refname, aln)
-            # do we care about alignments to unannotated regions?
+            # do we care about alignments to unannotated regions?
             # for quantification purposes i'd say, we don't, but maybe
             # this needs to be a user-defined option
             if not has_target:
@@ -262,8 +262,6 @@ class FeatureQuantifier(ABC):
 
         t1 = time.time()
         logger.info("Processed %s reads (%s alignments) in %s.", read_count, ac["aln_count"], f"{t1 - t0:.3f}s")
-
-
 
     @staticmethod
     def get_readcount(internal_readcounts, external_readcounts, verbose=True):
