@@ -131,10 +131,9 @@ def main():
         )
 
     profiler.finalise(
+        restrict_reports=args.restrict_metrics,
         report_category=True,
         report_unannotated=args.run_mode.report_unannotated,
-        dump_counters=args.debug,
-        restrict_reports=args.restrict_metrics,
     )
 
 
