@@ -160,7 +160,7 @@ class PandaProfiler:
 				category.name,
 			) 
 			
-			if self.dump_datafames:
+			if self.dump_dataframes:
 				category_counts.to_csv(
 					f"{read_data_provider.out_prefix}.unexploded.{category.name}.pd.txt",
 					sep="\t",
