@@ -210,11 +210,13 @@ class FeatureQuantifier(ABC):
         # pylint: disable=R0914
         t0 = time.time()
 
+        samfile = f"{self.out_prefix}{sam_prefix}.filtered.sam" if self.debug else None
+
         aln_stream = aln_reader.get_alignments(
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
-            filtered_sam=f"{self.out_prefix}{sam_prefix}.filtered.sam",
+            filtered_sam=samfile,
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)
