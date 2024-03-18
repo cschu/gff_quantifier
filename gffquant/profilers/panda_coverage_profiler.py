@@ -132,8 +132,7 @@ class PandaCoverageProfiler(PandaProfiler):
             cat_grouped = self._annotate_category_counts(
                 self.main_df,
                 gene_category_map,
-                PandaCoverageProfiler.COLUMNS,
-                category.name
+                category.name,
             ) \
                 .explode(category.name, ignore_index=True)[
                     [category.name,] + PandaCoverageProfiler.COLUMNS
