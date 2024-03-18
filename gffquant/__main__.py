@@ -78,7 +78,7 @@ def main():
     logger.info("Version: %s", __version__)
     logger.info("Command: %s %s", os.path.basename(sys.argv[0]), " ".join(sys.argv[1:]))
 
-    kwargs = {}
+    kwargs = { "debug": args.debug }
     annotation_db = args.annotation_db
     if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier

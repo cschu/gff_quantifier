@@ -90,6 +90,7 @@ class FeatureQuantifier(ABC):
         strand_specific=False,
         paired_end_count=1,
         calculate_coverage=False,
+        debug=False,
     ):
         self.aln_counter = Counter()
         self.db = db
@@ -106,8 +107,9 @@ class FeatureQuantifier(ABC):
         self.reference_manager = {}
         self.strand_specific = strand_specific
         self.coverage_counter = {}
-        self.panda = PandaProfiler(with_overlap=run_mode.overlap_required)
-        self.panda_cv = PandaCoverageProfiler() if calculate_coverage else None
+        self.debug = debug
+        self.panda = PandaProfiler(with_overlap=run_mode.overlap_required, debug=self.debug)
+        self.panda_cv = PandaCoverageProfiler(debug=self.debug) if calculate_coverage else None
     
 
     def check_hits(self, ref, aln):
@@ -147,51 +149,51 @@ class FeatureQuantifier(ABC):
 
         return has_target, hits
 
-    def process_counters(
-        self,
-        restrict_reports=None,
-        report_category=True,
-        report_unannotated=True,
-        dump_counters=True,
-    ):
-        if self.adm is None:
-            self.adm = AnnotationDatabaseManager.from_db(self.db)
+    # def process_counters(
+    #     self,
+    #     restrict_reports=None,
+    #     report_category=True,
+    #     report_unannotated=True,
+    #     dump_counters=True,
+    # ):
+    #     if self.adm is None:
+    #         self.adm = AnnotationDatabaseManager.from_db(self.db)
 
-        if dump_counters:
-            self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
+    #     if dump_counters:
+    #         self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
 
-        report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
+    #     report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
-        Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
-        count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
-        count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
+    #     Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
+    #     count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
+    #     count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
 
-        count_writer = CountWriter(
-            self.out_prefix,
-            has_ambig_counts=self.count_manager.has_ambig_counts(),
-            strand_specific=self.strand_specific,
-            restrict_reports=restrict_reports,
-            report_category=report_category,
-            total_readcount=self.aln_counter["read_count"],
-            filtered_readcount=self.aln_counter["filtered_read_count"],
-        )
+    #     count_writer = CountWriter(
+    #         self.out_prefix,
+    #         has_ambig_counts=self.count_manager.has_ambig_counts(),
+    #         strand_specific=self.strand_specific,
+    #         restrict_reports=restrict_reports,
+    #         report_category=report_category,
+    #         total_readcount=self.aln_counter["read_count"],
+    #         filtered_readcount=self.aln_counter["filtered_read_count"],
+    #     )
 
-        unannotated_reads = self.count_manager.get_unannotated_reads()
-        unannotated_reads += self.aln_counter["unannotated_ambig"]
+    #     unannotated_reads = self.count_manager.get_unannotated_reads()
+    #     unannotated_reads += self.aln_counter["unannotated_ambig"]
 
-        count_writer.write_feature_counts(
-            self.adm,
-            count_annotator,
-            (None, unannotated_reads)[report_unannotated],
-        )
+    #     count_writer.write_feature_counts(
+    #         self.adm,
+    #         count_annotator,
+    #         (None, unannotated_reads)[report_unannotated],
+    #     )
 
-        count_writer.write_gene_counts(
-            count_annotator.gene_counts,
-            count_annotator.scaling_factors["total_gene_uniq"],
-            count_annotator.scaling_factors["total_gene_ambi"]
-        )
+    #     count_writer.write_gene_counts(
+    #         count_annotator.gene_counts,
+    #         count_annotator.scaling_factors["total_gene_uniq"],
+    #         count_annotator.scaling_factors["total_gene_ambi"]
+    #     )
 
-        self.adm.clear_caches()
+    #     self.adm.clear_caches()
 
     def register_reference(self, rid, aln_reader):
         known_ref = self.reference_manager.get(rid)
@@ -324,9 +326,7 @@ class FeatureQuantifier(ABC):
         restrict_reports=None,
         report_category=False,
         report_unannotated=False,
-        dump_counters=False,
-    ):
-        
+    ):  
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
             print(
@@ -345,17 +345,17 @@ class FeatureQuantifier(ABC):
             if self.adm is None:
                 self.adm = AnnotationDatabaseManager.from_db(self.db)
 
-            self.panda.profile(self)
-            self.panda.dump(self.out_prefix)
+            self.panda.profile(self, restrict_reports=restrict_reports, report_category=report_category, report_unannotated=report_unannotated)
+            self.panda.dump(self.out_prefix, restrict_reports=restrict_reports, report_category=report_category, report_unannotated=report_unannotated)
             if self.panda_cv is not None:
                 self.panda_cv.dump(self, self.out_prefix)
             # self.write_coverage()
-            self.process_counters(
-                restrict_reports=restrict_reports,
-                report_category=report_category,
-                report_unannotated=report_unannotated,
-                dump_counters=dump_counters,
-            )
+            # self.process_counters(
+            #     restrict_reports=restrict_reports,
+            #     report_category=report_category,
+            #     report_unannotated=report_unannotated,
+            #     dump_counters=dump_counters,
+            # )
 
             for metric, value in (
                 ("Input reads", "full_read_count"),
@@ -375,6 +375,7 @@ class FeatureQuantifier(ABC):
                 round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
             )
 
+        self.adm.clear_caches()
         logger.info("Finished.")
 
     def evaluate_alignment_group(self, aln_group, is_ambig_alignment):
@@ -432,14 +433,15 @@ class FeatureQuantifier(ABC):
             if self.panda_cv is not None:
                 self.panda_cv.update_coverage(count_stream)
 
-            contributed_counts = self.count_manager.update_counts(
-                count_stream,
-                ambiguous_counts=is_ambiguous_group,
-                pair=aln_group.is_paired(),
-                pe_library=aln_group.pe_library,
-            )
+            # contributed_counts = self.count_manager.update_counts(
+            #     count_stream,
+            #     ambiguous_counts=is_ambiguous_group,
+            #     pair=aln_group.is_paired(),
+            #     pe_library=aln_group.pe_library,
+            # )
             ambig_hit_counts = aln_group.ambig_hit_counts
-            msg = f"{ambig_hit_counts=} {contributed_counts=})"            
+            # msg = f"{ambig_hit_counts=} {contributed_counts=})"            
+            msg = f"{ambig_hit_counts=} contributed_counts=..."
 
             for hits, n_aln in count_stream:
                 for hit in hits:

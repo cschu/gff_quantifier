@@ -4,10 +4,19 @@ from ..db.annotation_db import AnnotationDatabaseManager
 # from ..profilers.feature_quantifier import FeatureQuantifier
 
 class PandaProfiler:
-	def __init__(self, with_overlap=False):		
+	COUNT_TYPES = ["raw", "lnorm", "scaled", "rpkm"]
+
+	def __init__(
+		self,
+		with_overlap=False,
+		dump_dataframes=False,
+	):		
 		self.main_df = None
 		self.with_overlap = with_overlap
 		self.index_columns = ["rid",] + (["start", "end",] if with_overlap else [])
+		
+		self.dump_dataframes = dump_dataframes
+		
 
 	def get_gene_coords(self):
 		if self.with_overlap:
@@ -37,11 +46,12 @@ class PandaProfiler:
 			how="inner",
 		)
 
-		gene_category_map.to_csv(
-			f"{read_data_provider.out_prefix}.gcmap.tsv",
-			sep="\t",
-			index=False,
-		)
+		if self.dump_dataframes:
+			gene_category_map.to_csv(
+				f"{read_data_provider.out_prefix}.gcmap.tsv",
+				sep="\t",
+				index=False,
+			)
 		return gene_category_map
 
 	def _annotate_category_counts(self, counts_df, annotation_df, columns, category) -> pd.DataFrame:
@@ -96,7 +106,8 @@ class PandaProfiler:
 			) \
 				.drop_duplicates(keep="first")
 
-			gene_df.to_csv("GENE_DF.tsv", sep="\t", index=False)
+			if self.dump_dataframes:
+				gene_df.to_csv("GENE_DF.tsv", sep="\t", index=False)
 			# gene_df[["gene", "length"]] = pd.DataFrame(gene_df["gene_data"].to_list(), index=gene_df.index) \
 			# 	.drop(["gene_data",], axis=1)
 		
@@ -112,7 +123,18 @@ class PandaProfiler:
 			self.main_df["length"] = (self.main_df["end"] - self.main_df["start"] + 1)
 
 
-	def profile(self, read_data_provider):
+	def profile(
+		self,
+		read_data_provider,
+		restrict_reports=None,
+        report_category=True,
+        report_unannotated=False,        
+	):
+		publish_reports = [
+            item for item in PandaProfiler.COUNT_TYPES
+            if restrict_reports is None or item in restrict_reports
+        ] + (["category"] if report_category else [])		
+		
 		self._annotate_records(
 			self.get_gene_coords(),
 			read_data_provider.reference_manager,
@@ -138,12 +160,13 @@ class PandaProfiler:
 				category.name,
 			) 
 			
-			category_counts.to_csv(
-				f"{read_data_provider.out_prefix}.unexploded.{category.name}.pd.txt",
-				sep="\t",
-				index=False,
-				float_format="%.5f",
-			)
+			if self.dump_datafames:
+				category_counts.to_csv(
+					f"{read_data_provider.out_prefix}.unexploded.{category.name}.pd.txt",
+					sep="\t",
+					index=False,
+					float_format="%.5f",
+				)
 
 			category_row = [
 				category_counts[col].sum(numeric_only=True)
@@ -196,14 +219,25 @@ class PandaProfiler:
 				)
 
 
-	def dump(self, out_prefix):
+	def dump(
+		self,
+		out_prefix,
+		restrict_reports=None,
+        report_category=True,
+        report_unannotated=False,        
+	):
+		publish_reports = [
+            item for item in PandaProfiler.COUNT_TYPES
+            if restrict_reports is None or item in restrict_reports
+        ] + (["category"] if report_category else [])		
 		
-		self.main_df.to_csv(
-			f"{out_prefix}.panda_main_df.tsv",
-			sep="\t",
-			index=False,
-			float_format="%.5f"
-		)
+		if self.dump_dataframes:
+			self.main_df.to_csv(
+				f"{out_prefix}.panda_main_df.tsv",
+				sep="\t",
+				index=False,
+				float_format="%.5f"
+			)
 
 		out_cols = ["gene", "uniq_raw", "uniq_lnorm", "uniq_scaled", "combined_raw", "combined_lnorm", "combined_scaled"]
 
