@@ -48,7 +48,7 @@ class PandaProfiler:
 
         if self.dump_dataframes:
             gene_category_map.to_csv(
-                f"{read_data_provider.out_prefix}.gcmap.tsv",
+                f"{read_data_provider.out_prefix}.{int(self.with_overlap)}.gcmap.tsv",
                 sep="\t",
                 index=False,
             )

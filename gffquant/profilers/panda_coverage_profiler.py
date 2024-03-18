@@ -117,6 +117,10 @@ class PandaCoverageProfiler(PandaProfiler):
         categories = { cat.id: cat for cat in read_data_provider.adm.get_categories() }
 
         gene_category_map = self._get_gene_category_map(categories, read_data_provider)
+        if self.dump_dataframes:
+            self.main_df.to_csv(out_prefix + ".all.coverage.txt", index=False, sep="\t", na_rep="NA")
+            gene_category_map.to_csv(out_prefix + ".all.coverage_annotation.txt", index=False, sep="\t", na_rep="NA")
+            read_data_provider.adm.dump(out_prefix + ".db")
 
         for category in categories.values():
             features = pd.DataFrame.from_records(
@@ -166,7 +170,6 @@ class PandaCoverageProfiler(PandaProfiler):
                 f"{out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f"
             )
 
-        self.main_df.to_csv(out_prefix + ".all.coverage.txt", index=False, sep="\t", na_rep="NA")
 
         gene_columns = ["gene"] + PandaCoverageProfiler.COLUMNS
         self.main_df[gene_columns] \
@@ -174,6 +177,4 @@ class PandaCoverageProfiler(PandaProfiler):
             .to_csv(out_prefix + ".genes.coverage.txt", index=False, sep="\t", na_rep="NA", float_format="%.5f")
 
 
-        if self.dump_dataframes:
-            gene_category_map.to_csv(out_prefix + ".all.coverage_annotation.txt", index=False, sep="\t", na_rep="NA")
-            read_data_provider.adm.dump(out_prefix + ".db")
+        
