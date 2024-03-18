@@ -34,6 +34,7 @@ class PandaCoverageProfiler(PandaProfiler):
         self._coverage_data = [{}, {}]
         self.main_df = None
         self.dump_dataframes = dump_dataframes
+        self.mode = "coverage"
 
     def update_coverage(self, aln_hits):
         for hits, n_aln in aln_hits:

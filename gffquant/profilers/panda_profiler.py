@@ -18,6 +18,9 @@ class PandaProfiler:
         self.index_columns = ["rid",] + (["start", "end",] if with_overlap else [])
 
         self.dump_dataframes = dump_dataframes
+        self.mode = "counts"
+    
+
 
     def get_gene_coords(self):
         if self.with_overlap:
@@ -60,7 +63,7 @@ class PandaProfiler:
             counts_df,
             left_index=False, right_index=False,
             left_on=("refname",),
-            right_on=("gene" if not self.with_overlap else "refname",),
+            right_on=("gene" if self.mode != "coverage" else "refname",),
         ) \
         .dropna(axis=0, subset=[category,], how="any")
 
