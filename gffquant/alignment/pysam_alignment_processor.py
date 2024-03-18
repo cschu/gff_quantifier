@@ -160,7 +160,7 @@ class AlignmentProcessor:
                             last_passed_read = pysam_aln.qname
                             self.read_counter[AlignmentProcessor.TOTAL_PASSED_READS] += 1
 
-                        if filtered_sam is not None:
+                        if False:  #filtered_sam is not None:
                             print(pysam_aln.to_string(), file=filtered_out)
 
                         yield BamAlignment.from_pysam_alignment(pysam_aln, rlength)
