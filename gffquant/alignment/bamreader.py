@@ -101,7 +101,7 @@ class BamAlignment:
         self.tags = tags
         try:
             self.read_group = int(tags.get("RG"))
-        except:
+        except (TypeError, ValueError):
             self.read_group = None
         self.refname = refname
         self.reflength = reflength

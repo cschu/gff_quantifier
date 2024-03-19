@@ -29,7 +29,7 @@ class PandaCoverageProfiler(PandaProfiler):
         "combined_depth_covered",
         "combined_horizontal",
     ]
-    
+
     def __init__(self, dump_dataframes=False):
         PandaProfiler.__init__(self, with_overlap=True)
         self._coverage_data = [{}, {}]
@@ -104,7 +104,7 @@ class PandaCoverageProfiler(PandaProfiler):
         #         "combined_horizontal": len_both / length,
         #     }
 
-    def dump(self, read_data_provider, out_prefix):
+    def dump_coverage(self, read_data_provider, out_prefix):
         if self.dump_dataframes:
             with open(f"{read_data_provider.out_prefix}.coverage.dat", "wb") as _out:
                 pickle.dump(self._coverage_data, _out)
@@ -131,14 +131,14 @@ class PandaCoverageProfiler(PandaProfiler):
                 for feat in read_data_provider.adm.get_features(category=category.id)
             )
 
+            columns = [category.name,] + PandaCoverageProfiler.COLUMNS
+
             cat_grouped = self._annotate_category_counts(
                 self.main_df,
                 gene_category_map,
                 category.name,
             ) \
-                .explode(category.name, ignore_index=True)[
-                    [category.name,] + PandaCoverageProfiler.COLUMNS
-                ] \
+                .explode(category.name, ignore_index=True)[columns] \
                 .groupby(category.name, as_index=False)
 
             coverage_df = cat_grouped[
@@ -172,11 +172,7 @@ class PandaCoverageProfiler(PandaProfiler):
                 f"{out_prefix}.{category.name}.coverage.txt", sep="\t", index=False, float_format="%.5f"
             )
 
-
         gene_columns = ["gene"] + PandaCoverageProfiler.COLUMNS
         self.main_df[gene_columns] \
             .sort_values(by=["gene",]) \
             .to_csv(out_prefix + ".genes.coverage.txt", index=False, sep="\t", na_rep="NA", float_format="%.5f")
-
-
-        

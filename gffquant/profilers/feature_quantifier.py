@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0914,W1203
+# pylint: disable=C0103,R0914,W1203,R0902
 
 """ module docstring """
 
@@ -357,7 +357,7 @@ class FeatureQuantifier(ABC):
             self.panda.profile(self, **report_args)
             self.panda.dump(self.out_prefix, **report_args)
             if self.panda_cv is not None:
-                self.panda_cv.dump(self, self.out_prefix)
+                self.panda_cv.dump_coverage(self, self.out_prefix)
             # self.write_coverage()
             # self.process_counters(
             #     restrict_reports=restrict_reports,

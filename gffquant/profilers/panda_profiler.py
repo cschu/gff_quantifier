@@ -1,3 +1,4 @@
+# pylint: disable=R0902,R0903,R0913,R0914
 """ module docstring """
 
 import pandas as pd
@@ -63,8 +64,7 @@ class PandaProfiler:
             left_index=False, right_index=False,
             left_on=("refname",),
             right_on=("gene",),
-        ) \
-        .dropna(axis=0, subset=[category,], how="any")
+        ).dropna(axis=0, subset=[category,], how="any")
 
     def _get_gene_annotation(self, df, categories, refmgr, dbseq):
         genes = zip(df["rid"], df["start"], df["end"]) if self.with_overlap else df["rid"]
@@ -169,11 +169,6 @@ class PandaProfiler:
                     float_format="%.5f",
                 )
 
-            category_row = [
-                category_counts[col].sum(numeric_only=True)
-                for col in ["uniq_raw", "uniq_lnorm", "combined_raw", "combined_lnorm",]
-            ]
-
             category_counts = category_counts \
                 .explode(category.name, ignore_index=True)[[category.name,] + count_columns] \
                 .groupby(category.name, as_index=False) \
@@ -199,11 +194,21 @@ class PandaProfiler:
                 "feature", "uniq_raw", "uniq_lnorm", "uniq_scaled", "combined_raw", "combined_lnorm", "combined_scaled",
             ]
 
+            def calc_category_row(category_counts):
+                category_row = [
+                    category_counts[col].sum(numeric_only=True)
+                    for col in ["uniq_raw", "uniq_lnorm", "combined_raw", "combined_lnorm",]
+                ]
+                return category_row[:2] + \
+                    [category_row[1] * (category_row[0] / category_row[1]),] + \
+                    category_row[2:] + \
+                    [category_row[3] * (category_row[2] / category_row[3]),]
+
             header_rows = pd.DataFrame(
                 [
                     ["total_reads"] + [read_data_provider.aln_counter["read_count"]] * (len(out_cols) - 1),
                     ["filtered_reads"] + [read_data_provider.aln_counter["filtered_read_count"]] * (len(out_cols) - 1),
-                    ["category"] + category_row[:2] + [category_row[1] * (category_row[0] / category_row[1]),] + category_row[2:] + [category_row[3] * (category_row[2] / category_row[3]),],
+                    ["category"] + calc_category_row(category_counts),
                 ],
                 columns=out_cols,
             )
@@ -218,8 +223,8 @@ class PandaProfiler:
                     f"{read_data_provider.out_prefix}.{category.name}.pd.txt",
                     sep="\t",
                     index=False,
-                    float_format="%.5f",
-                )
+                    float_format="%.5f"
+                )  # noqa
 
     def dump(
         self,
@@ -259,7 +264,7 @@ class PandaProfiler:
                 sep="\t",
                 index=False,
                 float_format="%.5f",
-            )
+            )  # noqa
 
     def add_records(self, hits):
 
@@ -284,7 +289,7 @@ class PandaProfiler:
         # pylint: disable=C0121
         contrib_sums_uniq = hits_df[hits_df["is_ambiguous"] == False][keep_columns] \
             .groupby(by=keep_columns[:-1], as_index=False) \
-            .sum(numeric_only=True)
+            .sum(numeric_only=True)  # noqa
         contrib_sums_combined = hits_df[keep_columns] \
             .groupby(by=keep_columns[:-1], as_index=False) \
             .sum(numeric_only=True)
