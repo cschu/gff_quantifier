@@ -11,7 +11,7 @@ import pandas as pd
 
 
 def get_lines_from_chunks(f, bufsize=400000000):
-    with (gzip.open if f.endswith(".gz") else open)(f, "r") as _in:
+    with (gzip.open if f.endswith(".gz") else open)(f, "rb") as _in:
         tail = ""
         while True:
             chunk = "".join((tail, _in.read(bufsize).decode()))
