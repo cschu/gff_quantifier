@@ -211,7 +211,18 @@ def main():
     ap.add_argument("count_dir", type=str)
     ap.add_argument("--out_prefix", "-o", type=str, default="./collated")
     ap.add_argument("--recursive", "-r", action="store_true")
-    ap.add_argument("--column", "-c", type=str, choices=("uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rpkm", "combined_raw", "combined_lnorm", "combined_scaled", "combined_rpkm"), default="uniq_raw")
+    ap.add_argument(
+        "--column",
+        "-c",
+        type=str,
+        choices=(
+            "uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rpkm", 
+            "combined_raw", "combined_lnorm", "combined_scaled", "combined_rpkm",
+            "uniq_depth", "uniq_depth_covered", "uniq_horizontal",
+            "combined_depth", "combined_depth_covered", "combined_horizontal",
+        ),
+        default="uniq_raw"
+        )
     ap.add_argument("--index_file", type=str)
     args = ap.parse_args()
 

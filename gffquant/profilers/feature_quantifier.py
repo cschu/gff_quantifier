@@ -12,8 +12,6 @@ from abc import ABC
 from collections import Counter
 from dataclasses import dataclass
 
-# import pandas as pd
-
 from .panda_profiler import PandaProfiler
 from .panda_coverage_profiler import PandaCoverageProfiler
 from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
