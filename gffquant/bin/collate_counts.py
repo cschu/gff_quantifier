@@ -224,13 +224,14 @@ def main():
         default="uniq_raw"
         )
     ap.add_argument("--index_file", type=str)
+    ap.add_argument("--suffix", type=str, default=".txt.gz")
     args = ap.parse_args()
 
     outdir = os.path.dirname(args.out_prefix)
     if outdir and outdir != ".":
         pathlib.Path(outdir).mkdir(exist_ok=True, parents=True)
 
-    FeatureCountCollator(args.count_dir, args.out_prefix, args.column, recursive=args.recursive).collate(index_file=args.index_file)
+    FeatureCountCollator(args.count_dir, args.out_prefix, args.column, recursive=args.recursive, suffix=args.suffix).collate(index_file=args.index_file)
 
 
 if __name__ == "__main__":
