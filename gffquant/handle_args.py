@@ -115,7 +115,6 @@ def handle_args(args):
 
     ap.add_argument(
         "--db_in_memory",
-        type=str,
         action="store_true",
         help="Load the database into memory (only for sqlite-based databases.)",
     )
