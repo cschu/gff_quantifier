@@ -24,6 +24,7 @@ class RegionQuantifier(FeatureQuantifier):
         run_mode=RunMode.DOMAIN,
         calculate_coverage=False,
         debug=False,
+        in_memory=True,
     ):
         FeatureQuantifier.__init__(
             self,
@@ -37,4 +38,4 @@ class RegionQuantifier(FeatureQuantifier):
             debug=debug,
         )
 
-        self.adm = AnnotationDatabaseManager.from_db(self.db)
+        self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)

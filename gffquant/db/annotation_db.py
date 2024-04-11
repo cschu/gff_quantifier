@@ -40,9 +40,9 @@ class AnnotationDatabaseManager(ABC):
         ...
 
     @classmethod
-    def from_db(cls, db_path):
+    def from_db(cls, db_path, in_memory=True):
         if isinstance(db_path, str):
-            return SQL_ADM(get_database(db_path)[1])
+            return SQL_ADM(get_database(db_path, in_memory=in_memory)[1])
         if isinstance(db_path, GqDatabaseImporter):
             return Dict_ADM(db_path)
         return SQL_ADM(db_path)

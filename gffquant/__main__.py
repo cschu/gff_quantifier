@@ -96,6 +96,8 @@ def main():
                 db_input, db_args["input_data2"] = args.annotation_db.split(",")
             except ValueError as exc:
                 raise ValueError("Require two input files.") from exc
+        else:
+            kwargs["in_memory"] = args.db_in_memory
 
         annotation_db.build_database(
             db_input,
@@ -134,6 +136,7 @@ def main():
         restrict_reports=args.restrict_metrics,
         report_category=True,
         report_unannotated=args.run_mode.report_unannotated,
+        in_memory=args.db_in_memory,
     )
 
 

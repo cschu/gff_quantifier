@@ -328,6 +328,7 @@ class FeatureQuantifier(ABC):
         restrict_reports=None,
         report_category=False,
         report_unannotated=False,
+        in_memory=True,
     ):
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
@@ -345,7 +346,7 @@ class FeatureQuantifier(ABC):
 
         if self.aln_counter.get("aln_count"):
             if self.adm is None:
-                self.adm = AnnotationDatabaseManager.from_db(self.db)
+                self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
             report_args = {
                 "restrict_reports": restrict_reports,
