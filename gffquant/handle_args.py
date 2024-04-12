@@ -113,6 +113,12 @@ def handle_args(args):
         help="Format of the annotation database.",
     )
 
+    ap.add_argument(
+        "--db_in_memory",
+        action="store_true",
+        help="Load the database into memory (only for sqlite-based databases.)",
+    )
+
     # ap.add_argument(
     #     "--db_coordinates",
     #     type=str,

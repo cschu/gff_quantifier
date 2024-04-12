@@ -22,6 +22,7 @@ class RegionQuantifier(FeatureQuantifier):
         strand_specific=False,
         paired_end_count=1,
         run_mode=RunMode.DOMAIN,
+        in_memory=True,
     ):
         FeatureQuantifier.__init__(
             self,
@@ -33,4 +34,4 @@ class RegionQuantifier(FeatureQuantifier):
             paired_end_count=paired_end_count,
         )
 
-        self.adm = AnnotationDatabaseManager.from_db(self.db)
+        self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
