@@ -77,16 +77,21 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                     logger.info("\tProcessed %s records", self.nseqs)
                 # line = line.decode()
                 line = line.strip().split(self.delimiter)
-                line_d = {
+                columns = {
                     colname: value.strip()
                     for colname, value in zip(header_line + [self.seq_column], line)
                     if colname in category_cols or colname in (self.seq_column, self.seqid_column)
                 }
 
+                # annotation = tuple(
+                #     (category, tuple(set(sorted(features.split(",")))))
+                #     for category, features in line_d.items()
+                #     if features != self.na_char and features and category not in (self.seq_column, self.seqid_column)
+                # )
                 annotation = tuple(
-                    (category, tuple(set(sorted(features.split(",")))))
-                    for category, features in line_d.items()
-                    if features != self.na_char and features and category not in (self.seq_column, self.seqid_column)
+                    (category, features)
+                    for category, features in self.extract_features(columns)
+                    if category not in (self.seq_column, self.seqid_column)
                 )
 
                 ann_str = ";".join(
@@ -100,7 +105,7 @@ class AnnstrDatabaseImporter(GqCustomDatabaseImporter):
                     yield db.AnnotationString(annotation_hash=ann_sfx), annotation
 
                 print(
-                    f">{line_d[self.seqid_column]}.{ann_sfx}", line_d[self.seq_column],
+                    f">{columns[self.seqid_column]}.{ann_sfx}", columns[self.seq_column],
                     sep="\n",
                     file=seq_out
                 )

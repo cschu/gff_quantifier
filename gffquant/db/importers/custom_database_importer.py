@@ -74,11 +74,12 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
                     if colname in category_cols
                 }
 
-                annotation = [
-                    (category, tuple(features.split(",")))
-                    for category, features in columns.items()
-                    if features and features != self.na_char
-                ]
+                # annotation = [
+                #     (category, tuple(features.split(",")))
+                #     for category, features in columns.items()
+                #     if features and features != self.na_char
+                # ]
+                annotation = self.extract_features(columns)
 
                 if annotation:
                     seq_feature = db.AnnotatedSequence(

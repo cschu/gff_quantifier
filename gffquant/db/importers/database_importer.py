@@ -28,13 +28,17 @@ class GqDatabaseImporter(ABC):
         self.features = {}
         self.na_char = na_char
 
-    @staticmethod
-    def extract_features(columns):
-        annotation = [
-            (category, tuple(features.split(",")))
-            for category, features in columns.items()
-            if features and features != "-" and category != "COG_category"
-        ]
+    def extract_features(self, columns):
+
+        for category, features in columns.items():
+            if features and features != self.na_char and category != "COG_category":
+                yield category, tuple(set(sorted(features.split(","))))
+
+        # annotation = [
+        #     (category, tuple(features.split(",")))
+        #     for category, features in columns.items()
+        #     if features and features != "-" and category != "COG_category"
+        # ]
 
         # COG_categories are single letters, but genes can have composite annotations
         # we profile both, the single letters (split composites into individual categories),
@@ -45,10 +49,12 @@ class GqDatabaseImporter(ABC):
             if len(cog_category) > 1:
                 # composites need to be passed as 1-tuples,
                 # otherwise downstream ops with iterate over the string!
-                annotation.append(("COG_category_composite", (cog_category,)))
-            annotation.append(("COG_category", tuple(cog_category)))
+                # annotation.append(("COG_category_composite", (cog_category,)))
+                yield "COG_category_composite", (cog_category,)
+            # annotation.append(("COG_category", tuple(cog_category)))
+            yield "COG_category", tuple(cog_category)
 
-        return annotation
+        # return annotation
     
     @staticmethod
     def get_open_function(f):
