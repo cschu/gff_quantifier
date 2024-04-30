@@ -4,15 +4,11 @@ IncludeCmd: yes
 
 %labels
   MAINTAINER cschu (cschu1981@gmail.com)
-  VERSION v.2.7
+  VERSION v.2.14.3
 
 %environment
-#R_VERSION=4.1
-#export R_VERSION
-#R_CONFIG_DIR=/etc/R/
-#export R_CONFIG_DIR
 export LC_ALL=C
-export PATH=$PATH:/opt/software/miniconda3/bin:/opt/software/mOTUs
+export PATH=$PATH:/opt/software/miniconda3/bin
 
 %post
   apt-get update
@@ -32,14 +28,11 @@ export PATH=$PATH:/opt/software/miniconda3/bin:/opt/software/mOTUs
   bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/software/miniconda3
   rm -f Miniconda3-latest-Linux-x86_64.sh
 
-  /opt/software/miniconda3/bin/conda install -y -c bioconda 'samtools>=1.13' bwa minimap2
+  /opt/software/miniconda3/bin/conda install -y -c bioconda 'python<3.11' bwa minimap2
   git clone https://github.com/cschu/gff_quantifier.git
   cd gff_quantifier
-  git checkout c8c96d87df0118c4a24c1aa7299d49ee5c194b41
-  /opt/software/miniconda3/bin/python setup.py bdist_wheel
-  /opt/software/miniconda3/bin/pip install --force-reinstall dist/*whl
-  cd ..
-  rm -rf gff_quantifier/
+  git checkout tags/v2.15.1
+  /opt/software/miniconda3/bin/pip install .
+  
 
-
-# trigger trigger trigger trigger trigger trigger trigger
+# trigger trigger trigger trigger trigger trigger trigger trigger

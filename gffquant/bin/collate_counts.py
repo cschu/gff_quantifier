@@ -11,7 +11,7 @@ import pandas as pd
 
 
 def get_lines_from_chunks(f, bufsize=400000000):
-    with (gzip.open if f.endswith(".gz") else open)(f, "r") as _in:
+    with (gzip.open if f.endswith(".gz") else open)(f, "rb") as _in:
         tail = ""
         while True:
             chunk = "".join((tail, _in.read(bufsize).decode()))
@@ -19,8 +19,8 @@ def get_lines_from_chunks(f, bufsize=400000000):
                 break
             chunk = chunk.split("\n")
             *chunk, tail = chunk
-            for line in chunk:
-                yield line
+            yield from chunk
+
         if tail:
             yield tail
 
@@ -79,7 +79,7 @@ class FeatureCountCollator:
     # pylint: disable=R0912,R0915
     def _collate_category(self, category, files, index_file=None):
         table_file = f"{self.prefix}.{category}.{self.column}.txt.gz"
-        feature_label = ("feature", "gene")[category == "gene_counts"]
+        feature_label = ("feature", "gene")[category.startswith("gene")]
         print(index_file, index_file is None, os.path.isfile(str(index_file)))
         if index_file is None or not os.path.isfile(index_file):
             index = self._extract_index(files, feature_label)
@@ -211,15 +211,27 @@ def main():
     ap.add_argument("count_dir", type=str)
     ap.add_argument("--out_prefix", "-o", type=str, default="./collated")
     ap.add_argument("--recursive", "-r", action="store_true")
-    ap.add_argument("--column", "-c", type=str, choices=("uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rpkm", "combined_raw", "combined_lnorm", "combined_scaled", "combined_rpkm"), default="uniq_raw")
+    ap.add_argument(
+        "--column",
+        "-c",
+        type=str,
+        choices=(
+            "uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rpkm", 
+            "combined_raw", "combined_lnorm", "combined_scaled", "combined_rpkm",
+            "uniq_depth", "uniq_depth_covered", "uniq_horizontal",
+            "combined_depth", "combined_depth_covered", "combined_horizontal",
+        ),
+        default="uniq_raw"
+        )
     ap.add_argument("--index_file", type=str)
+    ap.add_argument("--suffix", type=str, default=".txt.gz")
     args = ap.parse_args()
 
     outdir = os.path.dirname(args.out_prefix)
     if outdir and outdir != ".":
         pathlib.Path(outdir).mkdir(exist_ok=True, parents=True)
 
-    FeatureCountCollator(args.count_dir, args.out_prefix, args.column, recursive=args.recursive).collate(index_file=args.index_file)
+    FeatureCountCollator(args.count_dir, args.out_prefix, args.column, recursive=args.recursive, suffix=args.suffix).collate(index_file=args.index_file)
 
 
 if __name__ == "__main__":

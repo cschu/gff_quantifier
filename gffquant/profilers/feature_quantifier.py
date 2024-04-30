@@ -136,9 +136,10 @@ class FeatureQuantifier(ABC):
         report_category=True,
         report_unannotated=True,
         dump_counters=True,
+        in_memory=True,
     ):
         if self.adm is None:
-            self.adm = AnnotationDatabaseManager.from_db(self.db)
+            self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
         if dump_counters:
             self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
@@ -294,6 +295,7 @@ class FeatureQuantifier(ABC):
         report_category=False,
         report_unannotated=False,
         dump_counters=False,
+        in_memory=True,
     ):
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
@@ -315,6 +317,7 @@ class FeatureQuantifier(ABC):
                 report_category=report_category,
                 report_unannotated=report_unannotated,
                 dump_counters=dump_counters,
+                in_memory=in_memory,
             )
 
             for metric, value in (
