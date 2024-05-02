@@ -20,14 +20,14 @@ class AlignmentProcessor:
         aln_type = aln_type.lower()
         assert aln_type in ("bam", "sam")
 
-        self.used_refs = {}
+        # self.used_refs = {}
         # pylint: disable=E1101
         self.aln_stream = pysam.AlignmentFile(aln_source, "rb" if aln_type == "bam" else "r")
         self.stat_counter = [0, 0, 0]
         self.read_counter = [0, 0, 0]
 
-    def get_reference(self, rid):
-        return self.used_refs.get(rid, (None, None))
+    # def get_reference(self, rid):
+    #     return self.used_refs.get(rid, (None, None))
 
     def get_alignment_stats(self):
         return self.stat_counter
@@ -115,7 +115,7 @@ class AlignmentProcessor:
 
                     rname = pysam_aln.reference_name
                     rlength = self.aln_stream.get_reference_length(rname)
-                    self.used_refs[pysam_aln.reference_id] = rname, rlength
+                    # self.used_refs[pysam_aln.reference_id] = rname, rlength
 
                     if last_passed_read is None or pysam_aln.qname != last_passed_read:
                         last_passed_read = pysam_aln.qname
