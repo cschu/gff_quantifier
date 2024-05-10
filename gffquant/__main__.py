@@ -126,7 +126,7 @@ def main():
             min_seqlen=args.min_seqlen,
             external_readcounts=args.import_readcounts,
             unmarked_orphans=args.unmarked_orphans,
-            sam_prefix=f".{args.input_type}"
+            sam_prefix=f".{args.input_type}",
         )
 
     profiler.finalise(
