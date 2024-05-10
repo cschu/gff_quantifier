@@ -70,14 +70,14 @@ class AlignmentGroup:
             if aln.hits:
                 n_aln = (1, self.ambig_hit_counts[aln.is_second()])[is_ambiguous]
                 if n_aln == 0:
-                    raise ValueError(f"-->{self.ambig_hit_counts}")
+                    raise ValueError(f"Alignment hit counts are zero: {self.ambig_hit_counts}")
                 for hit in aln.hits:
                     hit.is_ambiguous = is_ambiguous
                     hit.mate_id = [1, 2][aln.is_second()]
                     try:
                         hit.library_mod = [1, 2][self.pe_library]
-                    except TypeError as e:
-                        raise TypeError(f"{aln.tags}") from e
+                    except TypeError as err:
+                        raise TypeError(f"Cannot derive sequencing library from tags: {aln.tags}") from err
 
                 yield aln.hits, n_aln
 

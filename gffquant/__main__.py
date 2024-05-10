@@ -61,7 +61,7 @@ def stream_alignments(args, profiler: FeatureQuantifier):
                 logger.error(f"Failed to align. Is `{args.aligner}` installed and on the path?")
                 logger.error("Aligner call was:")
                 logger.error("%s", call)
-                sys.exit(1)
+                raise ValueError from err
 
             logger.error("Encountered problems digesting the alignment stream:")
             logger.error("%s", err)
