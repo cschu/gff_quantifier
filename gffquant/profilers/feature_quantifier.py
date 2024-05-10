@@ -81,6 +81,7 @@ class FeatureQuantifier(ABC):
         run_mode=RunMode.GENE,
         strand_specific=False,
         paired_end_count=1,
+        debug=False,
     ):
         self.aln_counter = Counter()
         self.db = db
@@ -96,6 +97,7 @@ class FeatureQuantifier(ABC):
         self.distribution_mode = distribution_mode
         self.reference_manager = {}
         self.strand_specific = strand_specific
+        self.debug = debug
 
     def check_hits(self, ref, aln):
         """ Check if an alignment hits a region of interest on a reference sequence.
@@ -188,15 +190,17 @@ class FeatureQuantifier(ABC):
 
         return new_ref[0]
 
-    def process_alignments(self, aln_reader, min_identity=None, min_seqlen=None, unmarked_orphans=False):
+    def process_alignments(self, aln_reader, sam_prefix="", min_identity=None, min_seqlen=None, unmarked_orphans=False):
         # pylint: disable=R0914
         t0 = time.time()
+
+        samfile = f"{self.out_prefix}{sam_prefix}.filtered.sam" if self.debug else None
 
         aln_stream = aln_reader.get_alignments(
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
-            filtered_sam=f"{self.out_prefix}.filtered.sam",
+            filtered_sam=samfile,
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)
@@ -261,6 +265,7 @@ class FeatureQuantifier(ABC):
         min_seqlen=None,
         external_readcounts=None,
         unmarked_orphans=False,
+        sam_prefix="",
     ):
         aln_reader = AlignmentProcessor(aln_stream, aln_format)
 
@@ -269,6 +274,7 @@ class FeatureQuantifier(ABC):
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             unmarked_orphans=unmarked_orphans,
+            sam_prefix=sam_prefix,
         )
 
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter

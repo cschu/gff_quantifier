@@ -19,6 +19,7 @@ class GeneQuantifier(FeatureQuantifier):
         distribution_mode=DistributionMode.ONE_OVER_N,
         strand_specific=False,
         paired_end_count=1,
+        debug=False,
     ):
         FeatureQuantifier.__init__(
             self,
@@ -28,4 +29,5 @@ class GeneQuantifier(FeatureQuantifier):
             strand_specific=strand_specific,
             run_mode=RunMode.GENE,
             paired_end_count=paired_end_count,
+            debug=debug,
         )
