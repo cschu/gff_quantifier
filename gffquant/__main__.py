@@ -32,7 +32,7 @@ def stream_alignments(args, profiler):
         sample_id=os.path.basename(args.out_prefix),
     )
 
-    for input_type, *reads in args.input_data:
+    for i, (input_type, *reads) in enumerate(args.input_data):
 
         logger.info("Running %s alignment: %s", input_type, ",".join(reads))
         proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=args.keep_alignment_file)
@@ -49,6 +49,7 @@ def stream_alignments(args, profiler):
 
             profiler.count_alignments(
                 proc.stdout, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
+                sam_prefix=f".{input_type}.{i}",
             )
 
         except Exception as err:
@@ -74,7 +75,7 @@ def main():
     logger.info("Version: %s", __version__)
     logger.info("Command: %s %s", os.path.basename(sys.argv[0]), " ".join(sys.argv[1:]))
 
-    kwargs = {}
+    kwargs = {"debug": args.debug}
     annotation_db = args.annotation_db
     if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier
@@ -125,6 +126,7 @@ def main():
             min_seqlen=args.min_seqlen,
             external_readcounts=args.import_readcounts,
             unmarked_orphans=args.unmarked_orphans,
+            sam_prefix=f".{args.input_type}",
         )
 
     profiler.finalise(
