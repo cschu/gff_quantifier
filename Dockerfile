@@ -7,11 +7,12 @@ LABEL description="gffquant - functional profiling of metagenomic/transcriptomic
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt update
-RUN apt upgrade -y
+RUN apt-get update
+RUN apt-get install -y wget python3-pip git gawk bwa minimap2 samtools
+# RUN apt-get upgrade -y
 
-RUN apt install -y wget python3-pip git dirmngr gnupg ca-certificates build-essential libssl-dev libcurl4-gnutls-dev libxml2-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev bwa minimap2
-RUN apt clean
+# RUN apt install -y wget python3-pip git dirmngr gnupg ca-certificates build-essential libssl-dev libcurl4-gnutls-dev libxml2-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev bwa minimap2
+# RUN apt clean
 
 RUN mkdir -p /opt/software && \
 	cd /opt/software && \
