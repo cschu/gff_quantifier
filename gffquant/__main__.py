@@ -49,7 +49,7 @@ def stream_alignments(args, profiler):
 
             profiler.count_alignments(
                 proc.stdout, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
-                sam_prefix=f".{args.input_type}.{i}",
+                sam_prefix=f".{input_type}.{i}",
             )
 
         except Exception as err:
