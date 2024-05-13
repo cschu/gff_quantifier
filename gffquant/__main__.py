@@ -35,7 +35,17 @@ def stream_alignments(args, profiler):
     for i, (input_type, *reads) in enumerate(args.input_data):
 
         logger.info("Running %s alignment: %s", input_type, ",".join(reads))
-        proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=args.keep_alignment_file)
+
+        sam_suffix=f".{input_type}.{i}"
+
+        debug_samfile, samfile = None, None
+        if args.keep_alignment_file:
+            samfile = args.keep_alignment_file.replace(".sam", "")
+            samfile = f"{samfile}{sam_suffix}.sam"
+        if profiler.debug:
+            debug_samfile = f"{profiler.out_prefix}{sam_suffix}.filtered.sam"
+
+        proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=samfile)
 
         # if proc.returncode != 0:
         #     logger.error("Encountered problems aligning.")
@@ -49,7 +59,7 @@ def stream_alignments(args, profiler):
 
             profiler.count_alignments(
                 proc.stdout, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
-                sam_prefix=f".{input_type}.{i}",
+                debug_samfile=debug_samfile,
             )
 
         except Exception as err:

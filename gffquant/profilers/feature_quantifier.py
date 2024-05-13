@@ -190,17 +190,15 @@ class FeatureQuantifier(ABC):
 
         return new_ref[0]
 
-    def process_alignments(self, aln_reader, sam_prefix="", min_identity=None, min_seqlen=None, unmarked_orphans=False):
+    def process_alignments(self, aln_reader, debug_samfile=None, min_identity=None, min_seqlen=None, unmarked_orphans=False):
         # pylint: disable=R0914
         t0 = time.time()
-
-        samfile = f"{self.out_prefix}{sam_prefix}.filtered.sam" if self.debug else None
 
         aln_stream = aln_reader.get_alignments(
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
-            filtered_sam=samfile,
+            filtered_sam=debug_samfile,
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)
@@ -265,7 +263,7 @@ class FeatureQuantifier(ABC):
         min_seqlen=None,
         external_readcounts=None,
         unmarked_orphans=False,
-        sam_prefix="",
+        debug_samfile=None,
     ):
         aln_reader = AlignmentProcessor(aln_stream, aln_format)
 
@@ -274,7 +272,7 @@ class FeatureQuantifier(ABC):
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             unmarked_orphans=unmarked_orphans,
-            sam_prefix=sam_prefix,
+            debug_samfile=debug_samfile,
         )
 
         full_readcount, read_count, filtered_readcount = aln_reader.read_counter
