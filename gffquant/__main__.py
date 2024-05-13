@@ -41,7 +41,7 @@ def stream_alignments(args, profiler):
         debug_samfile, samfile = None, None
         if args.keep_alignment_file:
             samfile = args.keep_alignment_file.replace(".sam", "")
-            samfile = f"{samfile}.{sam_suffix}.sam"
+            samfile = f"{samfile}{sam_suffix}.sam"
         if profiler.debug:
             debug_samfile = f"{profiler.out_prefix}{sam_suffix}.filtered.sam"
 
