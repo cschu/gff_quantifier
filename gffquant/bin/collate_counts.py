@@ -206,6 +206,14 @@ class FeatureCountCollator:
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="stat")
 
 
+COLUMNS = (
+    "uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rpkm",
+    "combined_raw", "combined_lnorm", "combined_scaled", "combined_rpkm",
+    "uniq_depth", "uniq_depth_covered", "uniq_horizontal",
+    "combined_depth", "combined_depth_covered", "combined_horizontal",
+)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("count_dir", type=str)
@@ -215,14 +223,9 @@ def main():
         "--column",
         "-c",
         type=str,
-        choices=(
-            "uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rpkm", 
-            "combined_raw", "combined_lnorm", "combined_scaled", "combined_rpkm",
-            "uniq_depth", "uniq_depth_covered", "uniq_horizontal",
-            "combined_depth", "combined_depth_covered", "combined_horizontal",
-        ),
-        default="uniq_raw"
-        )
+        choices=COLUMNS,
+        default="uniq_raw",
+    )
     ap.add_argument("--index_file", type=str)
     ap.add_argument("--suffix", type=str, default=".txt.gz")
     args = ap.parse_args()

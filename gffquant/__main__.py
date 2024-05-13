@@ -36,7 +36,7 @@ def stream_alignments(args, profiler):
 
         logger.info("Running %s alignment: %s", input_type, ",".join(reads))
 
-        sam_suffix=f".{input_type}.{i}"
+        sam_suffix = f".{input_type}.{i}"
 
         debug_samfile, samfile = None, None
         if args.keep_alignment_file:
@@ -128,6 +128,9 @@ def main():
     else:
 
         input_file = args.bam if args.input_type == "bam" else args.sam
+        debug_samfile = None
+        if profiler.debug:
+            debug_samfile = f"{profiler.out_prefix}.{args.input_type}.filtered.sam"
 
         profiler.count_alignments(
             sys.stdin if input_file == "-" else input_file,
@@ -136,7 +139,7 @@ def main():
             min_seqlen=args.min_seqlen,
             external_readcounts=args.import_readcounts,
             unmarked_orphans=args.unmarked_orphans,
-            sam_prefix=f".{args.input_type}",
+            debug_samfile=debug_samfile,
         )
 
     profiler.finalise(

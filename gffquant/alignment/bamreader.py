@@ -97,7 +97,7 @@ class BamAlignment:
         self.tags = tags
         try:
             self.read_group = int(tags.get("RG"))
-        except:
+        except TypeError:
             self.read_group = None
         if self.read_group not in (1, 2):
             self.read_group = None

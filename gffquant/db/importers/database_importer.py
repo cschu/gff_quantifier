@@ -40,9 +40,9 @@ class GqDatabaseImporter(ABC):
         #     if features and features != "-" and category != "COG_category"
         # ]
 
-        # COG_categories are single letters, but genes can have composite annotations
-        # we profile both, the single letters (split composites into individual categories),
-        # and the composites
+        # COG_categories are single letters, but genes can have composite annotations
+        # we profile both, the single letters (split composites into individual categories),
+        # and the composites
         cog_category = columns.get("COG_category")
         if cog_category and cog_category != "-":
             cog_category = cog_category.replace(",", "")
@@ -55,7 +55,7 @@ class GqDatabaseImporter(ABC):
             yield "COG_category", tuple(cog_category)
 
         # return annotation
-    
+
     @staticmethod
     def get_open_function(f):
         """ Returns a file open function corresponding to gzip-compression status. """

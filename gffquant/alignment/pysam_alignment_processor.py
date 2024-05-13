@@ -119,8 +119,6 @@ class AlignmentProcessor:
         filtered_out = open(filtered_sam, "wt", encoding="UTF-8") if filtered_sam else nullcontext()
         # pylint: enable=R1732
 
-        alignment_f = self.unfold_ambiguous_alignments if unfold_xa_tag else (lambda x: (x for i in range(1)))
-
         with self.aln_stream, filtered_out:
             for pysam_aln in self.aln_stream:
 

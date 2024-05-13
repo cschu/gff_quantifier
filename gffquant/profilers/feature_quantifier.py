@@ -190,7 +190,14 @@ class FeatureQuantifier(ABC):
 
         return new_ref[0]
 
-    def process_alignments(self, aln_reader, debug_samfile=None, min_identity=None, min_seqlen=None, unmarked_orphans=False):
+    def process_alignments(
+        self,
+        aln_reader,
+        debug_samfile=None,
+        min_identity=None,
+        min_seqlen=None,
+        unmarked_orphans=False,
+    ):
         # pylint: disable=R0914
         t0 = time.time()
 
