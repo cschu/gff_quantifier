@@ -13,7 +13,7 @@ RUN apt-get install -y wget python3-pip git gawk bwa minimap2 samtools
 
 # RUN apt install -y wget python3-pip git dirmngr gnupg ca-certificates build-essential libssl-dev libcurl4-gnutls-dev libxml2-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev bwa minimap2
 # RUN apt clean
-
+ARG CACHEBUST=1
 RUN mkdir -p /opt/software && \
 	cd /opt/software && \
 	git clone https://github.com/cschu/gff_quantifier && \
