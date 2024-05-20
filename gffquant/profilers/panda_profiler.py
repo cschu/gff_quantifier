@@ -1,6 +1,8 @@
 # pylint: disable=R0902,R0903,R0913,R0914
 """ module docstring """
 
+import sys
+
 import pandas as pd
 
 from ..db.annotation_db import AnnotationDatabaseManager
@@ -18,9 +20,14 @@ class PandaProfiler:
         self.main_df = None
         self.with_overlap = with_overlap
         self.index_columns = ["rid",] + (["start", "end",] if with_overlap else [])
+        self.keep_columns = self.index_columns + ["contrib",]
 
         self.dump_dataframes = dump_dataframes
         self.mode = "counts"
+        self._buffer = []
+        self._buffer_size = 0
+        self._max_buffer_size = 400_000_000
+        
 
     def get_gene_coords(self):
         if self.with_overlap:
@@ -267,6 +274,23 @@ class PandaProfiler:
             )  # noqa
 
     def add_records(self, hits):
+        new_size = sum(sys.getsizeof(h) for h in hits)
+
+
+
+
+        hits_df = pd.DataFrame(hits)
+
+        new_size = hits_df.memory_usage(deep=True).sum() + self._buffer_size
+        if new_size > self._max_buffer_size:
+            ...
+
+    def merge_dataframes(self):
+        if self.main_df is None:
+            ...
+
+
+    def add_records_old(self, hits):
 
         # [2024-02-08 14:51:17,846] count_stream:
         # (
@@ -285,13 +309,13 @@ class PandaProfiler:
         hits_df["contrib"] = 1 / hits_df["n_aln"] / hits_df["library_mod"]
         # hits_df["length"] = hits_df["end"] - hits_df["start"] + 1
 
-        keep_columns = self.index_columns + ["contrib",]  # ["rid", "start", "end", "contrib"]
+        # keep_columns = self.index_columns + ["contrib",]  # ["rid", "start", "end", "contrib"]
         # pylint: disable=C0121
-        contrib_sums_uniq = hits_df[hits_df["is_ambiguous"] == False][keep_columns] \
-            .groupby(by=keep_columns[:-1], as_index=False) \
+        contrib_sums_uniq = hits_df[hits_df["is_ambiguous"] == False][self.keep_columns] \
+            .groupby(by=self.index_columns, as_index=False) \
             .sum(numeric_only=True)  # noqa
-        contrib_sums_combined = hits_df[keep_columns] \
-            .groupby(by=keep_columns[:-1], as_index=False) \
+        contrib_sums_combined = hits_df[self.keep_columns] \
+            .groupby(by=self.index_columns, as_index=False) \
             .sum(numeric_only=True)
         # pylint: enable=C0121
 

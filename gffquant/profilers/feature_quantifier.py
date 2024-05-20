@@ -25,7 +25,7 @@ from .. import __tool__, DistributionMode, RunMode
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(slots=True)
 class ReferenceHit:
     rid: int = None
     start: int = None
@@ -209,7 +209,8 @@ class FeatureQuantifier(ABC):
         sam_prefix="",
         min_identity=None,
         min_seqlen=None,
-        unmarked_orphans=False
+        unmarked_orphans=False,
+        # panda: PandaProfiler=None,
     ):
         # pylint: disable=R0914
         t0 = time.time()
@@ -243,7 +244,9 @@ class FeatureQuantifier(ABC):
 
             if current_aln_group is None or current_aln_group.qname != aln.qname:
                 if current_aln_group is not None:
-                    yield from self.process_alignment_group(current_aln_group, aln_reader)
+                    # yield from self.process_alignment_group(current_aln_group, aln_reader)
+                    if panda is not None:
+                        self.panda.add_records(self.process_alignment_group(current_aln_group, aln_reader))
                 current_aln_group = AlignmentGroup()
                 read_count += 1
 
@@ -253,7 +256,9 @@ class FeatureQuantifier(ABC):
             current_aln_group.add_alignment(aln)
 
         if current_aln_group is not None:
-            yield from self.process_alignment_group(current_aln_group, aln_reader)
+            if panda is not None:
+                self.panda.add_records(self.process_alignment_group(current_aln_group, aln_reader), last_update=True)
+            # yield from self.process_alignment_group(current_aln_group, aln_reader)
 
         if ac["aln_count"] == 0:
             logger.warning("No alignments present in stream.")
