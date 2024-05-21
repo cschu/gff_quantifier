@@ -285,7 +285,7 @@ class PandaProfiler:
 
         
     def merge_dataframes(self):
-        print("BUFFER:", len(self.buffer), self.buffer[:1])
+        print("BUFFER:", len(self._buffer), self._buffer[:1])
         hits_df = pd.DataFrame(self._buffer)
         print("HITS_DF:", hits_df)
         
