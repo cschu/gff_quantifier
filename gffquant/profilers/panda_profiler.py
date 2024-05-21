@@ -280,7 +280,7 @@ class PandaProfiler:
             self.merge_dataframes()
             self._buffer.clear()
             self._buffer_size = 0
-        self._buffer += list(hits)
+        self._buffer += hits
         self._buffer_size += hits_size
 
         
