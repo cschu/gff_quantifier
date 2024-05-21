@@ -10,7 +10,7 @@ import time
 
 from abc import ABC
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 from .panda_profiler import PandaProfiler
 from .panda_coverage_profiler import PandaCoverageProfiler
@@ -40,19 +40,19 @@ class ReferenceHit:
     mate_id: int = None
 
     def __hash__(self):
-        return hash(tuple(self.__dict__.values()))
+        return hash(tuple(asdict(self).values()))
 
     def __eq__(self, other):
         return all(
             item[0][1] == item[1][1]
             for item in zip(
-                sorted(self.__dict__.items()),
-                sorted(other.__dict__.items())
+                sorted(asdict(self).items()),
+                sorted(asdict(other).items())
             )
         )
 
     def __str__(self):
-        return "\t".join(map(str, self.__dict__.values()))
+        return "\t".join(map(str, asdict(self).values()))
 
     def __repr__(self):
         return str(self)
