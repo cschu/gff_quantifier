@@ -273,21 +273,50 @@ class PandaProfiler:
                 float_format="%.5f",
             )  # noqa
 
-    def add_records(self, hits):
-        new_size = sum(sys.getsizeof(h) for h in hits)
+    def add_records(self, hits, last_update=False):
+        hits_size = sum(sys.getsizeof(h) for h in hits)
+        new_size = hits_size + self._buffer_size
+        if new_size > self._max_buffer_size or last_update:
+            self.merge_dataframes()
+            self._buffer_size = 0
+        else:
+            self._buffer.extend(hits)
+            self._buffer_size = new_size
 
 
-
-
-        hits_df = pd.DataFrame(hits)
-
-        new_size = hits_df.memory_usage(deep=True).sum() + self._buffer_size
-        if new_size > self._max_buffer_size:
-            ...
-
+        
     def merge_dataframes(self):
+        hits_df = pd.DataFrame(self._buffer)
+        self._buffer.clear()
+        hits_df["contrib"] = 1 / hits_df["n_aln"] / hits_df["library_mod"]
+        
+        # pylint: disable=C0121
+        contrib_sums_uniq = hits_df[hits_df["is_ambiguous"] == False][self.keep_columns] \
+            .groupby(by=self.index_columns, as_index=False) \
+            .sum(numeric_only=True)  # noqa
+        contrib_sums_combined = hits_df[self.keep_columns] \
+            .groupby(by=self.index_columns, as_index=False) \
+            .sum(numeric_only=True)
+        # pylint: enable=C0121
+
+        raw_counts_df = pd.merge(
+            contrib_sums_uniq,
+            contrib_sums_combined,
+            on=self.index_columns,
+            left_index=False, right_index=False,
+            how="outer"
+        ) \
+            .rename({"contrib_x": "uniq_raw", "contrib_y": "combined_raw"}, axis=1) \
+            .fillna(0)
+
         if self.main_df is None:
-            ...
+            self.main_df = raw_counts_df
+        else:
+            self.main_df = pd.concat(
+                (self.main_df, raw_counts_df,)
+            ) \
+                .groupby(by=self.index_columns, as_index=False) \
+                .sum(numeric_only=True)
 
 
     def add_records_old(self, hits):
