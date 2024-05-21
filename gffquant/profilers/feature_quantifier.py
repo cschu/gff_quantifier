@@ -257,7 +257,7 @@ class FeatureQuantifier(ABC):
 
         if current_aln_group is not None:
             if self.panda is not None:
-                self.panda.add_records(list(self.process_alignment_group(current_aln_group, aln_reader), last_update=True))
+                self.panda.add_records(list(self.process_alignment_group(current_aln_group, aln_reader)), last_update=True)
             # yield from self.process_alignment_group(current_aln_group, aln_reader)
 
         if ac["aln_count"] == 0:
