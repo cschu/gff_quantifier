@@ -278,16 +278,17 @@ class PandaProfiler:
         new_size = hits_size + self._buffer_size
         if new_size > self._max_buffer_size or last_update:
             self.merge_dataframes()
+            self._buffer.clear()
             self._buffer_size = 0
-        else:
-            self._buffer.extend(hits)
-            self._buffer_size = new_size
-
+        self._buffer += list(hits)
+        self._buffer_size += hits_size
 
         
     def merge_dataframes(self):
+        print("BUFFER:", len(self.buffer), self.buffer[:1])
         hits_df = pd.DataFrame(self._buffer)
-        self._buffer.clear()
+        print("HITS_DF:", hits_df)
+        
         hits_df["contrib"] = 1 / hits_df["n_aln"] / hits_df["library_mod"]
         
         # pylint: disable=C0121
