@@ -1,0 +1,11 @@
+url_path,views_total,views_unique
+/cschu/gff_quantifier,11,4
+/cschu/gff_quantifier/tree/main/.github/workflows,4,1
+/cschu/gff_quantifier/tree/github-repo-stats/cschu/gff_quantifier/latest-report,3,1
+/cschu/gff_quantifier/tree/main/gffquant,3,1
+/cschu/gff_quantifier/actions/runs/9269672986,2,1
+/cschu/gff_quantifier/actions/workflows/grstats.yml,2,1
+/cschu/gff_quantifier/blob/github-repo-stats/cschu/gff_quantifier/latest-report/report.html,2,1
+/cschu/gff_quantifier/blob/github-repo-stats/cschu/gff_quantifier/latest-report/report.md,2,1
+/cschu/gff_quantifier/blob/main/Dockerfile,2,1
+/cschu/gff_quantifier/blob/main/gffquant/bin/build_custom_database.py,2,1
