@@ -4,7 +4,7 @@ import pickle
 
 from collections import Counter
 
-import pandas as pd
+import polars as pd
 
 from .panda_profiler import PandaProfiler
 
