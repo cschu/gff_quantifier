@@ -49,6 +49,7 @@ with open(path.join(here, "DESCRIPTION.md"), encoding="utf-8") as description:
 			"pandas",
 			"pysam",
 			"sqlalchemy",
+			"polars",
 		],
 		entry_points={
 			"console_scripts": [
