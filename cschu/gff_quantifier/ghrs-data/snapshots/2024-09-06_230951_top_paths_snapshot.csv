@@ -1,0 +1,11 @@
+url_path,views_total,views_unique
+/cschu/gff_quantifier/tree/main/gffquant/alignment,8,1
+/cschu/gff_quantifier,6,2
+/cschu/gff_quantifier/blob/main/gffquant/alignment/cigarops.py,6,1
+/cschu/gff_quantifier/blob/main/gffquant/alignment/bamreader.py,4,1
+/cschu/gff_quantifier/blob/main/gffquant/alignment/pysam_alignment_processor.py,4,1
+/cschu/gff_quantifier/blob/main/Singularity.v2.14.3,4,1
+/cschu/gff_quantifier/tree/main/gffquant,4,1
+/cschu/gff_quantifier/blob/main/gffquant/bin/build_gene_database.py,2,1
+/cschu/gff_quantifier/blob/main/Singularity.v2.14.0,2,1
+/cschu/gff_quantifier/branches,2,1
