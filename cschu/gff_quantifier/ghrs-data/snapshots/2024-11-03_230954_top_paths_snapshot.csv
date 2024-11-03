@@ -1,0 +1,9 @@
+url_path,views_total,views_unique
+/cschu/gff_quantifier,5,3
+/cschu/gff_quantifier/tree/main/gffquant,2,1
+/cschu/gff_quantifier/tree/main/gffquant/db,2,1
+/cschu/gff_quantifier/blob/main/gffquant/db/gff_dbm.py,1,1
+/cschu/gff_quantifier/blob/main/gffquant/db/importers/database_importer.py,1,1
+/cschu/gff_quantifier/blob/main/gffquant/db/importers/small_database_importer.py,1,1
+/cschu/gff_quantifier/blob/main/gffquant/db/importers/small_genome_database_importer.py,1,1
+/cschu/gff_quantifier/blob/main/gffquant/__main__.py,1,1
