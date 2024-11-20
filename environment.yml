@@ -2,7 +2,7 @@ name: gffquant
 channels:
   - bioconda
   - conda-forge
-  - defaults
+  - nodefaults
 dependencies:
   - python>=3.7,<3.11
   - bwa
