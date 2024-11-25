@@ -160,17 +160,6 @@ class CountWriter:
                         )
                         CountWriter.write_row(feature.name, out_row, stream=feat_out)
 
-                # for feature_id, f_counts in sorted(counts.items()):
-                #     if feature_id.startswith("cat:::"):
-                #         continue
-                #     feature = db.query_feature(feature_id).name
-                #     out_row = self.compile_output_row(
-                #         f_counts,
-                #         scaling_factor=scaling_factor,
-                #         ambig_scaling_factor=ambig_scaling_factor,
-                #     )
-                #     CountWriter.write_row(feature, out_row, stream=feat_out)
-
     def write_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
         if "scaled" in self.publish_reports:
             logger.info("SCALING_FACTORS %s %s", uniq_scaling_factor, ambig_scaling_factor)
