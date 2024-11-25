@@ -34,6 +34,7 @@ class AnnotationDatabaseManager(ABC):
         ...
 
     def query_sequence(self, seqid, start=None, end=None):
+        """ Returns strand, seq-feature id (e.g. contig id), functional categories """
         db_sequence = self.query_sequence_internal(seqid, start=start, end=end)
 
         if db_sequence is None:
