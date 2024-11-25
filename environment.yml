@@ -4,7 +4,7 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python>=3.7,<3.11
+  - python>=3.7
   - bwa
   - minimap2
-  - nextflow>=22,<23
+
