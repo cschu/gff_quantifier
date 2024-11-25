@@ -151,7 +151,7 @@ class CountWriter:
                     CountWriter.write_row("category", cat_row, stream=feat_out)
 
                 for feature in db.get_features(category_id):
-                    f_counts = counts.get(feature.id, np.zeros(len(header)))
+                    f_counts = counts.get(str(feature.id), np.zeros(len(header)))
                     out_row = self.compile_output_row(
                         f_counts,
                         scaling_factor=scaling_factor,
