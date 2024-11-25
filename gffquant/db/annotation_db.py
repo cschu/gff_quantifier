@@ -199,6 +199,16 @@ class Dict_ADM(AnnotationDatabaseManager):
     def query_feature(self, feature_id):
         return self.db.features.get(int(feature_id))
 
+    def get_features(self, category_id):
+        yield from sorted(
+            (
+                feature
+                for feature in self.features.values()
+                if feature.category_id == category_id
+            ),
+            key=lambda f:f.name
+        )
+
     def query_category(self, category_id):
         return self.db.categories.get(int(category_id))
 
