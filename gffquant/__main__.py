@@ -54,7 +54,7 @@ def stream_alignments(args, profiler):
         #     logger.error("Shutting down.")
         #     sys.exit(1)
 
-        # pylint: disable=W0718
+         # pylint: disable=W0718
         try:
 
             profiler.count_alignments(

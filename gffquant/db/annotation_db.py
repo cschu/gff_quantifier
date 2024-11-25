@@ -172,6 +172,9 @@ class SQL_ADM(AnnotationDatabaseManager):
 
     def query_feature(self, feature_id):
         return self.db_session.query(db.Feature).filter(db.Feature.id == feature_id).join(db.Category, db.Feature.category_id == db.Category.id).one_or_none()
+    
+    def get_features(self, category_id):
+        return self.db_session.query(db.Feature).filter(db.Feature.category_id == category_id).order_by(db.Feature.name).all()
 
     def query_category(self, category_id):
         return self.db_session.query(db.Category).filter(db.Category.id == category_id).one_or_none()
