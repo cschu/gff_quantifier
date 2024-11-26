@@ -22,14 +22,14 @@ class AlignmentProcessor:
         aln_type = aln_type.lower()
         assert aln_type in ("bam", "sam")
 
-        self.used_refs = {}
+        # self.used_refs = {}
         # pylint: disable=E1101
         self.aln_stream = pysam.AlignmentFile(aln_source, "rb" if aln_type == "bam" else "r")
         self.stat_counter = [0, 0, 0]
         self.read_counter = [0, 0, 0]
 
-    def get_reference(self, rid):
-        return self.used_refs.get(rid, (None, None))
+    # def get_reference(self, rid):
+    #     return self.used_refs.get(rid, (None, None))
 
     def get_alignment_stats(self):
         return self.stat_counter
@@ -76,35 +76,6 @@ class AlignmentProcessor:
 
         return True
 
-    def unfold_ambiguous_alignments(self, pysam_aln):
-        yield pysam_aln
-
-        if pysam_aln.has_tag("XA"):
-            xa_tag = pysam_aln.get_tag("XA")
-            aln_d = pysam_aln.to_dict()
-            flag = int(aln_d["flag"]) | 256
-            for item in xa_tag.strip().strip(";").split(";"):
-                ref, pos, cigar, nm_tag = item.split(",")
-
-                aln_d["ref_name"] = ref
-                pos = int(pos)
-                aln_d["ref_pos"] = str(abs(pos))
-
-                if pos < 0:
-                    flag |= 16
-                aln_d["flag"] = str(flag)
-
-                aln_d["cigar"] = cigar
-                aln_d["tags"] = [f"NM:i:{nm_tag}"]
-
-                # pylint: disable=E1101
-                aln = pysam.AlignedSegment.from_dict(
-                    aln_d,
-                    self.aln_stream.header,
-                )
-
-                yield aln
-
     # pylint: disable=R0913,R0914,W0613
     def get_alignments(
         self,
@@ -113,7 +84,6 @@ class AlignmentProcessor:
         filter_flags=0,
         required_flags=0,
         filtered_sam=None,
-        unfold_xa_tag=False,
     ):
         last_read, last_passed_read = None, None
 
@@ -142,24 +112,15 @@ class AlignmentProcessor:
                 if pysam_aln.flag & required_flags != required_flags:
                     continue
 
-                # for pysam_aln in self.unfold_ambiguous_alignments(pysam_aln):
-                # for pysam_aln in alignment_f(pysam_aln):
-                for pysam_aln in (pysam_aln,):
+                if self.check_alignment(pysam_aln, min_seqlen, min_identity):
+                    self.stat_counter[AlignmentProcessor.PASS_FILTER] += 1
 
-                    passed = self.check_alignment(pysam_aln, min_seqlen, min_identity)
+                    rname = pysam_aln.reference_name
+                    rlength = self.aln_stream.get_reference_length(rname)
+                    # self.used_refs[pysam_aln.reference_id] = rname, rlength
 
-                    if passed:
-                        self.stat_counter[AlignmentProcessor.PASS_FILTER] += 1
+                    if last_passed_read is None or pysam_aln.qname != last_passed_read:
+                        last_passed_read = pysam_aln.qname
+                        self.read_counter[AlignmentProcessor.TOTAL_PASSED_READS] += 1
 
-                        # rname = self.aln_stream.get_reference_name(pysam_aln.reference_id)
-                        rname = pysam_aln.reference_name
-                        self.used_refs[pysam_aln.reference_id] = rname, self.aln_stream.get_reference_length(rname)
-
-                        if last_passed_read is None or pysam_aln.qname != last_passed_read:
-                            last_passed_read = pysam_aln.qname
-                            self.read_counter[AlignmentProcessor.TOTAL_PASSED_READS] += 1
-
-                        if filtered_sam is not None:
-                            print(pysam_aln.to_string(), file=filtered_out)
-
-                        yield BamAlignment.from_pysam_alignment(pysam_aln)
+                    yield BamAlignment.from_pysam_alignment(pysam_aln, rlength)
