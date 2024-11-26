@@ -124,4 +124,3 @@ class AlignmentProcessor:
                         self.read_counter[AlignmentProcessor.TOTAL_PASSED_READS] += 1
 
                     yield BamAlignment.from_pysam_alignment(pysam_aln, rlength)
-
