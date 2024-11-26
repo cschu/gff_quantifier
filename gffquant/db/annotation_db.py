@@ -173,7 +173,7 @@ class SQL_ADM(AnnotationDatabaseManager):
 
     def query_feature(self, feature_id):
         return self.db_session.query(db.Feature).filter(db.Feature.id == feature_id).join(db.Category, db.Feature.category_id == db.Category.id).one_or_none()
-    
+
     def get_features(self, category_id):
         return self.db_session.query(db.Feature).filter(db.Feature.category_id == category_id).order_by(db.Feature.name).all()
 
@@ -203,10 +203,10 @@ class Dict_ADM(AnnotationDatabaseManager):
         yield from sorted(
             (
                 feature
-                for feature in self.features.values()
+                for feature in self.db.features.values()
                 if feature.category_id == category_id
             ),
-            key=lambda f:f.name
+            key=lambda f: f.name,
         )
 
     def query_category(self, category_id):

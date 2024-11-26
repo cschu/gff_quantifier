@@ -1,3 +1,5 @@
+# pylint: disable=R0917
+
 """ module docstring """
 
 from contextlib import nullcontext

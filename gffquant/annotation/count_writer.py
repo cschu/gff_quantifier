@@ -1,4 +1,4 @@
-# pylint: disable=C0103,W1514,R0913
+# pylint: disable=C0103,W1514,R0913,R0917
 
 """ module docstring """
 
@@ -148,7 +148,7 @@ class CountWriter:
                             scaling_factor=featcounts.scaling_factors["total_uniq"],
                             ambig_scaling_factor=featcounts.scaling_factors["total_ambi"],
                         )
-                    CountWriter.write_row("category", cat_row, stream=feat_out)
+                        CountWriter.write_row("category", cat_row, stream=feat_out)
 
                 for feature in db.get_features(category_id):
                     f_counts = counts.get(str(feature.id), np.zeros(len(header)))

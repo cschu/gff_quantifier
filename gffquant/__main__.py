@@ -87,6 +87,7 @@ def main():
 
     kwargs = {"debug": args.debug}
     annotation_db = args.annotation_db
+    db_input = None
     if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier
     else:
@@ -106,10 +107,11 @@ def main():
         else:
             kwargs["in_memory"] = args.db_in_memory
 
-        annotation_db.build_database(
-            db_input,
-            **db_args,
-        )
+        if db_input:
+            annotation_db.build_database(
+                db_input,
+                **db_args,
+            )
         logger.info("Finished loading database.")
 
     profiler = Quantifier(

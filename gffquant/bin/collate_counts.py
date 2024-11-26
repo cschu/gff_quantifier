@@ -1,4 +1,4 @@
-# pylint: disable=R0914,C0103,C0301,R0913
+# pylint: disable=R0914,C0103,C0301,R0913,R0917
 """ module docstring """
 
 import argparse
@@ -156,7 +156,7 @@ class FeatureCountCollator:
             sum_loading_time += elapsed
 
             print(
-                f"Processed sample `{sample}` {i+1}/{len(files)} ({(i + 1) / len(files) * 100:.03f}%) in {elapsed:.03f}s.",
+                f"Processed sample `{sample}` {i + 1}/{len(files)} ({(i + 1) / len(files) * 100:.03f}%) in {elapsed:.03f}s.",
                 f"Average loading time: {sum_loading_time / (i + 1):.03f}s",
                 f"Average processing time: {sum_time / (i + 1):.03f}s",
                 sep="\n",

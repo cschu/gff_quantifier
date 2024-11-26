@@ -90,6 +90,7 @@ class CountManager:
             # otherwise orphan reads will be assigned a count of 1.
             increment = self.increments[pair]
 
+        contributed_counts = 0
         if seq_counter is not None:
             contributed_counts = seq_counter.update_counts(count_stream, increment=increment)
         elif region_counter is not None:

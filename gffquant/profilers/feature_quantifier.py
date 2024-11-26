@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0914,W1203
+# pylint: disable=C0103,R0914,W1203,R0917
 
 """ module docstring """
 
