@@ -109,11 +109,7 @@ class GqDatabaseImporter(ABC):
 
                     encoded.append((cat_enc, ",".join(map(str, feat_enc))))
 
-<<<<<<< HEAD
                     # logger.info("    Adding annotation %s: %s -> %s", category, features, encoded[-1])
-=======
-                    # logger.info(" Adding annotation %s: %s -> %s", category, features, encoded[-1])
->>>>>>> refactor/various_things_20241126
 
                 seq_feature.annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
