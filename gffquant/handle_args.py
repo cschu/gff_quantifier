@@ -338,6 +338,11 @@ def handle_args(args):
     )
 
     ap.add_argument(
+        "--with_coverage",
+        action="store_true",
+    )
+
+    ap.add_argument(
         "--version", "-v", action="version", version="%(prog)s " + __version__
     )
     ap.add_argument("--debug", action="store_true")
