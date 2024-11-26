@@ -42,7 +42,7 @@ class PandaCoverageProfiler(PandaProfiler):
             for hit in hits:
                 cov_key = hit.cov_start, hit.cov_end
                 hit_key = hit.rid, hit.start, hit.end
-                increment = 1 / hit.library_mod / n_aln
+                increment = (1 / hit.library_mod) / n_aln
                 self._coverage_data[hit.is_ambiguous] \
                     .setdefault(hit_key, Counter())[cov_key] += increment
         # for hits, n_aln in aln_hits:

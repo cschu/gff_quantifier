@@ -220,7 +220,7 @@ class SQL_ADM(AnnotationDatabaseManager):
         return [
             seq
             for seq in seqs
-            if (start is None or start == seq.start) and (end is None or end == end.start)
+            if (start is None or start == seq.start) and (end is None or end == seq.end)
         ]
 
 
