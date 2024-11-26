@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0914,W1203,R0917
+# pylint: disable=C0103,R0914,W1203,R0902,R0917
 
 """ module docstring """
 
@@ -10,8 +10,9 @@ import time
 
 from abc import ABC
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
+from .panda_coverage_profiler import PandaCoverageProfiler
 from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import CountManager
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ReferenceHit:
+class ReferenceHit(slots=True):
     rid: int = None
     start: int = None
     end: int = None
@@ -32,21 +33,25 @@ class ReferenceHit:
     cov_start: int = None
     cov_end: int = None
     has_annotation: bool = None
+    n_aln: int = None
+    is_ambiguous: bool = None
+    library_mod: int = None
+    mate_id: int = None
 
     def __hash__(self):
-        return hash(tuple(self.__dict__.values()))
+        return hash(tuple(asdict(self).values()))
 
     def __eq__(self, other):
         return all(
             item[0][1] == item[1][1]
             for item in zip(
-                sorted(self.__dict__.items()),
-                sorted(other.__dict__.items())
+                sorted(asdict(self).items()),
+                sorted(asdict(other).items())
             )
         )
 
     def __str__(self):
-        return "\t".join(map(str, self.__dict__.values()))
+        return "\t".join(map(str, asdict(self).values()))
 
     def __repr__(self):
         return str(self)
@@ -81,6 +86,7 @@ class FeatureQuantifier(ABC):
         run_mode=RunMode.GENE,
         strand_specific=False,
         paired_end_count=1,
+        calculate_coverage=False,
         debug=False,
     ):
         self.aln_counter = Counter()
@@ -97,7 +103,9 @@ class FeatureQuantifier(ABC):
         self.distribution_mode = distribution_mode
         self.reference_manager = {}
         self.strand_specific = strand_specific
+        # self.coverage_counter = {}
         self.debug = debug
+        self.panda_cv = PandaCoverageProfiler(dump_dataframes=self.debug) if calculate_coverage else None
 
     def check_hits(self, ref, aln):
         """ Check if an alignment hits a region of interest on a reference sequence.
@@ -110,24 +118,29 @@ class FeatureQuantifier(ABC):
         if self.run_mode.overlap_required:
             overlaps = self.adm.get_overlaps(
                 ref, aln.start, aln.end,
-                domain_mode=self.run_mode == RunMode.DOMAIN
+                domain_mode=self.run_mode == RunMode.DOMAIN,
+                with_coverage=self.run_mode == RunMode.SMALL_GENOME,
             )
 
-            has_target, *_ = next(overlaps)
+            # interrogate overlap stream header if overlaps were found
+            has_target = next(overlaps).has_target
 
             hits = [
                 ReferenceHit(
                     rid=aln.rid,
-                    start=start,
-                    end=end,
+                    start=ovl_target.start,
+                    end=ovl_target.end,
                     rev_strand=aln.is_reverse(),
-                    has_annotation=(dbseq is not None and dbseq.annotation_str)
+                    cov_start=ovl_target.cov_start,
+                    cov_end=ovl_target.cov_end,
+                    has_annotation=ovl_target.has_annotation(),
                 )
-                for _, start, end, dbseq in overlaps
+                for ovl_target in overlaps
             ]
 
         else:
 
+            # if no overlap-check was performed, each hit is a hit on target (e.g. aligning against gene catalogues)
             has_target, hits = True, [ReferenceHit(rid=aln.rid, rev_strand=aln.is_reverse())]
 
         return has_target, hits
@@ -192,14 +205,18 @@ class FeatureQuantifier(ABC):
 
     def process_alignments(
         self,
-        aln_reader,
-        debug_samfile=None,
+        aln_reader: AlignmentProcessor,
+        sam_prefix="",
         min_identity=None,
         min_seqlen=None,
         unmarked_orphans=False,
+        debug_samfile=None,
+        # panda: PandaProfiler=None,
     ):
         # pylint: disable=R0914
         t0 = time.time()
+
+        samfile = f"{self.out_prefix}{sam_prefix}.filtered.sam" if self.debug else None
 
         aln_stream = aln_reader.get_alignments(
             min_identity=min_identity,
@@ -209,12 +226,23 @@ class FeatureQuantifier(ABC):
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)
+        ac = self.aln_counter
 
-        aln_count = 0
         read_count = 0
         current_aln_group = None
 
-        for aln_count, aln in enumerate(aln_stream, start=1):
+        for ac["aln_count"], aln in enumerate(aln_stream, start=1):
+
+            has_target, aln.hits = self.check_hits(aln.refname, aln)
+            # do we care about alignments to unannotated regions?
+            # for quantification purposes i'd say, we don't, but maybe
+            # this needs to be a user-defined option
+            if not has_target:
+                continue
+
+            self.reference_manager.setdefault(aln.rid, (aln.refname, aln.reflength))
+
+            ac["alignments_on_target"] += 1
 
             if current_aln_group is None or current_aln_group.qname != aln.qname:
                 if current_aln_group is not None:
@@ -230,13 +258,13 @@ class FeatureQuantifier(ABC):
         if current_aln_group is not None:
             self.process_alignment_group(current_aln_group, aln_reader)
 
-        if aln_count == 0:
+        if ac["aln_count"] == 0:
             logger.warning("No alignments present in stream.")
 
         t1 = time.time()
-        logger.info("Processed %s reads (%s alignments) in %s.", read_count, aln_count, f"{t1 - t0:.3f}s")
+        logger.info("Processed %s reads (%s alignments) in %s.", read_count, ac["aln_count"], f"{t1 - t0:.3f}s")
 
-        return aln_count, read_count, 0, None
+        return ac["aln_count"], read_count, 0, None
 
     @staticmethod
     def get_readcount(internal_readcounts, external_readcounts, verbose=True):
@@ -270,6 +298,7 @@ class FeatureQuantifier(ABC):
         min_seqlen=None,
         external_readcounts=None,
         unmarked_orphans=False,
+        sam_prefix="",
         debug_samfile=None,
     ):
         aln_reader = AlignmentProcessor(aln_stream, aln_format)
@@ -279,6 +308,7 @@ class FeatureQuantifier(ABC):
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             unmarked_orphans=unmarked_orphans,
+            sam_prefix=sam_prefix,
             debug_samfile=debug_samfile,
         )
 
@@ -290,9 +320,8 @@ class FeatureQuantifier(ABC):
 
         self.aln_counter.update(
             {
-                "aln_count": aln_count,
                 "read_count": read_count,
-                "unannotated_ambig": unannotated_ambig,
+                "unannotated_ambig": 0,
                 "full_read_count": full_readcount,
                 "filtered_read_count": filtered_readcount,
             }
@@ -323,6 +352,17 @@ class FeatureQuantifier(ABC):
             )
 
         if self.aln_counter.get("aln_count"):
+            if self.adm is None:
+                self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
+
+            report_args = {
+                "restrict_reports": restrict_reports,
+                "report_category": report_category,
+                "report_unannotated": report_unannotated,
+            }
+
+            self.write_coverage()
+
             self.process_counters(
                 restrict_reports=restrict_reports,
                 report_category=report_category,
@@ -349,7 +389,11 @@ class FeatureQuantifier(ABC):
                 round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
             )
 
+        self.adm.clear_caches()
         logger.info("Finished.")
+
+    def evaluate_alignment_group(self, aln_group, is_ambig_alignment):
+        ...
 
     def process_alignment_group(self, aln_group, aln_reader):
         """ Checks an alignment group for hits and passes the hit list
@@ -371,28 +415,33 @@ class FeatureQuantifier(ABC):
             keep_group = bool(aln_group.primaries)
 
         if keep_group:
-            # hit counts are mode-dependent:
-            # ambiguous alignments in true ambig modes require the number of alternative locations
-            # (we handle first/second PE-alignments separately, hence a two-element list)
-            # otherwise the hit count is always 1
-            ambig_hit_counts = [0, 0]
-            all_hits = []
+            # # hit counts are mode-dependent:
+            # # ambiguous alignments in true ambig modes require the number of alternative locations
+            # # (we handle first/second PE-alignments separately, hence a two-element list)
+            # # otherwise the hit count is always 1
+            # ambig_hit_counts = [0, 0]
+            # all_hits = []
 
-            # process each alignment of the group individually
-            for aln in aln_group.get_alignments():
-                current_ref = self.register_reference(aln.rid, aln_reader)
-                # check for region hits (in overlap modes, otherwise alignments always hit)
-                has_target, hits = self.check_hits(current_ref, aln)
-                if has_target and hits:
-                    if is_ambig_alignment:
-                        # update the hit counts
-                        ambig_hit_counts[aln.is_second()] += 1
-                    all_hits.append((aln, hits))
+            # # process each alignment of the group individually
+            # for aln in aln_group.get_alignments():
+            #     current_ref = self.register_reference(aln.rid, aln_reader)
+            #     # check for region hits (in overlap modes, otherwise alignments always hit)
+            #     has_target, hits = self.check_hits(current_ref, aln)
+            #     if has_target and hits:
+            #         if is_ambig_alignment:
+            #             # update the hit counts
+            #             ambig_hit_counts[aln.is_second()] += 1
+            #         all_hits.append((aln, hits))
 
-            # pass the hit lists to the counters
-            count_stream = (
-                (aln_hits, ambig_hit_counts[aln.is_second()] if is_ambig_alignment else 1)
-                for aln, aln_hits in all_hits
+            # # pass the hit lists to the counters
+            # count_stream = (
+            #     (aln_hits, ambig_hit_counts[aln.is_second()] if is_ambig_alignment else 1)
+            #     for aln, aln_hits in all_hits
+            # )
+            count_stream = tuple(
+                aln_group.get_all_hits(
+                    as_ambiguous=self.distribution_mode.require_ambig_tracking
+                )
             )
 
             contributed_counts = self.count_manager.update_counts(
@@ -401,6 +450,8 @@ class FeatureQuantifier(ABC):
                 pair=aln_group.is_paired(),
                 pe_library=aln_group.pe_library,
             )
+
+            ambig_hit_counts = aln_group.ambig_hit_counts
 
             msg = f"{ambig_hit_counts=} {contributed_counts=})"
 
