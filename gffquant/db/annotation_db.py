@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0903,W1514,C0301,E1121,R0913
+# pylint: disable=C0103,R0903,W1514,C0301,E1121,R0913,R0917
 
 """ module docstring """
 
@@ -49,6 +49,10 @@ class AnnotationDatabaseManager(ABC):
 
     @abstractmethod
     def query_sequence_internal(self, seqid, start=None, end=None):
+        ...
+
+    @abstractmethod
+    def get_features(self, category_id=None):
         ...
 
     @abstractmethod
@@ -210,9 +214,6 @@ class SQL_ADM(AnnotationDatabaseManager):
     def get_categories(self):
         return self.db_session.query(db.Category).all()
 
-    def get_features(self, category=None):
-        return self.db_session.query(db.Feature).filter(db.Feature.category_id == category).all()
-
     @lru_cache(maxsize=10000)
     def get_db_sequence(self, seqid, start=None, end=None):
         seqs = self.db_session.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).all()
@@ -256,11 +257,6 @@ class Dict_ADM(AnnotationDatabaseManager):
 
     def get_categories(self):
         yield from self.db.categories.values()
-
-    def get_features(self, category=None):
-        for feat in self.db.features.values():
-            if category is None or feat.category_id == category:
-                yield feat
 
     @lru_cache(maxsize=10000)
     def get_db_sequence(self, seqid, start=None, end=None):

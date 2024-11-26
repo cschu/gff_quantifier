@@ -361,7 +361,7 @@ class FeatureQuantifier(ABC):
                 "report_unannotated": report_unannotated,
             }
 
-            self.write_coverage()
+            # self.write_coverage()
 
             self.process_counters(
                 restrict_reports=restrict_reports,

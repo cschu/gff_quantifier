@@ -27,7 +27,7 @@ class PandaProfiler:
         self._buffer = []
         self._buffer_size = 0
         self._max_buffer_size = 400_000_000
-        
+
 
     def get_gene_coords(self):
         if self.with_overlap:
@@ -283,14 +283,14 @@ class PandaProfiler:
         self._buffer += hits
         self._buffer_size += hits_size
 
-        
+
     def merge_dataframes(self):
         print("BUFFER:", len(self._buffer), self._buffer[:1])
         hits_df = pd.DataFrame(self._buffer)
         print("HITS_DF:", hits_df)
-        
+
         hits_df["contrib"] = 1 / hits_df["n_aln"] / hits_df["library_mod"]
-        
+
         # pylint: disable=C0121
         contrib_sums_uniq = hits_df[hits_df["is_ambiguous"] == False][self.keep_columns] \
             .groupby(by=self.index_columns, as_index=False) \
