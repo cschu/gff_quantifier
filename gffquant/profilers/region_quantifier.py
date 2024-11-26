@@ -22,9 +22,9 @@ class RegionQuantifier(FeatureQuantifier):
         strand_specific=False,
         paired_end_count=1,
         run_mode=RunMode.DOMAIN,
-        in_memory=True,
         calculate_coverage=False,
         debug=False,
+        in_memory=True,
     ):
         FeatureQuantifier.__init__(
             self,
