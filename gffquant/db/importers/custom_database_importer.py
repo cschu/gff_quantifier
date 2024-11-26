@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0902,R0913,W2301,W1203
+# pylint: disable=C0103,R0902,R0913,W2301,W1203,R0917
 
 """ module docstring """
 
@@ -74,11 +74,12 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
                     if colname in category_cols
                 }
 
-                annotation = [
-                    (category, tuple(features.split(",")))
-                    for category, features in columns.items()
-                    if features and features != self.na_char
-                ]
+                # annotation = [
+                #     (category, tuple(features.split(",")))
+                #     for category, features in columns.items()
+                #     if features and features != self.na_char
+                # ]
+                annotation = tuple(self.extract_features(columns))
 
                 if annotation:
                     seq_feature = db.AnnotatedSequence(

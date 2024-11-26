@@ -1,5 +1,5 @@
 # pylint: disable=C0103,C0301
-# pylint: disable=R0902,R0903,R0913,R0914
+# pylint: disable=R0902,R0903,R0913,R0914,R0917
 
 """ module docstring """
 
@@ -101,7 +101,9 @@ class BamAlignment:
         self.tags = tags
         try:
             self.read_group = int(tags.get("RG"))
-        except (TypeError, ValueError):
+        except TypeError:
+            self.read_group = None
+        if self.read_group not in (1, 2):
             self.read_group = None
         self.refname = refname
         self.reflength = reflength
@@ -222,7 +224,7 @@ class BamFile:
             #     )
             # )
             t1 = time.time()
-            print(f" done. ({t1-t0}s)", flush=True)
+            print(f" done. ({t1 - t0}s)", flush=True)
 
             self._file.rewind(full=True)
             self._refmap = {rid: i for i, rid in enumerate(sorted(present_refs))}

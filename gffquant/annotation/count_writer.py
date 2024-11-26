@@ -1,4 +1,4 @@
-# pylint: disable=C0103,W1514,R0913
+# pylint: disable=C0103,W1514,R0913,R0917
 
 """ module docstring """
 
@@ -108,7 +108,7 @@ class CountWriter:
         print(header, *(f"{c:.5f}" for c in data), flush=True, sep="\t", file=stream)
 
     # pylint: disable=R0914
-    def write_feature_counts(self, db, featcounts, unannotated_reads=None):
+    def write_feature_counts(self, db, featcounts, unannotated_reads=None, report_unseen=True):
         for category_id, counts in sorted(featcounts.items()):
             scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
                 category_id
@@ -148,18 +148,17 @@ class CountWriter:
                             scaling_factor=featcounts.scaling_factors["total_uniq"],
                             ambig_scaling_factor=featcounts.scaling_factors["total_ambi"],
                         )
-                    CountWriter.write_row("category", cat_row, stream=feat_out)
+                        CountWriter.write_row("category", cat_row, stream=feat_out)
 
-                for feature_id, f_counts in sorted(counts.items()):
-                    if feature_id.startswith("cat:::"):
-                        continue
-                    feature = db.query_feature(feature_id).name
-                    out_row = self.compile_output_row(
-                        f_counts,
-                        scaling_factor=scaling_factor,
-                        ambig_scaling_factor=ambig_scaling_factor,
-                    )
-                    CountWriter.write_row(feature, out_row, stream=feat_out)
+                for feature in db.get_features(category_id):
+                    f_counts = counts.get(str(feature.id), np.zeros(len(header)))
+                    if report_unseen or f_counts.sum():
+                        out_row = self.compile_output_row(
+                            f_counts,
+                            scaling_factor=scaling_factor,
+                            ambig_scaling_factor=ambig_scaling_factor,
+                        )
+                        CountWriter.write_row(feature.name, out_row, stream=feat_out)
 
     def write_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
         if "scaled" in self.publish_reports:

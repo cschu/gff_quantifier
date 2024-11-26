@@ -1,4 +1,4 @@
-# pylint: disable=R0914,C0103,C0301,R0913
+# pylint: disable=R0914,C0103,C0301,R0913,R0917
 """ module docstring """
 
 import argparse
@@ -156,7 +156,7 @@ class FeatureCountCollator:
             sum_loading_time += elapsed
 
             print(
-                f"Processed sample `{sample}` {i+1}/{len(files)} ({(i + 1) / len(files) * 100:.03f}%) in {elapsed:.03f}s.",
+                f"Processed sample `{sample}` {i + 1}/{len(files)} ({(i + 1) / len(files) * 100:.03f}%) in {elapsed:.03f}s.",
                 f"Average loading time: {sum_loading_time / (i + 1):.03f}s",
                 f"Average processing time: {sum_time / (i + 1):.03f}s",
                 sep="\n",
@@ -206,6 +206,14 @@ class FeatureCountCollator:
         merged_tab.to_csv(table_file, sep="\t", na_rep="NA", index_label="stat")
 
 
+COLUMNS = (
+    "uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rpkm",
+    "combined_raw", "combined_lnorm", "combined_scaled", "combined_rpkm",
+    "uniq_depth", "uniq_depth_covered", "uniq_horizontal",
+    "combined_depth", "combined_depth_covered", "combined_horizontal",
+)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("count_dir", type=str)
@@ -215,14 +223,9 @@ def main():
         "--column",
         "-c",
         type=str,
-        choices=(
-            "uniq_raw", "uniq_lnorm", "uniq_scaled", "uniq_rpkm", 
-            "combined_raw", "combined_lnorm", "combined_scaled", "combined_rpkm",
-            "uniq_depth", "uniq_depth_covered", "uniq_horizontal",
-            "combined_depth", "combined_depth_covered", "combined_horizontal",
-        ),
-        default="uniq_raw"
-        )
+        choices=COLUMNS,
+        default="uniq_raw",
+    )
     ap.add_argument("--index_file", type=str)
     ap.add_argument("--suffix", type=str, default=".txt.gz")
     args = ap.parse_args()

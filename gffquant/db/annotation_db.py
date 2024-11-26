@@ -56,6 +56,7 @@ class AnnotationDatabaseManager(ABC):
         ...
 
     def query_sequence(self, seqid, start=None, end=None):
+        """ Returns strand, seq-feature id (e.g. contig id), functional categories """
         db_sequence = self.query_sequence_internal(seqid, start=start, end=end)
 
         if db_sequence is None:
@@ -200,6 +201,9 @@ class SQL_ADM(AnnotationDatabaseManager):
     def query_feature(self, feature_id):
         return self.db_session.query(db.Feature).filter(db.Feature.id == feature_id).join(db.Category, db.Feature.category_id == db.Category.id).one_or_none()
 
+    def get_features(self, category_id):
+        return self.db_session.query(db.Feature).filter(db.Feature.category_id == category_id).order_by(db.Feature.name).all()
+
     def query_category(self, category_id):
         return self.db_session.query(db.Category).filter(db.Category.id == category_id).one_or_none()
 
@@ -236,6 +240,16 @@ class Dict_ADM(AnnotationDatabaseManager):
 
     def query_feature(self, feature_id):
         return self.db.features.get(int(feature_id))
+
+    def get_features(self, category_id):
+        yield from sorted(
+            (
+                feature
+                for feature in self.db.features.values()
+                if feature.category_id == category_id
+            ),
+            key=lambda f: f.name,
+        )
 
     def query_category(self, category_id):
         return self.db.categories.get(int(category_id))

@@ -35,7 +35,17 @@ def stream_alignments(args, profiler: FeatureQuantifier):
     for i, (input_type, *reads) in enumerate(args.input_data):
 
         logger.info("Running %s alignment: %s", input_type, ",".join(reads))
-        proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=args.keep_alignment_file)
+
+        sam_suffix = f".{input_type}.{i}"
+
+        debug_samfile, samfile = None, None
+        if args.keep_alignment_file:
+            samfile = args.keep_alignment_file.replace(".sam", "")
+            samfile = f"{samfile}{sam_suffix}.sam"
+        if profiler.debug:
+            debug_samfile = f"{profiler.out_prefix}{sam_suffix}.filtered.sam"
+
+        proc, call = aln_runner.run(reads, single_end_reads=input_type == "single", alignment_file=samfile)
 
         # if proc.returncode != 0:
         #     logger.error("Encountered problems aligning.")
@@ -52,7 +62,8 @@ def stream_alignments(args, profiler: FeatureQuantifier):
                 aln_format="sam",
                 min_identity=args.min_identity,
                 min_seqlen=args.min_seqlen,
-                sam_prefix=f".{input_type}.{i}"
+                sam_prefix=f".{input_type}.{i}",
+                debug_samfile=debug_samfile,
             )
 
         except Exception as err:
@@ -80,6 +91,7 @@ def main():
 
     kwargs = {"debug": args.debug}
     annotation_db = args.annotation_db
+    db_input = None
     if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier
     else:
@@ -99,10 +111,11 @@ def main():
         else:
             kwargs["in_memory"] = args.db_in_memory
 
-        annotation_db.build_database(
-            db_input,
-            **db_args,
-        )
+        if db_input:
+            annotation_db.build_database(
+                db_input,
+                **db_args,
+            )
         logger.info("Finished loading database.")
 
     profiler = Quantifier(
@@ -122,6 +135,9 @@ def main():
     else:
 
         input_file = args.bam if args.input_type == "bam" else args.sam
+        debug_samfile = None
+        if profiler.debug:
+            debug_samfile = f"{profiler.out_prefix}.{args.input_type}.filtered.sam"
 
         profiler.count_alignments(
             sys.stdin if input_file == "-" else input_file,
@@ -130,12 +146,15 @@ def main():
             min_seqlen=args.min_seqlen,
             external_readcounts=args.import_readcounts,
             unmarked_orphans=args.unmarked_orphans,
+            debug_samfile=debug_samfile,
         )
 
     profiler.finalise(
         restrict_reports=args.restrict_metrics,
         report_category=True,
         report_unannotated=args.run_mode.report_unannotated,
+        dump_counters=args.debug,
+        restrict_reports=args.restrict_metrics,
         in_memory=args.db_in_memory,
     )
 

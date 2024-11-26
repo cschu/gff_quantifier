@@ -1,4 +1,4 @@
-# pylint: disable=C0103,R0914,W1203,R0902
+# pylint: disable=C0103,R0914,W1203,R0902,R0917
 
 """ module docstring """
 
@@ -210,6 +210,7 @@ class FeatureQuantifier(ABC):
         min_identity=None,
         min_seqlen=None,
         unmarked_orphans=False,
+        debug_samfile=None,
         # panda: PandaProfiler=None,
     ):
         # pylint: disable=R0914
@@ -221,7 +222,7 @@ class FeatureQuantifier(ABC):
             min_identity=min_identity,
             min_seqlen=min_seqlen,
             filter_flags=SamFlags.SUPPLEMENTARY_ALIGNMENT,
-            filtered_sam=samfile,
+            filtered_sam=debug_samfile,
         )
 
         self.count_manager.toggle_single_read_handling(unmarked_orphans)
@@ -299,6 +300,7 @@ class FeatureQuantifier(ABC):
         external_readcounts=None,
         unmarked_orphans=False,
         sam_prefix="",
+        debug_samfile=None,
     ):
         aln_reader = AlignmentProcessor(aln_stream, aln_format)
 
@@ -308,6 +310,7 @@ class FeatureQuantifier(ABC):
             min_seqlen=min_seqlen,
             unmarked_orphans=unmarked_orphans,
             sam_prefix=sam_prefix,
+            debug_samfile=debug_samfile,
         )
 
         # self.panda.add_records(hits)
@@ -333,6 +336,7 @@ class FeatureQuantifier(ABC):
         restrict_reports=None,
         report_category=False,
         report_unannotated=False,
+        dump_counters=False,
         in_memory=True,
     ):
 
