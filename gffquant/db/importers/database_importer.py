@@ -31,7 +31,7 @@ class GqDatabaseImporter(ABC):
     def extract_features(self, columns):
 
         for category, features in columns.items():
-            if features and features != self.na_char and category != "COG_category":
+            if features and features != self.na_char and category not in ("COG_category", "eggNOG_OGs",):
                 yield category, tuple(set(sorted(features.split(","))))
 
         # annotation = [
@@ -44,7 +44,7 @@ class GqDatabaseImporter(ABC):
         # we profile both, the single letters (split composites into individual categories),
         # and the composites
         cog_category = columns.get("COG_category")
-        if cog_category and cog_category != "-":
+        if cog_category and cog_category != self.na_char:
             cog_category = cog_category.replace(",", "")
             if len(cog_category) > 1:
                 # composites need to be passed as 1-tuples,
@@ -55,6 +55,12 @@ class GqDatabaseImporter(ABC):
             yield "COG_category", tuple(cog_category)
 
         # return annotation
+
+        eggnog_og = columns.get("eggNOG_OGs")
+        if eggnog_og and eggnog_og != self.na_char:
+            # composites need to be passed as 1-tuples,
+            # otherwise downstream ops with iterate over the string!
+            yield "eggNOG_OGs", (eggnog_og,)
 
     @staticmethod
     def get_open_function(f):
@@ -85,6 +91,7 @@ class GqDatabaseImporter(ABC):
 
             i = 0
             for i, (seq_feature, annotation) in enumerate(annotation_data, start=1):
+
                 if i % self.update_log_after_n_records == 0:
                     if self.db_session is not None:
                         self.db_session.commit()
@@ -101,6 +108,8 @@ class GqDatabaseImporter(ABC):
                     )
 
                     encoded.append((cat_enc, ",".join(map(str, feat_enc))))
+
+                    # logger.info(" Adding annotation %s: %s -> %s", category, features, encoded[-1])
 
                 seq_feature.annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)

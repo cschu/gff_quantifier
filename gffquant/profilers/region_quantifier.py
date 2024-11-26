@@ -23,6 +23,7 @@ class RegionQuantifier(FeatureQuantifier):
         paired_end_count=1,
         run_mode=RunMode.DOMAIN,
         in_memory=True,
+        calculate_coverage=False,
         debug=False,
     ):
         FeatureQuantifier.__init__(
@@ -33,6 +34,7 @@ class RegionQuantifier(FeatureQuantifier):
             strand_specific=strand_specific,
             run_mode=run_mode,
             paired_end_count=paired_end_count,
+            calculate_coverage=calculate_coverage,
             debug=debug,
         )
 
