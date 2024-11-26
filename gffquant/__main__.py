@@ -9,7 +9,7 @@ import sys
 # pylint: disable=W0611
 from .db.importers import SmallDatabaseImporter, SmallGenomeDatabaseImporter
 from .handle_args import handle_args
-from .profilers import GeneQuantifier, RegionQuantifier
+from .profilers import GeneQuantifier, RegionQuantifier, FeatureQuantifier
 from .runners.alignment_runner import BwaMemRunner, Minimap2Runner
 from . import __version__, RunMode
 
@@ -17,7 +17,7 @@ from . import __version__, RunMode
 logger = logging.getLogger(__name__)
 
 
-def stream_alignments(args, profiler):
+def stream_alignments(args, profiler: FeatureQuantifier):
     AlnRunner = {
         "bwa": BwaMemRunner,
         "minimap2": Minimap2Runner,
@@ -58,7 +58,11 @@ def stream_alignments(args, profiler):
         try:
 
             profiler.count_alignments(
-                proc.stdout, aln_format="sam", min_identity=args.min_identity, min_seqlen=args.min_seqlen,
+                proc.stdout,
+                aln_format="sam",
+                min_identity=args.min_identity,
+                min_seqlen=args.min_seqlen,
+                sam_prefix=f".{input_type}.{i}",
                 debug_samfile=debug_samfile,
             )
 
@@ -68,14 +72,14 @@ def stream_alignments(args, profiler):
                 logger.error(f"Failed to align. Is `{args.aligner}` installed and on the path?")
                 logger.error("Aligner call was:")
                 logger.error("%s", call)
-                sys.exit(1)
+                raise ValueError from err
 
             logger.error("Encountered problems digesting the alignment stream:")
             logger.error("%s", err)
             logger.error("Aligner call was:")
             logger.error("%s", call)
             logger.error("Shutting down.")
-            sys.exit(1)
+            raise ValueError from err
 
 
 def main():
@@ -120,6 +124,7 @@ def main():
         distribution_mode=args.distribution_mode,
         strand_specific=args.strand_specific,
         paired_end_count=args.paired_end_count,
+        calculate_coverage=args.with_coverage,
         **kwargs,
     )
 
@@ -145,6 +150,7 @@ def main():
         )
 
     profiler.finalise(
+        restrict_reports=args.restrict_metrics,
         report_category=True,
         report_unannotated=args.run_mode.report_unannotated,
         dump_counters=args.debug,
