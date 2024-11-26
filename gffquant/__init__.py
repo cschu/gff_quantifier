@@ -5,7 +5,7 @@
 from enum import Enum, auto, unique
 
 
-__version__ = "2.16.6"
+__version__ = "2.16.7"
 __tool__ = "gffquant"
 
 
