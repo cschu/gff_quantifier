@@ -212,7 +212,7 @@ class SQL_ADM(AnnotationDatabaseManager):
 
     def get_features(self, category=None):
         return self.db_session.query(db.Feature).filter(db.Feature.category_id == category).all()
-    
+
     @lru_cache(maxsize=10000)
     def get_db_sequence(self, seqid, start=None, end=None):
         seqs = self.db_session.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).all()
@@ -261,7 +261,7 @@ class Dict_ADM(AnnotationDatabaseManager):
         for feat in self.db.features.values():
             if category is None or feat.category_id == category:
                 yield feat
-    
+
     @lru_cache(maxsize=10000)
     def get_db_sequence(self, seqid, start=None, end=None):
         seqs = self.db.annotations.get(seqid, [])
