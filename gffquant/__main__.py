@@ -154,7 +154,6 @@ def main():
         report_category=True,
         report_unannotated=args.run_mode.report_unannotated,
         dump_counters=args.debug,
-        restrict_reports=args.restrict_metrics,
         in_memory=args.db_in_memory,
     )
 

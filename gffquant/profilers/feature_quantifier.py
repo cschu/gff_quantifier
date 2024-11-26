@@ -24,8 +24,8 @@ from .. import __tool__, DistributionMode, RunMode
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ReferenceHit(slots=True):
+@dataclass(slots=True)
+class ReferenceHit:
     rid: int = None
     start: int = None
     end: int = None
