@@ -54,7 +54,7 @@ class BamAlignment:
         return self.flag & SamFlags.SECOND_IN_PAIR == SamFlags.SECOND_IN_PAIR
 
     @classmethod
-    def from_pysam_alignment(cls, pysam_aln):
+    def from_pysam_alignment(cls, pysam_aln, rlength):
         return cls(
             pysam_aln.qname,
             pysam_aln.flag,
@@ -66,7 +66,9 @@ class BamAlignment:
             pysam_aln.pnext,
             pysam_aln.tlen,
             pysam_aln.alen,
-            dict(pysam_aln.tags)
+            dict(pysam_aln.tags),
+            pysam_aln.reference_name,
+            rlength,
         )
 
     def __init__(
@@ -82,6 +84,8 @@ class BamAlignment:
         tlen=None,
         len_seq=None,
         tags=None,
+        refname=None,
+        reflength=None,
     ):
         self.qname = qname
         self.flag = flag
@@ -101,6 +105,9 @@ class BamAlignment:
             self.read_group = None
         if self.read_group not in (1, 2):
             self.read_group = None
+        self.refname = refname
+        self.reflength = reflength
+        self.hits = None
 
     def get_hash(self):
         md5 = hashlib.md5()
