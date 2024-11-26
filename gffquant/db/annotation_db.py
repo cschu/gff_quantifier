@@ -212,7 +212,11 @@ class SQL_ADM(AnnotationDatabaseManager):
 
     def get_features(self, category=None):
         return self.db_session.query(db.Feature).filter(db.Feature.category_id == category).all()
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> refactor/various_things_20241126
     @lru_cache(maxsize=10000)
     def get_db_sequence(self, seqid, start=None, end=None):
         seqs = self.db_session.query(db.AnnotatedSequence).filter(db.AnnotatedSequence.seqid == seqid).all()
