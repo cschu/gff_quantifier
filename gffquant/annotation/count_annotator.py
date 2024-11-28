@@ -71,7 +71,7 @@ class CountAnnotator(dict):
 
             for feature in category_counts:
                 if (int(category) == 5) and (int(feature) == 7):
-                    logger.info("Adding %s %s counts to target feature.", counts[0], counts[2])
+                    logger.info("CAnnotator: Adding %s %s counts to target feature.", counts[0], counts[2])
                 self.add_counts(category, feature, counts)
 
             if category_counts:
@@ -317,7 +317,7 @@ class GeneCountAnnotator(CountAnnotator):
             region_annotation = db.query_sequence(ggroup_id)
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
-                logger.info("GCAnnotator: Distributing counts of Gene %s %s %s", gene_id, counts[0], counts[1])
+                logger.info("GCAnnotator: Distributing counts of Gene %s %s %s", gene_id, counts[0], counts[2])
                 self.distribute_feature_counts(counts, region_annotation)
                 
             else:
