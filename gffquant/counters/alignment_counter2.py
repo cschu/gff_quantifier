@@ -43,7 +43,10 @@ class AlignmentCounter:
     def __iter__(self):
         yield from self.index.keys()
     def __getitem__(self, key):
-        return self.counts.get(self.index.get(key), 0.0)
+        key_index = self.index.get(key)
+        if key_index is None:
+            return 0.0
+        return self.counts[self.index.get(key)]
     def __setitem__(self, key, value):
         key_index = self.index.get(key)
         if key_index is not None:
