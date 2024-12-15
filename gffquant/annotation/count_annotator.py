@@ -70,8 +70,6 @@ class CountAnnotator(dict):
             total_fcounts += counts[:4]
 
             for feature in category_counts:
-                if (int(category) == 5) and (int(feature) == 7):
-                    logger.info("CAnnotator: Adding %s %s counts to target feature.", counts[0], counts[2])
                 self.add_counts(category, feature, counts)
 
             if category_counts:
@@ -306,7 +304,7 @@ class GeneCountAnnotator(CountAnnotator):
 
             if gene_group_db:
                 ref_tokens = ref.split(".")
-                ggroup_id, gene_id = ref_tokens[0], ".".join(ref_tokens[1:])
+                gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
             else:
                 ggroup_id, gene_id = ref, ref
 
@@ -317,11 +315,11 @@ class GeneCountAnnotator(CountAnnotator):
             region_annotation = db.query_sequence(ggroup_id)
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
-                logger.info("GCAnnotator: Distributing counts of Gene %s %s %s", gene_id, counts[0], counts[2])
+                logger.info("GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s", gene_id, ggroup_id, counts[0], counts[2])
                 self.distribute_feature_counts(counts, region_annotation)
-                
+
             else:
-                logger.info("GCAnnotator: Gene %s has no information in database.", gene_id)
+                logger.info("GCAnnotator: Gene %s (group=%s) has no information in database.", gene_id, ggroup_id)
                 self.unannotated_counts += counts[:4]
 
         self.calculate_scaling_factors()
