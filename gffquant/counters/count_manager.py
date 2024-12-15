@@ -3,7 +3,7 @@
 from collections import Counter
 
 from .. import DistributionMode
-from .alignment_counter import AlignmentCounter
+from .alignment_counter2 import AlignmentCounter
 from .region_counter import RegionCounter
 
 
@@ -157,6 +157,17 @@ class CountManager:
             return uniq_counts, ambig_counts
 
     def get_regions(self, rid):
-        return set(self.uniq_regioncounts.get(rid, set())).union(
-            self.ambig_regioncounts.get(rid, set())
+        # return set(self.uniq_regioncounts.get(rid, set())).union(
+        #     self.ambig_regioncounts.get(rid, set())
+        # )
+        return set(self.uniq_regioncounts.get(rid, Counter())).union(
+            self.ambig_regioncounts.get(rid, Counter())
         )
+    
+    def get_all_regions(self, region_counts=False):
+        uniq_counts, ambig_counts = (
+            (self.uniq_seqcounts, self.ambig_seqcounts,),
+            (self.uniq_regioncounts, self.ambig_regioncounts,),
+        )[region_counts]
+        yield from set(uniq_counts).union(ambig_counts)
+

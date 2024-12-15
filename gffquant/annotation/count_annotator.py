@@ -8,6 +8,7 @@ from itertools import chain
 
 import numpy as np
 
+from ..counters.count_manager import CountManager
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +199,7 @@ class RegionCountAnnotator(CountAnnotator):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
     # pylint: disable=R0914,W0613
-    def annotate(self, refmgr, db, count_manager, gene_group_db=False):
+    def annotate(self, refmgr, db, count_manager: CountManager, gene_group_db=False):
         """
         Annotate a set of region counts via db-lookup.
         input:
@@ -206,9 +207,10 @@ class RegionCountAnnotator(CountAnnotator):
         - db: GffDatabaseManager holding functional annotation database
         - count_manager: count_data
         """
-        for rid in set(count_manager.uniq_regioncounts).union(
-            count_manager.ambig_regioncounts
-        ):
+        # for rid in set(count_manager.uniq_regioncounts).union(
+        #     count_manager.ambig_regioncounts
+        # ):
+        for rid in count_manager.get_all_regions(region_counts=True):
             ref = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0]
 
             for region in count_manager.get_regions(rid):
@@ -273,7 +275,7 @@ class GeneCountAnnotator(CountAnnotator):
     def __init__(self, strand_specific, report_scaling_factors=True):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
-    def annotate(self, refmgr, db, count_manager, gene_group_db=False):
+    def annotate(self, refmgr, db, count_manager: CountManager, gene_group_db=False):
         """
         Annotate a set of gene counts via db-iteration.
         input:
@@ -286,9 +288,10 @@ class GeneCountAnnotator(CountAnnotator):
             if self.strand_specific else None
         )
 
-        for rid in set(count_manager.uniq_seqcounts).union(
-            count_manager.ambig_seqcounts
-        ):
+        # for rid in set(count_manager.uniq_seqcounts).union(
+        #     count_manager.ambig_seqcounts
+        # ):
+        for rid in count_manager.get_all_regions():
             ref, region_length = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
 
             uniq_counts, ambig_counts = count_manager.get_counts(
