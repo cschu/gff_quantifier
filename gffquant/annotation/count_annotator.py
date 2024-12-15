@@ -273,7 +273,7 @@ class GeneCountAnnotator(CountAnnotator):
     def __init__(self, strand_specific, report_scaling_factors=True):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
-    def annotate(self, refmgr, db, count_manager, gene_group_db=True):
+    def annotate(self, refmgr, db, count_manager, gene_group_db=False):
         """
         Annotate a set of gene counts via db-iteration.
         input:

@@ -152,6 +152,7 @@ class FeatureQuantifier(ABC):
         report_unannotated=True,
         dump_counters=True,
         in_memory=True,
+        gene_group_db=False,
     ):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
@@ -163,7 +164,7 @@ class FeatureQuantifier(ABC):
 
         Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
-        count_annotator.annotate(self.reference_manager, self.adm, self.count_manager)
+        count_annotator.annotate(self.reference_manager, self.adm, self.count_manager, gene_group_db=gene_group_db,)
 
         count_writer = CountWriter(
             self.out_prefix,
@@ -336,6 +337,7 @@ class FeatureQuantifier(ABC):
         report_unannotated=False,
         dump_counters=False,
         in_memory=True,
+        gene_group_db=False,
     ):
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
@@ -369,6 +371,7 @@ class FeatureQuantifier(ABC):
                 report_unannotated=report_unannotated,
                 dump_counters=dump_counters,
                 in_memory=in_memory,
+                gene_group_db=gene_group_db,
             )
 
             for metric, value in (
