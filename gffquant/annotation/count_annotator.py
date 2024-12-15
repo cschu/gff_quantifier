@@ -1,4 +1,4 @@
-# pylint: disable=C0103,W0105,R0902,R0917
+# pylint: disable=C0103,W0105,R0902,R0917,R0914
 
 """ This module contains code for transforming gene counts to feature counts. """
 
@@ -197,7 +197,7 @@ class RegionCountAnnotator(CountAnnotator):
     def __init__(self, strand_specific, report_scaling_factors=True):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
-    # pylint: disable=R0914
+    # pylint: disable=R0914,W0613
     def annotate(self, refmgr, db, count_manager, gene_group_db=False):
         """
         Annotate a set of region counts via db-lookup.
@@ -315,7 +315,10 @@ class GeneCountAnnotator(CountAnnotator):
             region_annotation = db.query_sequence(ggroup_id)
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
-                logger.info("GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s", gene_id, ggroup_id, counts[0], counts[2])
+                logger.info(
+                    "GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s",
+                    gene_id, ggroup_id, counts[0], counts[2],
+                )
                 self.distribute_feature_counts(counts, region_annotation)
 
             else:
