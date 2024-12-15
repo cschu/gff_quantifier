@@ -52,7 +52,7 @@ class AnnotationDatabaseManager(ABC):
         ...
 
     @abstractmethod
-    def get_features(self, category_id=None):
+    def get_features(self, category_id):
         ...
 
     @abstractmethod

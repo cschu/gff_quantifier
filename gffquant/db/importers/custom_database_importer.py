@@ -46,7 +46,7 @@ class GqCustomDatabaseImporter(GqDatabaseImporter):
     def parse_annotations(self, input_data, input_data2=None):
         if self.skip_header_lines > 0:
             try:
-                _ = [next(input_data) for _ in range(self.header - 1)]
+                _ = [next(input_data) for _ in range(self.skip_header_lines - 1)]
             except StopIteration as exc:
                 msg = f"Reached end of annotation file while skipping header comments ({self.header})."
                 logging.error(f"    {msg}")

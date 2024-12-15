@@ -1,4 +1,4 @@
-# pylint: disable=C0103,W0105,R0902,R0917
+# pylint: disable=C0103,W0105,R0902,R0917,R0914
 
 """ This module contains code for transforming gene counts to feature counts. """
 
@@ -197,8 +197,8 @@ class RegionCountAnnotator(CountAnnotator):
     def __init__(self, strand_specific, report_scaling_factors=True):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
-    # pylint: disable=R0914
-    def annotate(self, refmgr, db, count_manager):
+    # pylint: disable=R0914,W0613
+    def annotate(self, refmgr, db, count_manager, gene_group_db=False):
         """
         Annotate a set of region counts via db-lookup.
         input:
@@ -273,7 +273,7 @@ class GeneCountAnnotator(CountAnnotator):
     def __init__(self, strand_specific, report_scaling_factors=True):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
-    def annotate(self, refmgr, db, count_manager):
+    def annotate(self, refmgr, db, count_manager, gene_group_db=False):
         """
         Annotate a set of gene counts via db-iteration.
         input:
@@ -302,15 +302,27 @@ class GeneCountAnnotator(CountAnnotator):
                 strand_specific_counts=strand_specific_counts,
             )
 
-            gcounts = self.gene_counts.setdefault(ref, np.zeros(self.bins))
+            if gene_group_db:
+                ref_tokens = ref.split(".")
+                gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+            else:
+                ggroup_id, gene_id = ref, ref
+
+            gcounts = self.gene_counts.setdefault(gene_id, np.zeros(self.bins))
             gcounts += counts
             self.total_gene_counts += counts[:4]
 
-            region_annotation = db.query_sequence(ref)
+            region_annotation = db.query_sequence(ggroup_id)
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
+                logger.info(
+                    "GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s",
+                    gene_id, ggroup_id, counts[0], counts[2],
+                )
                 self.distribute_feature_counts(counts, region_annotation)
+
             else:
+                logger.info("GCAnnotator: Gene %s (group=%s) has no information in database.", gene_id, ggroup_id)
                 self.unannotated_counts += counts[:4]
 
         self.calculate_scaling_factors()

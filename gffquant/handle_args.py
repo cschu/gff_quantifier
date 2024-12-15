@@ -119,6 +119,12 @@ def handle_args(args):
         help="Load the database into memory (only for sqlite-based databases.)",
     )
 
+    ap.add_argument(
+        "--gene_group_db",
+        action="store_true",
+        help="Use smaller grouped database/reference index. Database must be specifically processed.",
+    )
+
     # ap.add_argument(
     #     "--db_coordinates",
     #     type=str,

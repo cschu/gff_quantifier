@@ -155,6 +155,7 @@ def main():
         report_unannotated=args.run_mode.report_unannotated,
         dump_counters=args.debug,
         in_memory=args.db_in_memory,
+        gene_group_db=args.gene_group_db,
     )
 
 

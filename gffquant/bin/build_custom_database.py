@@ -9,7 +9,7 @@ import logging
 from os.path import basename, splitext
 
 from ..db import get_database, initialise_db, improve_concurrent_read_access
-from ..db.importers import AnnstrDatabaseImporter, GqCustomDatabaseImporter
+from ..db.importers import AnnstrDatabaseImporter, GqCustomDatabaseImporter, GqDatabaseImporter
 
 from .. import __tool__, __version__
 
@@ -45,7 +45,7 @@ def main():
     if args.initialise_db and not args.extract_map_only:
         initialise_db(engine)
 
-    Importer = {"seq": GqCustomDatabaseImporter, "str": AnnstrDatabaseImporter}[args.dbtype]
+    Importer: GqDatabaseImporter = {"seq": GqCustomDatabaseImporter, "str": AnnstrDatabaseImporter}[args.dbtype]
 
     kwargs = {
         "seq_column": args.seq_column,
