@@ -50,36 +50,45 @@ class CountManager:
         self.increments = [1.0, 1.0]
         self.increments_auto_detect = [1.0, self.paired_end_count / 2.0]
 
-        self.uniq_seqcounts, self.ambig_seqcounts = None, None
-        self.uniq_regioncounts, self.ambig_regioncounts = None, None
+        # self.uniq_seqcounts, self.ambig_seqcounts = None, None
+        # self.uniq_regioncounts, self.ambig_regioncounts = None, None
+        self.seqcounts, self.regioncounts = None, None
 
         if region_counts:
-            self.uniq_regioncounts = RegionCounter(strand_specific=strand_specific)
-            self.ambig_regioncounts = RegionCounter(
+            # self.uniq_regioncounts = RegionCounter(strand_specific=strand_specific)
+            # self.ambig_regioncounts = RegionCounter(
+            #     strand_specific=strand_specific,
+            #     distribution_mode=distribution_mode,
+            # )
+            self.regioncounts = RegionCounter(
                 strand_specific=strand_specific,
                 distribution_mode=distribution_mode,
             )
 
         else:
-            self.uniq_seqcounts = AlignmentCounter(strand_specific=strand_specific)
-            self.ambig_seqcounts = AlignmentCounter(
-                strand_specific=strand_specific,
-                distribution_mode=distribution_mode
-            )
-            # self.seqcounts = AlignmentCounter(
+            # self.uniq_seqcounts = AlignmentCounter(strand_specific=strand_specific)
+            # self.ambig_seqcounts = AlignmentCounter(
             #     strand_specific=strand_specific,
-            #     distribution_mode=distribution_mode,
+            #     distribution_mode=distribution_mode
             # )
+            self.seqcounts = AlignmentCounter(
+                strand_specific=strand_specific,
+                distribution_mode=distribution_mode,
+            )
 
     def has_ambig_counts(self):
-        return self.ambig_regioncounts or self.ambig_seqcounts
+        return any(
+            self.seqcounts and self.seqcounts.has_ambig_counts(),
+            self.regioncounts and self.regioncounts.has_ambig_counts(),
+        )
+        # return self.ambig_regioncounts or self.ambig_seqcounts
 
     def update_counts(self, count_stream, ambiguous_counts=False, pair=False, pe_library=None):
-        seq_counter, region_counter = (
-            (self.uniq_seqcounts, self.uniq_regioncounts)
-            if not ambiguous_counts
-            else (self.ambig_seqcounts, self.ambig_regioncounts)
-        )
+        # seq_counter, region_counter = (
+        #     (self.uniq_seqcounts, self.uniq_regioncounts)
+        #     if not ambiguous_counts
+        #     else (self.ambig_seqcounts, self.ambig_regioncounts)
+        # )
 
         if pe_library is not None:
             # this is the case when the alignment has a read group tag
@@ -95,40 +104,51 @@ class CountManager:
             increment = self.increments[pair]
 
         contributed_counts = 0
-        if seq_counter is not None:
-            contributed_counts = seq_counter.update_counts(count_stream, increment=increment)
-        elif region_counter is not None:
-            contributed_counts = region_counter.update_counts(count_stream, increment=increment)
+        if self.seqcounts is not None:
+            contributed_counts = self.seqcounts.update_counts(count_stream, increment=increment, ambiguous_counts=ambiguous_counts,)
+        elif self.regioncounts is not None:
+            contributed_counts = self.regioncounts.update_counts(count_stream, increment=increment, ambiguous_counts=ambiguous_counts,)
+        # if seq_counter is not None:
+            # contributed_counts = seq_counter.update_counts(count_stream, increment=increment)
+        # elif region_counter is not None:
+            # contributed_counts = region_counter.update_counts(count_stream, increment=increment)
 
         return contributed_counts
 
     def dump_raw_counters(self, prefix, refmgr):
-        if self.uniq_seqcounts is not None:
-            self.uniq_seqcounts.dump(prefix, refmgr)
-        if self.ambig_seqcounts is not None:
-            self.ambig_seqcounts.dump(prefix, refmgr)
-        if self.uniq_regioncounts is not None:
-            self.uniq_regioncounts.dump(prefix, refmgr)
-        if self.ambig_regioncounts is not None:
-            self.ambig_regioncounts.dump(prefix, refmgr)
+        # if self.uniq_seqcounts is not None:
+        #     self.uniq_seqcounts.dump(prefix, refmgr)
+        # if self.ambig_seqcounts is not None:
+        #     self.ambig_seqcounts.dump(prefix, refmgr)
+        # if self.uniq_regioncounts is not None:
+        #     self.uniq_regioncounts.dump(prefix, refmgr)
+        # if self.ambig_regioncounts is not None:
+        #     self.ambig_regioncounts.dump(prefix, refmgr)
+        ...
 
     def get_unannotated_reads(self):
         unannotated_reads = 0
 
-        if self.uniq_regioncounts is not None:
-            unannotated_reads += self.uniq_regioncounts.unannotated_reads
-        if self.ambig_regioncounts is not None:
-            unannotated_reads += self.ambig_regioncounts.unannotated_reads
-        if self.uniq_seqcounts is not None:
-            unannotated_reads += self.uniq_seqcounts.unannotated_reads
-        if self.ambig_seqcounts is not None:
-            unannotated_reads += self.ambig_seqcounts.unannotated_reads
+        # if self.uniq_regioncounts is not None:
+        #     unannotated_reads += self.uniq_regioncounts.unannotated_reads
+        # if self.ambig_regioncounts is not None:
+        #     unannotated_reads += self.ambig_regioncounts.unannotated_reads
+        # if self.uniq_seqcounts is not None:
+        #     unannotated_reads += self.uniq_seqcounts.unannotated_reads
+        # if self.ambig_seqcounts is not None:
+        #     unannotated_reads += self.ambig_seqcounts.unannotated_reads
+        if self.regioncounts is not None:
+            unannotated_reads += self.regioncounts
+        if self.seqcounts is not None:
+            unannotated_reads += self.seqcounts
 
         return unannotated_reads
 
     def get_counts(self, seqid, region_counts=False, strand_specific=False):
         if region_counts:
+            raise NotImplementedError()
             rid, seqid = seqid[0], seqid[1:]
+            
             uniq_counter = self.uniq_regioncounts.get(rid, Counter())
             ambig_counter = self.ambig_regioncounts.get(rid, Counter())
 
@@ -139,9 +159,11 @@ class CountManager:
                 return [uniq_counter[seqid]], [ambig_counter[seqid]]
 
         else:
-            uniq_counter, ambig_counter = self.uniq_seqcounts, self.ambig_seqcounts
+            # uniq_counter, ambig_counter = self.uniq_seqcounts, self.ambig_seqcounts
+
 
             if strand_specific:
+                raise NotImplementedError()
                 uniq_counts, ambig_counts = [0.0, 0.0], [0.0, 0.0]
                 uniq_counts[seqid[1]] = uniq_counter[seqid]
                 ambig_counts[seqid[1]] = ambig_counter[seqid]
@@ -156,7 +178,8 @@ class CountManager:
                 #     ambig_counter[(rid, CountManager.MINUS_STRAND)],
                 # ]
             else:
-                uniq_counts, ambig_counts = [uniq_counter[seqid]], [ambig_counter[seqid]]
+                # uniq_counts, ambig_counts = [uniq_counter[seqid]], [ambig_counter[seqid]]
+                uniq_counts, ambig_counts = [self.seqcounts[seqid][0]], [self.seqcounts[seqid][1]]
 
             return uniq_counts, ambig_counts
 
@@ -169,9 +192,15 @@ class CountManager:
         )
     
     def get_all_regions(self, region_counts=False):
-        uniq_counts, ambig_counts = (
-            (self.uniq_seqcounts, self.ambig_seqcounts,),
-            (self.uniq_regioncounts, self.ambig_regioncounts,),
+        # uniq_counts, ambig_counts = (
+        #     (self.uniq_seqcounts, self.ambig_seqcounts,),
+        #     (self.uniq_regioncounts, self.ambig_regioncounts,),
+        # )[region_counts]
+        # yield from set(uniq_counts).union(ambig_counts)
+        counts = (
+            self.seqcounts,
+            self.regioncounts,
         )[region_counts]
-        yield from set(uniq_counts).union(ambig_counts)
+
+        yield from counts
 

@@ -27,7 +27,7 @@ class AlignmentCounter:
 
         self.index = {}
         self.counts = np.zeros(
-            (AlignmentCounter.INITIAL_SIZE, 1),
+            (AlignmentCounter.INITIAL_SIZE, 2),
         )
     def dump(self, prefix, refmgr):
         ...
@@ -38,6 +38,9 @@ class AlignmentCounter:
         return Counter({key: self.counts[key_index]})
     
     def setdefault(self, key, default_val):
+        ...
+
+    def has_ambig_counts(self):
         ...
     
     def __iter__(self):
@@ -54,7 +57,7 @@ class AlignmentCounter:
         else:
             raise KeyError(f"{key=} not found.")
         
-    def update_counts(self, count_stream, increment=1):
+    def update_counts(self, count_stream, increment=1, ambiguous_counts=False):
         contributed_counts = 0
         for hits, aln_count in count_stream:
             hit = hits[0]
@@ -81,7 +84,7 @@ class AlignmentCounter:
                     )
                 # key_index = self.index.setdefault(key, len(self.index))
                 key_index = self.index[key] = len(self.index)
-            self.counts[key_index] += inc
+            self.counts[key_index][int(ambiguous_counts)] += inc
             contributed_counts += inc
 
         return contributed_counts

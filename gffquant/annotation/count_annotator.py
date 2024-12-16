@@ -288,9 +288,6 @@ class GeneCountAnnotator(CountAnnotator):
             if self.strand_specific else None
         )
 
-        # for rid in set(count_manager.uniq_seqcounts).union(
-        #     count_manager.ambig_seqcounts
-        # ):
         for rid in count_manager.get_all_regions():
             ref, region_length = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
 
