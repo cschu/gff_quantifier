@@ -78,7 +78,10 @@ class AlignmentCounter:
                         self.counts,
                         ((0, AlignmentCounter.INITIAL_SIZE), (0, 0),),
                     )
-                key_index = self.index.setdefault(key, len(self.index))
-                self.counts[key_index] += inc
-                contributed_counts += inc
+                # key_index = self.index.setdefault(key, len(self.index))
+                key_index = self.index[key] = len(self.index)
+            self.counts[key_index] += inc
+            contributed_counts += inc
+
+        return contributed_counts
 

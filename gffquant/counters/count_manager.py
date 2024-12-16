@@ -66,6 +66,10 @@ class CountManager:
                 strand_specific=strand_specific,
                 distribution_mode=distribution_mode
             )
+            # self.seqcounts = AlignmentCounter(
+            #     strand_specific=strand_specific,
+            #     distribution_mode=distribution_mode,
+            # )
 
     def has_ambig_counts(self):
         return self.ambig_regioncounts or self.ambig_seqcounts
