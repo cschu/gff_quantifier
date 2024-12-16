@@ -3,7 +3,7 @@
 """ module docstring """
 
 from .. import DistributionMode
-from .alignment_counter import AlignmentCounter
+from .alignment_counter2 import AlignmentCounter
 
 
 class UniqueSeqCounter(AlignmentCounter):

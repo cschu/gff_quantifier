@@ -3,7 +3,7 @@
 
 """module docstring"""
 
-from .alignment_counter import AlignmentCounter
+from .alignment_counter2 import AlignmentCounter
 from .region_counter import RegionCounter
 from .seq_counter import UniqueSeqCounter, AmbiguousSeqCounter
 from .count_manager import CountManager
