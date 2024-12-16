@@ -78,8 +78,10 @@ class CountManager:
 
     def has_ambig_counts(self):
         return any(
-            self.seqcounts and self.seqcounts.has_ambig_counts(),
-            self.regioncounts and self.regioncounts.has_ambig_counts(),
+            (
+                self.seqcounts and self.seqcounts.has_ambig_counts(),
+                self.regioncounts and self.regioncounts.has_ambig_counts(),
+            )
         )
         # return self.ambig_regioncounts or self.ambig_seqcounts
 

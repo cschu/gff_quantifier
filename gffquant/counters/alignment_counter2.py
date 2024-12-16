@@ -41,7 +41,7 @@ class AlignmentCounter:
         ...
 
     def has_ambig_counts(self):
-        ...
+        return bool(self.counts[:, 1].sum() != 0)
     
     def __iter__(self):
         yield from self.index.keys()
