@@ -140,9 +140,9 @@ class CountManager:
         # if self.ambig_seqcounts is not None:
         #     unannotated_reads += self.ambig_seqcounts.unannotated_reads
         if self.regioncounts is not None:
-            unannotated_reads += self.regioncounts
+            unannotated_reads += self.regioncounts.unannotated_reads
         if self.seqcounts is not None:
-            unannotated_reads += self.seqcounts
+            unannotated_reads += self.seqcounts.unannotated_reads
 
         return unannotated_reads
 
