@@ -46,12 +46,13 @@ class AlignmentCounter:
         key_index = self.index.get(key)
         if key_index is None:
             return 0.0
-        return self.counts[self.index.get(key)]
+        return self.counts[key_index]
     def __setitem__(self, key, value):
         key_index = self.index.get(key)
         if key_index is not None:
             self.counts[key_index] = value
-        raise KeyError(f"{key=} not found.")
+        else:
+            raise KeyError(f"{key=} not found.")
         
     def update_counts(self, count_stream, increment=1):
         contributed_counts = 0
