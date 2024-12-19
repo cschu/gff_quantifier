@@ -2,6 +2,8 @@
 
 from collections import Counter
 
+import numpy as np
+
 from .. import DistributionMode
 from .alignment_counter2 import AlignmentCounter
 from .region_counter import RegionCounter
@@ -181,9 +183,11 @@ class CountManager:
                 # ]
             else:
                 # uniq_counts, ambig_counts = [uniq_counter[seqid]], [ambig_counter[seqid]]
-                uniq_counts, ambig_counts = [self.seqcounts[seqid][0]], [self.seqcounts[seqid][1]]
+                # uniq_counts, ambig_counts = [self.seqcounts[seqid][0]], [self.seqcounts[seqid][1]]
+                counts = self.seqcounts[seqid]
 
-            return uniq_counts, ambig_counts
+            # return uniq_counts, ambig_counts
+            return np.array((counts[0], counts[2], counts[1], counts[3]))
 
     def get_regions(self, rid):
         # return set(self.uniq_regioncounts.get(rid, set())).union(
@@ -205,4 +209,10 @@ class CountManager:
         )[region_counts]
 
         yield from counts
+
+    def transform_counts(self, refmgr):
+        if self.seqcounts is not None:
+            self.seqcounts.transform(refmgr)
+        if self.regioncounts is not None:
+            self.regioncounts.transform(refmgr)
 

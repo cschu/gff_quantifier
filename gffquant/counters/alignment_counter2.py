@@ -27,7 +27,8 @@ class AlignmentCounter:
 
         self.index = {}
         self.counts = np.zeros(
-            (AlignmentCounter.INITIAL_SIZE, 2),
+            (AlignmentCounter.INITIAL_SIZE, 2,),
+            dtype='float64',
         )
     def dump(self, prefix, refmgr):
         ...
@@ -88,4 +89,31 @@ class AlignmentCounter:
             contributed_counts += inc
 
         return contributed_counts
+    
+    def transform(self, refmgr):
+        # transform 2-column uniq/ambig count matrix
+        # into 4 columns
+        # uniq_raw, combined_raw, uniq_lnorm, combined_lnorm
+
+        # obtain gene lengths
+        lengths = np.array(
+            (refmgr.get(key[0] if isinstance(key, tuple) else key))[1]
+            for key in self.index
+        )
+
+        # calculate combined_raw
+        self.counts[:, 1:2] += self.counts[:, 0:1]
+
+        # duplicate the raw counts
+        self.counts = np.concatenate(
+            (self.counts, self.counts,),
+            axis=1,
+        )
+
+        # length-normalise the lnorm columns
+        self.counts[:, 2:4] /= lengths[:, None]
+
+        # return count sums
+        return self.counts.sum(axis=0)
+
 

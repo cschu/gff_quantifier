@@ -95,7 +95,8 @@ class CountAnnotator(dict):
         def calc_scaling_factor(raw, normed, default=0):
             return (raw / normed) if normed else default
 
-        total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_counts
+        # total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_counts
+        total_uniq, total_ambi, total_uniq_normed, total_ambi_normed = self.total_counts
         logger.info(
             "TOTAL COUNTS: uraw=%s unorm=%s araw=%s anorm=%s",
             total_uniq, total_uniq_normed, total_ambi, total_ambi_normed
@@ -109,7 +110,8 @@ class CountAnnotator(dict):
             total_ambi, total_ambi_normed, default_scaling_factor
         )
 
-        total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_gene_counts
+        # total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_gene_counts
+        total_uniq, total_ambi, total_uniq_normed, total_ambi_normed = self.total_gene_counts
         logger.info(
             "TOTAL GENE COUNTS: uraw=%s unorm=%s araw=%s anorm=%s",
             total_uniq, total_uniq_normed, total_ambi, total_ambi_normed
