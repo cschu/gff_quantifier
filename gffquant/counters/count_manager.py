@@ -212,7 +212,7 @@ class CountManager:
 
     def transform_counts(self, refmgr):
         if self.seqcounts is not None:
-            self.seqcounts.transform(refmgr)
+            return self.seqcounts.transform(refmgr)
         if self.regioncounts is not None:
-            self.regioncounts.transform(refmgr)
+            return self.regioncounts.transform(refmgr)
 
