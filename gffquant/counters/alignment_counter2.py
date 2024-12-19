@@ -1,8 +1,13 @@
+import logging
+
 from collections import Counter
 
 import numpy as np
 
 from .. import DistributionMode
+
+
+logger = logging.getLogger(__name__)
 
 
 class AlignmentCounter:
@@ -100,6 +105,7 @@ class AlignmentCounter:
             (refmgr.get(key[0] if isinstance(key, tuple) else key))[1]
             for key in self.index
         )
+        logger.info("LENGTHS ARRAY = %s", lengths.shape)
 
         # calculate combined_raw
         self.counts[:, 1:2] += self.counts[:, 0:1]
