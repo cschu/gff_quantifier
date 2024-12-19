@@ -106,6 +106,7 @@ class AlignmentCounter:
             for key in self.index
         )
         logger.info("LENGTHS ARRAY = %s", lengths.shape)
+        logger.info("INDEX SIZE = %s", len(self.index))
 
         # calculate combined_raw
         self.counts[:, 1:2] += self.counts[:, 0:1]
