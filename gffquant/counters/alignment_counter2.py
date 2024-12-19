@@ -110,6 +110,9 @@ class AlignmentCounter:
         logger.info("LENGTHS ARRAY = %s", lengths.shape)
         logger.info("INDEX SIZE = %s", len(self.index))
 
+        # remove the un-indexed rows
+        self.counts = self.counts[0:len(self.index), :]
+
         # calculate combined_raw
         self.counts[:, 1:2] += self.counts[:, 0:1]
 
