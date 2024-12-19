@@ -18,7 +18,7 @@ class GeneCountAnnotator(CountAnnotator):
 	def annotate(self, refmgr, db, count_manager: CountManager, gene_group_db=False):
 		self.total_gene_counts = count_manager.transform_counts(refmgr)
 		logger.info("TOTAL_GENE_COUNTS = %s", self.total_gene_counts)
-		self.total_counts = self.total_gene_counts  # ?
+		# self.total_counts = self.total_gene_counts  # ?
 
 		for rid in count_manager.get_all_regions():
 			counts = count_manager.get_counts(rid)
