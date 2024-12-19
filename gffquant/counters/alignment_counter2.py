@@ -102,8 +102,10 @@ class AlignmentCounter:
 
         # obtain gene lengths
         lengths = np.array(
-            (refmgr.get(key[0] if isinstance(key, tuple) else key))[1]
-            for key in self.index
+            tuple(
+                (refmgr.get(key[0] if isinstance(key, tuple) else key))[1]
+                for key in self.index
+            )
         )
         logger.info("LENGTHS ARRAY = %s", lengths.shape)
         logger.info("INDEX SIZE = %s", len(self.index))
