@@ -8,6 +8,8 @@ import sys
 
 import numpy as np
 
+from ..counters import CountManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -161,16 +163,25 @@ class CountWriter:
                         )
                         CountWriter.write_row(feature.name, out_row, stream=feat_out)
 
-    def write_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
+    def write_gene_counts(self, gene_counts: CountManager, uniq_scaling_factor, ambig_scaling_factor):
         if "scaled" in self.publish_reports:
             logger.info("SCALING_FACTORS %s %s", uniq_scaling_factor, ambig_scaling_factor)
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
 
-            for gene, g_counts in sorted(gene_counts.items()):
+            # for gene, g_counts in sorted(gene_counts.items()):
+            #     out_row = self.compile_output_row(
+            #         g_counts,
+            #         scaling_factor=uniq_scaling_factor,
+            #         ambig_scaling_factor=ambig_scaling_factor
+            #     )
+            #     CountWriter.write_row(gene, out_row, stream=gene_out)
+            for rid in gene_counts.get_all_regions():
+                counts = gene_counts.get_counts(rid)
                 out_row = self.compile_output_row(
-                    g_counts,
+                    counts,
                     scaling_factor=uniq_scaling_factor,
-                    ambig_scaling_factor=ambig_scaling_factor
+                    ambig_scaling_factor=ambig_scaling_factor,
                 )
-                CountWriter.write_row(gene, out_row, stream=gene_out)
+                CountWriter.write_row(rid, out_row, stream=gene_out,)
+
