@@ -142,6 +142,7 @@ class CountWriter:
 
                 if "category" in self.publish_reports:
                     cat_counts = counts.get(f"cat:::{category_id}")
+                    logger.info("CAT %s: %s", category_id, str(cat_counts))
                     if cat_counts is not None:
                         cat_row = self.compile_output_row(
                             cat_counts,
