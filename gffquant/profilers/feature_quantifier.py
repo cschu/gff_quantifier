@@ -186,7 +186,8 @@ class FeatureQuantifier(ABC):
         )
 
         count_writer.write_gene_counts(
-            count_annotator.gene_counts,
+            # count_annotator.gene_counts,
+            self.count_manager,
             count_annotator.scaling_factors["total_gene_uniq"],
             count_annotator.scaling_factors["total_gene_ambi"]
         )
