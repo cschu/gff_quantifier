@@ -163,7 +163,7 @@ class CountWriter:
                         )
                         CountWriter.write_row(feature.name, out_row, stream=feat_out)
 
-    def write_gene_counts(self, gene_counts: CountManager, uniq_scaling_factor, ambig_scaling_factor):
+    def write_gene_counts(self, gene_counts: CountManager, refmgr, uniq_scaling_factor, ambig_scaling_factor):
         if "scaled" in self.publish_reports:
             logger.info("SCALING_FACTORS %s %s", uniq_scaling_factor, ambig_scaling_factor)
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
@@ -183,5 +183,6 @@ class CountWriter:
                     scaling_factor=uniq_scaling_factor,
                     ambig_scaling_factor=ambig_scaling_factor,
                 )
-                CountWriter.write_row(rid, out_row, stream=gene_out,)
+                ref = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0]
+                CountWriter.write_row(ref, out_row, stream=gene_out,)
 
