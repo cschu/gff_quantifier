@@ -83,8 +83,8 @@ class AlignmentCounter:
             )[aln_count == 1]
             key = (
                 (
-                    (hit.rid, hit.rev_strand),
                     hit.rid
+                    (hit.rid, hit.rev_strand),
                 )
             )[self.strand_specific]
 
