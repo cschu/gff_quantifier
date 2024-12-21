@@ -176,20 +176,44 @@ class CountWriter:
             #         ambig_scaling_factor=ambig_scaling_factor
             #     )
             #     CountWriter.write_row(gene, out_row, stream=gene_out)
-            for rid in gene_counts.get_all_regions():
-                counts = gene_counts.get_counts(rid)
-                out_row = self.compile_output_row(
-                    counts,
-                    scaling_factor=uniq_scaling_factor,
-                    ambig_scaling_factor=ambig_scaling_factor,
+            ref_stream = (
+                (
+                    refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0],
+                    rid,
                 )
-                ref = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0]
+                for rid in gene_counts.get_all_regions()
+            )
 
+            for ref, rid in sorted(ref_stream):
+                counts = gene_counts.get_counts(rid)
                 if gene_group_db:
                     ref_tokens = ref.split(".")
                     gene_id, _ = ".".join(ref_tokens[:-1]), ref_tokens[-1]
                 else:
                     gene_id = ref
 
+                out_row = self.compile_output_row(
+                    counts,
+                    scaling_factor=uniq_scaling_factor,
+                    ambig_scaling_factor=ambig_scaling_factor,
+                )
+
                 CountWriter.write_row(gene_id, out_row, stream=gene_out,)
+
+            # for rid in gene_counts.get_all_regions():
+            #     counts = gene_counts.get_counts(rid)
+            #     out_row = self.compile_output_row(
+            #         counts,
+            #         scaling_factor=uniq_scaling_factor,
+            #         ambig_scaling_factor=ambig_scaling_factor,
+            #     )
+            #     ref = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0]
+
+            #     if gene_group_db:
+            #         ref_tokens = ref.split(".")
+            #         gene_id, _ = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+            #     else:
+            #         gene_id = ref
+
+            #     CountWriter.write_row(gene_id, out_row, stream=gene_out,)
 
