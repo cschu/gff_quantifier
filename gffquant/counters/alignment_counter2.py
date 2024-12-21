@@ -38,9 +38,9 @@ class AlignmentCounter:
     def dump(self, prefix, refmgr):
         import gzip
         with gzip.open(f"{prefix}.{self.__class__.__name__}.txt.gz", "wt") as _out:
-            for key in self.index.keys():
+            for key, key_index in self.index.items():
                 ref, reflen = refmgr.get(key[0] if isinstance(key, tuple) else key)
-                print(key, ref, reflen, self.counts[key], sep="\t", file=_out)
+                print(key, ref, reflen, self.counts[key_index], sep="\t", file=_out)
             # for k, v in self.items():
             # ref, reflen = refmgr.get(k[0] if isinstance(k, tuple) else k)
             # print(k, ref, reflen, v, sep="\t", file=_out)
