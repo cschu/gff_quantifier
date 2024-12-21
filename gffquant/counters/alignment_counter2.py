@@ -74,6 +74,7 @@ class AlignmentCounter:
     def update_counts(self, count_stream, increment=1, ambiguous_counts=False):
         contributed_counts = 0
         for hits, aln_count in count_stream:
+            logger.info("update_counts:: HITS: %s", hits)
             hit = hits[0]
             inc = (
                 (
