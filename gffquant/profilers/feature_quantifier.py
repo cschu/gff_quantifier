@@ -190,7 +190,8 @@ class FeatureQuantifier(ABC):
             self.count_manager,
             self.reference_manager,
             count_annotator.scaling_factors["total_gene_uniq"],
-            count_annotator.scaling_factors["total_gene_ambi"]
+            count_annotator.scaling_factors["total_gene_ambi"],
+            gene_group_db=gene_group_db,
         )
 
         self.adm.clear_caches()
