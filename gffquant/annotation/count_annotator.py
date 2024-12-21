@@ -9,6 +9,8 @@ from itertools import chain
 import numpy as np
 
 from ..counters.count_manager import CountManager
+from ..counters.alignment_counter2 import AlignmentCounter
+
 
 logger = logging.getLogger(__name__)
 
@@ -277,23 +279,23 @@ class GeneCountAnnotator(CountAnnotator):
     def __init__(self, strand_specific, report_scaling_factors=True):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
-    def annotate(self, refmgr, db, count_manager: CountManager, gene_group_db=False):
+    def annotate(self, refmgr, db, counter: AlignmentCounter, gene_group_db=False):
         """
         Annotate a set of gene counts via db-iteration.
         input:
         - bam: bamr.BamFile to use as reverse lookup table for reference ids
         - db: GffDatabaseManager holding functional annotation database
-        - count_manager: count_data
+        - counter: count_data
         """
         strand_specific_counts = (
-            (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
+            (counter.PLUS_STRAND, counter.MINUS_STRAND)
             if self.strand_specific else None
         )
 
-        for rid in count_manager.get_all_regions():
+        for rid in counter.get_all_regions():
             ref, region_length = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
 
-            uniq_counts, ambig_counts = count_manager.get_counts(
+            uniq_counts, ambig_counts = counter.get_counts(
                 rid, region_counts=False, strand_specific=self.strand_specific
             )
 

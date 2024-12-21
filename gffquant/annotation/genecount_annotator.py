@@ -3,7 +3,7 @@ import logging
 import numpy as np
 
 from .count_annotator import CountAnnotator
-from ..counters import CountManager
+from ..counters import CountManager, AlignmentCounter
 
 
 logger = logging.getLogger(__name__)
@@ -15,13 +15,13 @@ class GeneCountAnnotator(CountAnnotator):
 	def __init__(self, strand_specific, report_scaling_factors=True):
 		CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
-	def annotate(self, refmgr, db, count_manager: CountManager, gene_group_db=False):
-		self.total_gene_counts = count_manager.transform_counts(refmgr)
+	def annotate(self, refmgr, db, counter: AlignmentCounter, gene_group_db=False):
+		self.total_gene_counts = counter.transform(refmgr)  # count_manager.transform_counts(refmgr)
 		logger.info("TOTAL_GENE_COUNTS = %s", self.total_gene_counts)
 		# self.total_counts = self.total_gene_counts  # ?
 
-		for rid in count_manager.get_all_regions():
-			counts = count_manager.get_counts(rid)
+		for rid in counter.get_all_regions():
+			counts = counter.get_counts(rid)
 			ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
 
 			if gene_group_db:
