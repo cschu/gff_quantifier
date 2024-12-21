@@ -165,11 +165,11 @@ class FeatureQuantifier(ABC):
         Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
 
-        self.count_manager.dump("pre_annotate", self.reference_manager)
+        # self.count_manager.dump("pre_annotate", self.reference_manager)
 
         count_annotator.annotate(self.reference_manager, self.adm, self.count_manager, gene_group_db=gene_group_db,)
 
-        self.count_manager.dump("post_annotate", self.reference_manager)
+        # self.count_manager.dump("post_annotate", self.reference_manager)
 
         count_writer = CountWriter(
             self.out_prefix,
