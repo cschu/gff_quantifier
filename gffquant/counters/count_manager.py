@@ -216,3 +216,8 @@ class CountManager:
         if self.regioncounts is not None:
             return self.regioncounts.transform(refmgr)
 
+    def dump(self, prefix, refmgr):
+        if self.seqcounts is not None:
+            self.seqcounts.dump(prefix, refmgr)
+        if self.regioncounts is not None:
+            self.regioncounts.dump(prefix, refmgr)
