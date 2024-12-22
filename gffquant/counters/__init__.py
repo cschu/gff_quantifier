@@ -5,4 +5,3 @@
 
 from .alignment_counter import AlignmentCounter
 from .region_counter import RegionCounter
-from .count_manager import CountManager
