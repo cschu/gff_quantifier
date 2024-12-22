@@ -122,7 +122,6 @@ class FeatureQuantifier(ABC):
             self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
         if dump_counters:
-            # self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
             self.counter.dump(self.out_prefix, self.reference_manager,)
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
@@ -134,7 +133,6 @@ class FeatureQuantifier(ABC):
 
         count_writer = CountWriter(
             self.out_prefix,
-            # has_ambig_counts=self.count_manager.has_ambig_counts(),
             has_ambig_counts=self.counter.has_ambig_counts(),
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
@@ -143,7 +141,6 @@ class FeatureQuantifier(ABC):
             filtered_readcount=self.aln_counter["filtered_read_count"],
         )
 
-        # unannotated_reads = self.count_manager.get_unannotated_reads()
         unannotated_reads = self.counter.get_unannotated_reads()
         unannotated_reads += self.aln_counter["unannotated_ambig"]
 
@@ -154,8 +151,6 @@ class FeatureQuantifier(ABC):
         )
 
         count_writer.write_gene_counts(
-            # count_annotator.gene_counts,
-            # self.count_manager,
             self.counter,
             self.reference_manager,
             count_annotator.scaling_factors["total_gene_uniq"],
@@ -198,7 +193,6 @@ class FeatureQuantifier(ABC):
             filtered_sam=debug_samfile,
         )
 
-        # self.count_manager.toggle_single_read_handling(unmarked_orphans)
         self.counter.toggle_single_read_handling(unmarked_orphans)
         ac = self.aln_counter
 
@@ -420,7 +414,6 @@ class FeatureQuantifier(ABC):
                 )
             )
 
-            # contributed_counts = self.count_manager.update_counts(
             contributed_counts = self.counter.update(
                 count_stream,
                 ambiguous_counts=is_ambiguous_group,

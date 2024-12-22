@@ -8,7 +8,7 @@ from itertools import chain
 
 import numpy as np
 
-from ..counters.count_manager import AlignmentCounter
+from ..counters import AlignmentCounter
 
 
 logger = logging.getLogger(__name__)

@@ -17,9 +17,8 @@ class GeneCountAnnotator(CountAnnotator):
 
     def annotate(self, refmgr, db, counter: AlignmentCounter, gene_group_db=False):
         """ Annotate a set of gene counts with functional annotations. """
-        self.total_gene_counts = counter.transform(refmgr)  # count_manager.transform_counts(refmgr)
+        self.total_gene_counts = counter.transform(refmgr)
         logger.info("TOTAL_GENE_COUNTS = %s", self.total_gene_counts)
-        # self.total_counts = self.total_gene_counts  # ?
 
         # formerly used in compute_count_vector
         strand_specific_counts = (

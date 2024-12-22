@@ -17,11 +17,7 @@ class RegionCountAnnotator(CountAnnotator):
         input:
         - bam: bamr.BamFile to use as lookup table for reference names
         - db: GffDatabaseManager holding functional annotation database
-        - count_manager: count_data
         """
-        # for rid in set(count_manager.uniq_regioncounts).union(
-        #     count_manager.ambig_regioncounts
-        # ):
         for rid in counter.get_all_regions(region_counts=True):
             ref = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0]
 
