@@ -5,7 +5,7 @@
 from collections import Counter
 
 from .. import DistributionMode
-from .alignment_counter2 import AlignmentCounter
+from .alignment_counter import AlignmentCounter
 
 
 # from count_manager.get_counts()

@@ -5,7 +5,7 @@ from collections import Counter
 import numpy as np
 
 from .. import DistributionMode
-from .alignment_counter2 import AlignmentCounter
+from .alignment_counter import AlignmentCounter
 from .region_counter import RegionCounter
 
 
