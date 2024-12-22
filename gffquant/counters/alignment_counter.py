@@ -134,20 +134,20 @@ class AlignmentCounter:
 
     def get_counts(self, seqid, strand_specific=False):
         if strand_specific:
-                raise NotImplementedError()
-                uniq_counts, ambig_counts = [0.0, 0.0], [0.0, 0.0]
-                uniq_counts[seqid[1]] = uniq_counter[seqid]
-                ambig_counts[seqid[1]] = ambig_counter[seqid]
+            raise NotImplementedError()
+            # uniq_counts, ambig_counts = [0.0, 0.0], [0.0, 0.0]
+            # uniq_counts[seqid[1]] = uniq_counter[seqid]
+            # ambig_counts[seqid[1]] = ambig_counter[seqid]
 
-                # rid = seqid[0] if isinstance(seqid, tuple) else seqid
-                # uniq_counts = [
-                #     uniq_counter[(rid, AlignmentCounter.PLUS_STRAND)],
-                #     uniq_counter[(rid, AlignmentCounter.MINUS_STRAND)],
-                # ]
-                # ambig_counts = [
-                #     ambig_counter[(rid, AlignmentCounter.PLUS_STRAND)],
-                #     ambig_counter[(rid, AlignmentCounter.MINUS_STRAND)],
-                # ]
+            # rid = seqid[0] if isinstance(seqid, tuple) else seqid
+            # uniq_counts = [
+            #     uniq_counter[(rid, AlignmentCounter.PLUS_STRAND)],
+            #     uniq_counter[(rid, AlignmentCounter.MINUS_STRAND)],
+            # ]
+            # ambig_counts = [
+            #     ambig_counter[(rid, AlignmentCounter.PLUS_STRAND)],
+            #     ambig_counter[(rid, AlignmentCounter.MINUS_STRAND)],
+            # ]
         counts = self[seqid]
         return np.array((counts[0], counts[2], counts[1], counts[3]))
 
