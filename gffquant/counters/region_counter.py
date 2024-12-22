@@ -8,6 +8,21 @@ from .. import DistributionMode
 from .alignment_counter2 import AlignmentCounter
 
 
+# from count_manager.get_counts()
+# if region_counts:
+#     raise NotImplementedError()
+#     rid, seqid = seqid[0], seqid[1:]
+
+#     uniq_counter = self.uniq_regioncounts.get(rid, Counter())
+#     ambig_counter = self.ambig_regioncounts.get(rid, Counter())
+
+#     # pylint: disable=R1720
+#     if strand_specific:
+#         raise NotImplementedError
+#     else:
+#         return [uniq_counter[seqid]], [ambig_counter[seqid]]
+
+
 class RegionCounter(AlignmentCounter):
     """This counter class can be used in overlap mode, i.e.
     when reads are aligned against long references (e.g. contigs)

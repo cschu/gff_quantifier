@@ -1,9 +1,11 @@
 # pylint: disable=W0223
 
+# deprecated
+
 """ module docstring """
 
 from .. import DistributionMode
-from .alignment_counter2 import AlignmentCounter
+from .alignment_counter import AlignmentCounter
 
 
 class UniqueSeqCounter(AlignmentCounter):

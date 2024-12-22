@@ -10,12 +10,11 @@ import time
 
 from abc import ABC
 from collections import Counter
-from dataclasses import dataclass, asdict
 
 from .panda_coverage_profiler import PandaCoverageProfiler
 from ..alignment import AlignmentGroup, AlignmentProcessor, ReferenceHit, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
-from ..counters import CountManager, AlignmentCounter
+from ..counters import AlignmentCounter
 from ..db.annotation_db import AnnotationDatabaseManager
 
 from .. import __tool__, DistributionMode, RunMode
@@ -139,7 +138,7 @@ class FeatureQuantifier(ABC):
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
 
         count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
-        
+
         count_writer = CountWriter(
             self.out_prefix,
             # has_ambig_counts=self.count_manager.has_ambig_counts(),

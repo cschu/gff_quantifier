@@ -1,3 +1,8 @@
+# pylint: disable=R0902
+
+""" module docstring """
+
+import gzip
 import logging
 
 from collections import Counter
@@ -13,6 +18,9 @@ logger = logging.getLogger(__name__)
 class AlignmentCounter:
     COUNT_HEADER_ELEMENTS = ("raw", "lnorm", "scaled")
     INITIAL_SIZE = 1000
+    # this may be counter-intuitive
+    # but originates from the samflags 0x10, 0x20,
+    # which explicitly identify the reverse-strandness of the read
     PLUS_STRAND, MINUS_STRAND = False, True
 
     @staticmethod
@@ -25,7 +33,7 @@ class AlignmentCounter:
     def get_increment(self, n_aln, increment):
         # 1overN = lavern. Maya <3
         return (increment / n_aln) if self.distribution_mode == DistributionMode.ONE_OVER_N else increment
-    
+
     def toggle_single_read_handling(self, unmarked_orphans):
         # precalculate count-increment for single-end, paired-end reads
         # for mixed input (i.e., paired-end data with single-end reads = orphans from preprocessing),
@@ -65,8 +73,8 @@ class AlignmentCounter:
             (AlignmentCounter.INITIAL_SIZE, 2,),
             dtype='float64',
         )
+
     def dump(self, prefix, refmgr):
-        import gzip
         with gzip.open(f"{prefix}.{self.__class__.__name__}.txt.gz", "wt") as _out:
             for key, key_index in self.index.items():
                 ref, reflen = refmgr.get(key[0] if isinstance(key, tuple) else key)
@@ -74,33 +82,35 @@ class AlignmentCounter:
             # for k, v in self.items():
             # ref, reflen = refmgr.get(k[0] if isinstance(k, tuple) else k)
             # print(k, ref, reflen, v, sep="\t", file=_out)
-        ...
+
     def get(self, key, default_val):
         key_index = self.index.get(key)
         if key_index is None:
             return Counter()
         return Counter({key: self.counts[key_index]})
-    
+
     def setdefault(self, key, default_val):
         ...
 
     def has_ambig_counts(self):
         return bool(self.counts[:, 1].sum() != 0)
-    
+
     def __iter__(self):
         yield from self.index.keys()
+
     def __getitem__(self, key):
         key_index = self.index.get(key)
         if key_index is None:
             return 0.0
         return self.counts[key_index]
+
     def __setitem__(self, key, value):
         key_index = self.index.get(key)
         if key_index is not None:
             self.counts[key_index] = value
         else:
             raise KeyError(f"{key=} not found.")
-    
+
     def update(self, count_stream, ambiguous_counts=False, pair=False, pe_library=None,):
         if pe_library is not None:
             # this is the case when the alignment has a read group tag
@@ -118,19 +128,32 @@ class AlignmentCounter:
         contributed_counts = self.update_counts(count_stream, increment=increment, ambiguous_counts=ambiguous_counts,)
 
         return contributed_counts
-    
+
     def get_unannotated_reads(self):
         return self.unannotated_reads
-    
+
     def get_counts(self, seqid, strand_specific=False):
         if strand_specific:
-            raise NotImplementedError()
+                raise NotImplementedError()
+                uniq_counts, ambig_counts = [0.0, 0.0], [0.0, 0.0]
+                uniq_counts[seqid[1]] = uniq_counter[seqid]
+                ambig_counts[seqid[1]] = ambig_counter[seqid]
+
+                # rid = seqid[0] if isinstance(seqid, tuple) else seqid
+                # uniq_counts = [
+                #     uniq_counter[(rid, CountManager.PLUS_STRAND)],
+                #     uniq_counter[(rid, CountManager.MINUS_STRAND)],
+                # ]
+                # ambig_counts = [
+                #     ambig_counter[(rid, CountManager.PLUS_STRAND)],
+                #     ambig_counter[(rid, CountManager.MINUS_STRAND)],
+                # ]
         counts = self[seqid]
         return np.array((counts[0], counts[2], counts[1], counts[3]))
-    
+
     def get_all_regions(self):
-        yield from self 
-        
+        yield from self
+
     def update_counts(self, count_stream, increment=1, ambiguous_counts=False):
         contributed_counts = 0
         for hits, aln_count in count_stream:
@@ -162,7 +185,7 @@ class AlignmentCounter:
             contributed_counts += inc
 
         return contributed_counts
-    
+
     def transform(self, refmgr):
         # transform 2-column uniq/ambig count matrix
         # into 4 columns
@@ -195,5 +218,3 @@ class AlignmentCounter:
 
         # return count sums
         return self.counts.sum(axis=0)
-
-

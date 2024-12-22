@@ -152,7 +152,7 @@ class CountManager:
         if region_counts:
             raise NotImplementedError()
             rid, seqid = seqid[0], seqid[1:]
-            
+
             uniq_counter = self.uniq_regioncounts.get(rid, Counter())
             ambig_counter = self.ambig_regioncounts.get(rid, Counter())
 
@@ -164,7 +164,6 @@ class CountManager:
 
         else:
             # uniq_counter, ambig_counter = self.uniq_seqcounts, self.ambig_seqcounts
-
 
             if strand_specific:
                 raise NotImplementedError()
@@ -196,7 +195,7 @@ class CountManager:
         return set(self.uniq_regioncounts.get(rid, Counter())).union(
             self.ambig_regioncounts.get(rid, Counter())
         )
-    
+
     def get_all_regions(self, region_counts=False):
         # uniq_counts, ambig_counts = (
         #     (self.uniq_seqcounts, self.ambig_seqcounts,),

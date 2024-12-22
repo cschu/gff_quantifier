@@ -8,7 +8,7 @@ import sys
 
 import numpy as np
 
-from ..counters import CountManager, AlignmentCounter
+from ..counters import AlignmentCounter
 
 
 logger = logging.getLogger(__name__)
@@ -163,7 +163,14 @@ class CountWriter:
                         )
                         CountWriter.write_row(feature.name, out_row, stream=feat_out)
 
-    def write_gene_counts(self, gene_counts: AlignmentCounter, refmgr, uniq_scaling_factor, ambig_scaling_factor, gene_group_db=False):
+    def write_gene_counts(
+        self,
+        gene_counts: AlignmentCounter,
+        refmgr,
+        uniq_scaling_factor,
+        ambig_scaling_factor,
+        gene_group_db=False
+    ):
         if "scaled" in self.publish_reports:
             logger.info("SCALING_FACTORS %s %s", uniq_scaling_factor, ambig_scaling_factor)
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
@@ -216,4 +223,3 @@ class CountWriter:
             #         gene_id = ref
 
             #     CountWriter.write_row(gene_id, out_row, stream=gene_out,)
-
