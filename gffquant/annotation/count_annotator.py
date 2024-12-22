@@ -8,7 +8,7 @@ from itertools import chain
 
 import numpy as np
 
-from ..counters.count_manager import CountManager
+from ..counters.count_manager import CountManager, AlignmentCounter
 
 
 logger = logging.getLogger(__name__)
@@ -202,7 +202,7 @@ class RegionCountAnnotator(CountAnnotator):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
     # pylint: disable=R0914,W0613
-    def annotate(self, refmgr, db, count_manager: CountManager, gene_group_db=False):
+    def annotate(self, refmgr, db, counter: AlignmentCounter, gene_group_db=False):
         """
         Annotate a set of region counts via db-lookup.
         input:

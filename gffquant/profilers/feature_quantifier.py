@@ -59,12 +59,6 @@ class FeatureQuantifier(ABC):
         self.db = db
         self.adm = None
         self.run_mode = run_mode
-        # self.count_manager = CountManager(
-        #     distribution_mode=distribution_mode,
-        #     region_counts=run_mode.overlap_required,
-        #     strand_specific=strand_specific and not run_mode.overlap_required,
-        #     paired_end_count=paired_end_count,
-        # )
         self.counter = AlignmentCounter(
             distribution_mode=distribution_mode,
             strand_specific=strand_specific,
@@ -74,7 +68,6 @@ class FeatureQuantifier(ABC):
         self.distribution_mode = distribution_mode
         self.reference_manager = {}
         self.strand_specific = strand_specific
-        # self.coverage_counter = {}
         self.debug = debug
         self.panda_cv = PandaCoverageProfiler(dump_dataframes=self.debug) if calculate_coverage else None
 

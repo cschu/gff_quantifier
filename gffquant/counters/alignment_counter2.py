@@ -141,12 +141,12 @@ class AlignmentCounter:
 
                 # rid = seqid[0] if isinstance(seqid, tuple) else seqid
                 # uniq_counts = [
-                #     uniq_counter[(rid, CountManager.PLUS_STRAND)],
-                #     uniq_counter[(rid, CountManager.MINUS_STRAND)],
+                #     uniq_counter[(rid, AlignmentCounter.PLUS_STRAND)],
+                #     uniq_counter[(rid, AlignmentCounter.MINUS_STRAND)],
                 # ]
                 # ambig_counts = [
-                #     ambig_counter[(rid, CountManager.PLUS_STRAND)],
-                #     ambig_counter[(rid, CountManager.MINUS_STRAND)],
+                #     ambig_counter[(rid, AlignmentCounter.PLUS_STRAND)],
+                #     ambig_counter[(rid, AlignmentCounter.MINUS_STRAND)],
                 # ]
         counts = self[seqid]
         return np.array((counts[0], counts[2], counts[1], counts[3]))
