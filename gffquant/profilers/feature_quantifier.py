@@ -139,10 +139,10 @@ class FeatureQuantifier(ABC):
             filtered_readcount=self.aln_counter["filtered_read_count"],
         )
 
-        count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
-
         total_gene_counts, u_sf, a_sf = self.counter.generate_gene_count_matrix(self.reference_manager)
         logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
+
+        count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
 
         count_writer.write_gene_counts(
             self.counter,
