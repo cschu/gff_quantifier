@@ -129,8 +129,6 @@ class FeatureQuantifier(ABC):
         Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
 
-        count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
-
         count_writer = CountWriter(
             self.out_prefix,
             has_ambig_counts=self.counter.has_ambig_counts(),
@@ -141,6 +139,19 @@ class FeatureQuantifier(ABC):
             filtered_readcount=self.aln_counter["filtered_read_count"],
         )
 
+        count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
+
+        total_gene_counts, u_sf, a_sf = self.counter.generate_gene_count_matrix(self.reference_manager)
+        logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
+
+        count_writer.write_gene_counts(
+            self.counter,
+            self.reference_manager,
+            u_sf, a_sf,
+            gene_group_db=gene_group_db,
+        )
+
+
         unannotated_reads = self.counter.get_unannotated_reads()
         unannotated_reads += self.aln_counter["unannotated_ambig"]
 
@@ -150,13 +161,13 @@ class FeatureQuantifier(ABC):
             (None, unannotated_reads)[report_unannotated],
         )
 
-        count_writer.write_gene_counts(
-            self.counter,
-            self.reference_manager,
-            count_annotator.scaling_factors["total_gene_uniq"],
-            count_annotator.scaling_factors["total_gene_ambi"],
-            gene_group_db=gene_group_db,
-        )
+        # count_writer.write_gene_counts(
+        #     self.counter,
+        #     self.reference_manager,
+        #     count_annotator.scaling_factors["total_gene_uniq"],
+        #     count_annotator.scaling_factors["total_gene_ambi"],
+        #     gene_group_db=gene_group_db,
+        # )
 
         self.adm.clear_caches()
 

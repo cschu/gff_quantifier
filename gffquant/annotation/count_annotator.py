@@ -112,19 +112,19 @@ class CountAnnotator(dict):
         )
 
         # total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_gene_counts
-        total_uniq, total_ambi, total_uniq_normed, total_ambi_normed = self.total_gene_counts
-        logger.info(
-            "TOTAL GENE COUNTS: uraw=%s unorm=%s araw=%s anorm=%s",
-            total_uniq, total_uniq_normed, total_ambi, total_ambi_normed
-        )
+        # total_uniq, total_ambi, total_uniq_normed, total_ambi_normed = self.total_gene_counts
+        # logger.info(
+        #     "TOTAL GENE COUNTS: uraw=%s unorm=%s araw=%s anorm=%s",
+        #     total_uniq, total_uniq_normed, total_ambi, total_ambi_normed
+        # )
 
-        self.scaling_factors["total_gene_uniq"] = calc_scaling_factor(
-            total_uniq, total_uniq_normed, default_scaling_factor
-        )
+        # self.scaling_factors["total_gene_uniq"] = calc_scaling_factor(
+        #     total_uniq, total_uniq_normed, default_scaling_factor
+        # )
 
-        self.scaling_factors["total_gene_ambi"] = calc_scaling_factor(
-            total_ambi, total_ambi_normed, default_scaling_factor
-        )
+        # self.scaling_factors["total_gene_ambi"] = calc_scaling_factor(
+        #     total_ambi, total_ambi_normed, default_scaling_factor
+        # )
 
         fc_items = self.feature_count_sums.items()
         for category, (

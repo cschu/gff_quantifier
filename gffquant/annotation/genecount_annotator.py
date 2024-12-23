@@ -2,6 +2,7 @@
 import logging
 
 from .count_annotator import CountAnnotator
+from .count_writer import CountWriter
 from ..counters import AlignmentCounter
 
 
@@ -17,8 +18,15 @@ class GeneCountAnnotator(CountAnnotator):
 
     def annotate(self, refmgr, db, counter: AlignmentCounter, gene_group_db=False):
         """ Annotate a set of gene counts with functional annotations. """
-        self.total_gene_counts = counter.transform(refmgr)
-        logger.info("TOTAL_GENE_COUNTS = %s", self.total_gene_counts)
+        # self.total_gene_counts, u_sf, a_sf = counter.generate_gene_count_matrix(refmgr)
+        # logger.info("TOTAL_GENE_COUNTS = %s", self.total_gene_counts)
+
+        # writer.write_gene_counts(
+        #     counter,
+        #     refmgr,
+        #     u_sf, a_sf,
+        #     gene_group_db=gene_group_db,
+        # )
 
         # formerly used in compute_count_vector
         strand_specific_counts = (

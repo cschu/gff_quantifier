@@ -186,7 +186,7 @@ class AlignmentCounter:
 
         return contributed_counts
 
-    def transform(self, refmgr):
+    def generate_gene_count_matrix(self, refmgr):
         # transform 2-column uniq/ambig count matrix
         # into 4 columns
         # uniq_raw, combined_raw, uniq_lnorm, combined_lnorm
@@ -216,5 +216,16 @@ class AlignmentCounter:
         # length-normalise the lnorm columns
         self.counts[:, 2:4] /= lengths[:, None]
 
-        # return count sums
-        return self.counts.sum(axis=0)
+        count_sums = self.counts.sum(axis=0)
+
+        uniq_scaling_factor = (count_sums[0] / count_sums[2], 1.0)[count_sums[2] == 0]
+        ambig_scaling_factor = (count_sums[1] / count_sums[3], 1.0)[count_sums[3] == 0]
+
+        logger.info(
+            "AC:: TOTAL GENE COUNTS: uraw=%s unorm=%s araw=%s anorm=%s => SF: %s %s",
+            count_sums[0], count_sums[2], count_sums[1], count_sums[3],
+            uniq_scaling_factor, ambig_scaling_factor,            
+        )
+
+        # return count sums and scaling factors
+        return count_sums, uniq_scaling_factor, ambig_scaling_factor
