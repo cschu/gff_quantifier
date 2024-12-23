@@ -142,7 +142,6 @@ class FeatureQuantifier(ABC):
         total_gene_counts, u_sf, a_sf = self.counter.generate_gene_count_matrix(self.reference_manager)
         logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
 
-        count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
 
         count_writer.write_gene_counts(
             self.counter,
@@ -151,6 +150,9 @@ class FeatureQuantifier(ABC):
             gene_group_db=gene_group_db,
         )
 
+        self.counter.group_gene_count_matrix(self.reference_manager)
+
+        count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
 
         unannotated_reads = self.counter.get_unannotated_reads()
         unannotated_reads += self.aln_counter["unannotated_ambig"]
