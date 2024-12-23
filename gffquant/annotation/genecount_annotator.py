@@ -36,11 +36,13 @@ class GeneCountAnnotator(CountAnnotator):
 
         for rid in counter.get_all_regions():
             counts = counter.get_counts(rid, strand_specific=self.strand_specific)
+            
             ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
 
             if gene_group_db:
-                ref_tokens = ref.split(".")
-                gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                # ref_tokens = ref.split(".")
+                # gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                gene_id, ggroup_id = rid, rid
             else:
                 gene_id, ggroup_id = ref, ref
 

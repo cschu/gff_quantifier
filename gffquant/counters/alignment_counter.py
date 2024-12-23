@@ -229,3 +229,26 @@ class AlignmentCounter:
 
         # return count sums and scaling factors
         return count_sums, uniq_scaling_factor, ambig_scaling_factor
+    
+    def group_gene_count_matrix(self, refmgr):
+        ggroup_index = {}
+        for key, key_index in self.index.items():
+            ref = (refmgr.get(key[0] if isinstance(key, tuple) else key))[0]
+            ref_tokens = ref.split(".")
+            _, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+            g_key_index = ggroup_index.get(ggroup_id)
+            if g_key_index is None:
+                g_key_index = ggroup_index[ggroup_id] = len(ggroup_index)
+            else:
+                # only add counts if group has been encountered before
+                # else there will be duplicates
+                self.counts[g_key_index] += self.counts[key_index]
+
+        # replace index with grouped index
+        self.index = ggroup_index
+
+        # remove the un-indexed (ungrouped) rows
+        self.counts = self.counts[0:len(self.index), :]
+
+
+    
