@@ -235,14 +235,16 @@ class AlignmentCounter:
         for key, key_index in self.index.items():
             ref = (refmgr.get(key[0] if isinstance(key, tuple) else key))[0]
             ref_tokens = ref.split(".")
-            _, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+            gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
             g_key_index = ggroup_index.get(ggroup_id)
             if g_key_index is None:
                 g_key_index = ggroup_index[ggroup_id] = len(ggroup_index)
+                logger.info("AC: group_gene_count_matrix - gene=%s new group=%s (%s) base counts=%s -> %s", gene_id, ggroup_id, g_key_index, str(self.counts[key_index]), str(self.counts[g_key_index]),)
             else:
                 # only add counts if group has been encountered before
                 # else there will be duplicates
                 self.counts[g_key_index] += self.counts[key_index]
+                logger.info("AC: group_gene_count_matrix - gene=%s group=%s (%s) adding counts=%s -> %s", gene_id, ggroup_id, g_key_index, str(self.counts[key_index]), str(self.counts[g_key_index]),)
 
         # replace index with grouped index
         self.index = ggroup_index
