@@ -241,12 +241,12 @@ class AlignmentCounter:
             if g_key_index is None:
                 g_key_index = ggroup_index[ggroup_id] = len(ggroup_index)
                 self.counts[g_key_index] = gene_counts
-                logger.info("AC: group_gene_count_matrix - gene=%s new group=%s (%s) base counts=%s -> %s", gene_id, ggroup_id, g_key_index, str(self.counts[key_index]), str(self.counts[g_key_index]),)
+                # logger.info("AC: group_gene_count_matrix - gene=%s new group=%s (%s) base counts=%s -> %s", gene_id, ggroup_id, g_key_index, str(self.counts[key_index]), str(self.counts[g_key_index]),)
             else:
                 # only add counts if group has been encountered before
                 # else there will be duplicates
                 self.counts[g_key_index] += gene_counts
-                logger.info("AC: group_gene_count_matrix - gene=%s group=%s (%s) adding counts=%s -> %s", gene_id, ggroup_id, g_key_index, str(self.counts[key_index]), str(self.counts[g_key_index]),)
+                # logger.info("AC: group_gene_count_matrix - gene=%s group=%s (%s) adding counts=%s -> %s", gene_id, ggroup_id, g_key_index, str(self.counts[key_index]), str(self.counts[g_key_index]),)
 
         # replace index with grouped index
         self.index = ggroup_index
