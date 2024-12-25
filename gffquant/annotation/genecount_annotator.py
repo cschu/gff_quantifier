@@ -58,7 +58,7 @@ class GeneCountAnnotator(CountAnnotator):
                 elif it == 0:
                     self.unannotated_counts += counts[:4]
             
-            count_sums = counter.sum(axis=0)
+            count_sums = counter.counts.sum(axis=0)
 
             uniq_scaling_factor = (count_sums[0] / count_sums[2], 1.0)[count_sums[2] == 0]
             ambig_scaling_factor = (count_sums[1] / count_sums[3], 1.0)[count_sums[3] == 0]
