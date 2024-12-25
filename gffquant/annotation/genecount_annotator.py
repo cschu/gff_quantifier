@@ -26,7 +26,7 @@ class GeneCountAnnotator(CountAnnotator):
             # filtered_reads  454437.00000    454437.00000    454437.00000    454437.00000    454437.00000    454437.00000
             # category        45359.50000     47.10706        42266.81963     152875.83896    224.72779       149853.25971
             category_counts = np.zeros(
-                (len(features) + 1, 2,),
+                (len(features) + 1, 4,),
                 dtype='float64',
             )
             category_index = {
