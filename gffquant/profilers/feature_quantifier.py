@@ -152,7 +152,7 @@ class FeatureQuantifier(ABC):
 
         self.counter.group_gene_count_matrix(self.reference_manager)
 
-        count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
+        # count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
 
         # category.name, category_counts, category_index, uniq_scaling_factor, ambig_scaling_factor
         for category, c_counts, c_index, c_names, u_sf, a_sf in count_annotator.annotate2(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,):
