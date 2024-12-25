@@ -154,14 +154,19 @@ class FeatureQuantifier(ABC):
 
         count_annotator.annotate(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,)
 
-        unannotated_reads = self.counter.get_unannotated_reads()
-        unannotated_reads += self.aln_counter["unannotated_ambig"]
+        # category.name, category_counts, category_index, uniq_scaling_factor, ambig_scaling_factor
+        for category, c_counts, c_index, c_names, u_sf, a_sf in count_annotator.annotate2(self.reference_manager, self.adm, self.counter, gene_group_db=gene_group_db,):
+            unannotated_reads = self.counter.get_unannotated_reads() + self.aln_counter["unannotated_ambig"]
+            count_writer.write_category(category, c_counts, c_index, c_names, u_sf, a_sf, unannotated_reads=(None, unannotated_reads)[report_unannotated],)
 
-        count_writer.write_feature_counts(
-            self.adm,
-            count_annotator,
-            (None, unannotated_reads)[report_unannotated],
-        )
+        # unannotated_reads = self.counter.get_unannotated_reads()
+        # unannotated_reads += self.aln_counter["unannotated_ambig"]
+
+        # count_writer.write_feature_counts(
+        #     self.adm,
+        #     count_annotator,
+        #     (None, unannotated_reads)[report_unannotated],
+        # )
 
         # count_writer.write_gene_counts(
         #     self.counter,
