@@ -49,7 +49,7 @@ class GeneCountAnnotator(CountAnnotator):
                 logger.info("REGION_ANNOTATION: %s (%s)", str(region_annotation), ggroup_id)
                 if region_annotation is not None:
                     _, _, region_annotation = region_annotation
-                    category_features = dict(region_annotation).get(category.id)
+                    category_features = dict(region_annotation).get(str(category.id))
                     if category_features is not None:
                         category_counts[0] += counts  # category row
                         for cf in category_features:
