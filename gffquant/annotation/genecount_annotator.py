@@ -46,7 +46,7 @@ class GeneCountAnnotator(CountAnnotator):
                     gene_id, ggroup_id = ref, ref
 
                 region_annotation = db.query_sequence(ggroup_id)
-                # logger.info("REGION_ANNOTATION: %s (%s)", str(region_annotation))
+                logger.info("REGION_ANNOTATION: %s (%s)", str(region_annotation), ggroup_id)
                 if region_annotation is not None:
                     _, _, region_annotation = region_annotation
                     category_features = dict(region_annotation).get(category.id)
