@@ -53,7 +53,7 @@ class GeneCountAnnotator(CountAnnotator):
                     if category_features is not None:
                         category_counts[0] += counts  # category row
                         for cf in category_features:
-                            category_counts[category_index.get(cf)] += counts
+                            category_counts[category_index.get(int(cf))] += counts
 
                 elif it == 0:
                     self.unannotated_counts += counts[:4]
