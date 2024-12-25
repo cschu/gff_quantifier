@@ -139,7 +139,7 @@ class CountWriter:
 
             if "category" in self.publish_reports:
                 # cat_counts = counts.get(f"cat:::{category_id}")
-                cat_counts = counts.get(0)
+                cat_counts = np.array((counts[0][0], counts[0][2], counts[0][1], counts[0][3]))
                 logger.info("CAT %s: %s", category, str(cat_counts))
                 if cat_counts is not None:
                     cat_row = self.compile_output_row(
