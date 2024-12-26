@@ -60,13 +60,14 @@ class GeneCountAnnotator(CountAnnotator):
             
             count_sums = category_counts[1:].sum(axis=0)
 
-            uniq_scaling_factor = (count_sums[0] / count_sums[2], 1.0)[count_sums[2] == 0]
-            ambig_scaling_factor = (count_sums[1] / count_sums[3], 1.0)[count_sums[3] == 0]
+            uniq_scaling_factor = (count_sums[0] / count_sums[1], 1.0)[count_sums[1] == 0]
+            ambig_scaling_factor = (count_sums[2] / count_sums[3], 1.0)[count_sums[3] == 0]
 
             logger.info(
                 "GCA:: %s CATEGORY COUNTS: uraw=%s unorm=%s araw=%s anorm=%s => SF: %s %s",
                 category.name,
-                count_sums[0], count_sums[2], count_sums[1], count_sums[3],
+                # count_sums[0], count_sums[1], count_sums[1], count_sums[3],
+                *count_sums,
                 uniq_scaling_factor, ambig_scaling_factor,            
             )
 
