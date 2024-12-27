@@ -1,4 +1,4 @@
-# pylint: disable=C0103,W1514,R0913,R0917
+# pylint: disable=C0103,W1514,R0913,R0917,R0914
 
 """ module docstring """
 
@@ -109,7 +109,17 @@ class CountWriter:
     def write_row(header, data, stream=sys.stdout):
         print(header, *(f"{c:.5f}" for c in data), flush=True, sep="\t", file=stream)
 
-    def write_category(self, category, counts, index, names, unique_sf, ambig_sf, unannotated_reads=None, report_unseen=True):
+    def write_category(
+        self,
+        category,
+        counts,
+        index,
+        names,
+        unique_sf,
+        ambig_sf,
+        unannotated_reads=None,
+        report_unseen=True,
+    ):
         # category, c_counts, c_index, c_names, u_sf, a_sf
         if "scaled" in self.publish_reports:
             logger.info(
@@ -138,21 +148,18 @@ class CountWriter:
                 )
 
             if "category" in self.publish_reports:
-                # cat_counts = counts.get(f"cat:::{category_id}")
-                cat_counts = counts[0]  # np.array((counts[0][0], counts[0][2], counts[0][1], counts[0][3]))
+                cat_counts = counts[0]
                 logger.info("CAT %s: %s", category, str(cat_counts))
                 if cat_counts is not None:
                     cat_row = self.compile_output_row(
                         cat_counts,
-                        # scaling_factor=featcounts.scaling_factors["total_uniq"],
-                        # ambig_scaling_factor=featcounts.scaling_factors["total_ambi"],
                         scaling_factor=unique_sf,
                         ambig_scaling_factor=ambig_sf,
                     )
                     CountWriter.write_row("category", cat_row, stream=feat_out)
 
             for fid, i in index.items():
-                f_counts = counts[i]  # np.array((counts[i][0], counts[i][2], counts[i][1], counts[i][3]))  #counts[fid]
+                f_counts = counts[i]
                 if report_unseen or f_counts.sum():
                     out_row = self.compile_output_row(
                         f_counts,
@@ -160,61 +167,6 @@ class CountWriter:
                         ambig_scaling_factor=ambig_sf,
                     )
                     CountWriter.write_row(names[fid], out_row, stream=feat_out)
-
-
-    # pylint: disable=R0914
-    def write_feature_counts(self, db, featcounts, unannotated_reads=None, report_unseen=True):
-        for category_id, counts in sorted(featcounts.items()):
-            scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
-                category_id
-            ]
-            category = db.query_category(category_id).name
-            if "scaled" in self.publish_reports:
-                logger.info(
-                    "SCALING FACTORS %s %s %s",
-                    category, scaling_factor, ambig_scaling_factor
-                )
-            with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
-                header = self.get_header()
-                print("feature", *header, sep="\t", file=feat_out)
-
-                if unannotated_reads is not None:
-                    print("unannotated", unannotated_reads, sep="\t", file=feat_out)
-
-                if "total_readcount" in self.publish_reports:
-                    CountWriter.write_row(
-                        "total_reads",
-                        np.zeros(len(header)) + self.total_readcount,
-                        stream=feat_out,
-                    )
-
-                if "filtered_readcount" in self.publish_reports:
-                    CountWriter.write_row(
-                        "filtered_reads",
-                        np.zeros(len(header)) + self.filtered_readcount,
-                        stream=feat_out,
-                    )
-
-                if "category" in self.publish_reports:
-                    cat_counts = counts.get(f"cat:::{category_id}")
-                    logger.info("CAT %s: %s", category_id, str(cat_counts))
-                    if cat_counts is not None:
-                        cat_row = self.compile_output_row(
-                            cat_counts,
-                            scaling_factor=featcounts.scaling_factors["total_uniq"],
-                            ambig_scaling_factor=featcounts.scaling_factors["total_ambi"],
-                        )
-                        CountWriter.write_row("category", cat_row, stream=feat_out)
-
-                for feature in db.get_features(category_id):
-                    f_counts = counts.get(str(feature.id), np.zeros(len(header)))
-                    if report_unseen or f_counts.sum():
-                        out_row = self.compile_output_row(
-                            f_counts,
-                            scaling_factor=scaling_factor,
-                            ambig_scaling_factor=ambig_scaling_factor,
-                        )
-                        CountWriter.write_row(feature.name, out_row, stream=feat_out)
 
     def write_gene_counts(
         self,

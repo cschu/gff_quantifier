@@ -1,3 +1,5 @@
+""" module docstring """
+
 import numpy as np
 
 from . import CountAnnotator

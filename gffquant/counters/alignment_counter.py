@@ -130,7 +130,11 @@ class AlignmentCounter:
         return contributed_counts
 
     def get_unannotated_reads(self):
-        return self.unannotated_reads
+        # return self.unannotated_reads
+        no_annotation = self.index.get("c591b65a0f4cd46d5125745a40c8c056")
+        if no_annotation is not None:
+            return self.counts[no_annotation][0]
+        return 0.0
 
     def get_counts(self, seqid, strand_specific=False):
         if strand_specific:
@@ -224,35 +228,28 @@ class AlignmentCounter:
         logger.info(
             "AC:: TOTAL GENE COUNTS: uraw=%s unorm=%s araw=%s anorm=%s => SF: %s %s",
             count_sums[0], count_sums[2], count_sums[1], count_sums[3],
-            uniq_scaling_factor, ambig_scaling_factor,            
+            uniq_scaling_factor, ambig_scaling_factor,
         )
 
         # return count sums and scaling factors
         return count_sums, uniq_scaling_factor, ambig_scaling_factor
-    
+
     def group_gene_count_matrix(self, refmgr):
         ggroup_index = {}
         for key, key_index in self.index.items():
             ref = (refmgr.get(key[0] if isinstance(key, tuple) else key))[0]
             ref_tokens = ref.split(".")
-            gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+            _, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
             g_key_index = ggroup_index.get(ggroup_id)
             gene_counts = self.counts[key_index]
             if g_key_index is None:
                 g_key_index = ggroup_index[ggroup_id] = len(ggroup_index)
                 self.counts[g_key_index] = gene_counts
-                # logger.info("AC: group_gene_count_matrix - gene=%s new group=%s (%s) base counts=%s -> %s", gene_id, ggroup_id, g_key_index, str(self.counts[key_index]), str(self.counts[g_key_index]),)
             else:
-                # only add counts if group has been encountered before
-                # else there will be duplicates
                 self.counts[g_key_index] += gene_counts
-                # logger.info("AC: group_gene_count_matrix - gene=%s group=%s (%s) adding counts=%s -> %s", gene_id, ggroup_id, g_key_index, str(self.counts[key_index]), str(self.counts[g_key_index]),)
 
         # replace index with grouped index
         self.index = ggroup_index
 
         # remove the un-indexed (ungrouped) rows
         self.counts = self.counts[0:len(self.index), :]
-
-
-    

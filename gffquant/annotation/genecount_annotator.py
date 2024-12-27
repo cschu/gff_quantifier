@@ -1,10 +1,11 @@
+# pylint: disable=R0914
+
 """ module docstring """
 import logging
 
 import numpy as np
 
 from .count_annotator import CountAnnotator
-from .count_writer import CountWriter
 from ..counters import AlignmentCounter
 from ..db.annotation_db import AnnotationDatabaseManager
 
@@ -20,11 +21,8 @@ class GeneCountAnnotator(CountAnnotator):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
     def annotate2(self, refmgr, db: AnnotationDatabaseManager, counter: AlignmentCounter, gene_group_db=False):
-        for it, category in enumerate(db.get_categories()):
+        for category in db.get_categories():
             features = tuple(db.get_features(category.id))
-            # total_reads     483808.00000    483808.00000    483808.00000    483808.00000    483808.00000    483808.00000
-            # filtered_reads  454437.00000    454437.00000    454437.00000    454437.00000    454437.00000    454437.00000
-            # category        45359.50000     47.10706        42266.81963     152875.83896    224.72779       149853.25971
             category_counts = np.zeros(
                 (len(features) + 1, 4,),
                 dtype='float64',
@@ -40,10 +38,12 @@ class GeneCountAnnotator(CountAnnotator):
             for rid in counter.get_all_regions():
                 counts = counter.get_counts(rid, strand_specific=self.strand_specific)
                 if gene_group_db:
-                    gene_id, ggroup_id = rid, rid
+                    # gene_id, ggroup_id = rid, rid
+                    ggroup_id = rid
                 else:
                     ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
-                    gene_id, ggroup_id = ref, ref
+                    # gene_id, ggroup_id = ref, ref
+                    ggroup_id = ref
 
                 region_annotation = db.query_sequence(ggroup_id)
                 # logger.info("REGION_ANNOTATION: %s (%s)", str(region_annotation), ggroup_id)
@@ -55,12 +55,13 @@ class GeneCountAnnotator(CountAnnotator):
                         for cf in category_features:
                             category_counts[category_index.get(int(cf))] += counts
 
-                elif it == 0:
-                    self.unannotated_counts += counts[:4]
-            
+                # elif it == 0:
+                #     self.unannotated_counts += counts[:4]
+
             count_sums = category_counts[1:].sum(axis=0)
 
-            # should scaled counts use a factor derived from all counts or should multi-feature counts only contribute once?
+            # should scaled counts use a factor derived from all counts
+            # or should multi-feature counts only contribute once?
             # uniq_scaling_factor = (count_sums[0] / count_sums[1], 1.0)[count_sums[1] == 0]
             # ambig_scaling_factor = (count_sums[2] / count_sums[3], 1.0)[count_sums[3] == 0]
             # pre 2.19 category count scaling was based on total counts
@@ -75,15 +76,17 @@ class GeneCountAnnotator(CountAnnotator):
                 category.name,
                 # count_sums[0], count_sums[1], count_sums[1], count_sums[3],
                 *count_sums,
-                uniq_scaling_factor, ambig_scaling_factor,            
+                uniq_scaling_factor, ambig_scaling_factor,
             )
 
-            yield category.name, category_counts, category_index, category_names, uniq_scaling_factor, ambig_scaling_factor
-
-                
-
-
-
+            yield (
+                category.name,
+                category_counts,
+                category_index,
+                category_names,
+                uniq_scaling_factor,
+                ambig_scaling_factor,
+            )
 
     def annotate(self, refmgr, db: AnnotationDatabaseManager, counter: AlignmentCounter, gene_group_db=False):
         """ Annotate a set of gene counts with functional annotations. """
@@ -105,15 +108,16 @@ class GeneCountAnnotator(CountAnnotator):
 
         for rid in counter.get_all_regions():
             counts = counter.get_counts(rid, strand_specific=self.strand_specific)
-            
 
             if gene_group_db:
                 # ref_tokens = ref.split(".")
                 # gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
-                gene_id, ggroup_id = rid, rid
+                # gene_id, ggroup_id = rid, rid
+                ggroup_id = rid
             else:
                 ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
-                gene_id, ggroup_id = ref, ref
+                # gene_id, ggroup_id = ref, ref
+                ggroup_id = ref
 
             region_annotation = db.query_sequence(ggroup_id)
             if region_annotation is not None:
