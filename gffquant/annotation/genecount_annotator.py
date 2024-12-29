@@ -74,7 +74,6 @@ class GeneCountAnnotator(CountAnnotator):
             logger.info(
                 "GCA:: %s CATEGORY COUNTS: uraw=%s unorm=%s araw=%s anorm=%s => SF: %s %s",
                 category.name,
-                # count_sums[0], count_sums[1], count_sums[1], count_sums[3],
                 *count_sums,
                 uniq_scaling_factor, ambig_scaling_factor,
             )
@@ -90,15 +89,6 @@ class GeneCountAnnotator(CountAnnotator):
 
     def annotate(self, refmgr, db: AnnotationDatabaseManager, counter: AlignmentCounter, gene_group_db=False):
         """ Annotate a set of gene counts with functional annotations. """
-        # self.total_gene_counts, u_sf, a_sf = counter.generate_gene_count_matrix(refmgr)
-        # logger.info("TOTAL_GENE_COUNTS = %s", self.total_gene_counts)
-
-        # writer.write_gene_counts(
-        #     counter,
-        #     refmgr,
-        #     u_sf, a_sf,
-        #     gene_group_db=gene_group_db,
-        # )
 
         # formerly used in compute_count_vector
         strand_specific_counts = (
@@ -122,10 +112,6 @@ class GeneCountAnnotator(CountAnnotator):
             region_annotation = db.query_sequence(ggroup_id)
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
-                # logger.info(
-                #     "GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s",
-                #     gene_id, ggroup_id, counts[0], counts[2],
-                # )
                 self.distribute_feature_counts(counts, region_annotation)
 
             else:

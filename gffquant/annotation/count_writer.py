@@ -76,6 +76,7 @@ class CountWriter:
 
         p, row = 0, []
         rpkm_factor = 1e9 / self.filtered_readcount
+
         # unique counts
         row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
         p += 2
@@ -190,17 +191,19 @@ class CountWriter:
             )
 
             for ref, rid in sorted(ref_stream):
-                counts = gene_counts.get_counts(rid)
+                # counts = gene_counts.get_counts(rid)
+                counts = gene_counts[rid]
                 if gene_group_db:
                     ref_tokens = ref.split(".")
                     gene_id, _ = ".".join(ref_tokens[:-1]), ref_tokens[-1]
                 else:
                     gene_id = ref
 
-                out_row = self.compile_output_row(
-                    counts,
-                    scaling_factor=uniq_scaling_factor,
-                    ambig_scaling_factor=ambig_scaling_factor,
-                )
+                # out_row = self.compile_output_row(
+                #     counts,
+                #     scaling_factor=uniq_scaling_factor,
+                #     ambig_scaling_factor=ambig_scaling_factor,
+                # )
 
-                CountWriter.write_row(gene_id, out_row, stream=gene_out,)
+                # CountWriter.write_row(gene_id, out_row, stream=gene_out,)
+                CountWriter.write_row(gene_id, counts, stream=gene_out,)

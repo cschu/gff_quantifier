@@ -213,26 +213,45 @@ class AlignmentCounter:
 
         # duplicate the raw counts
         self.counts = np.concatenate(
-            (self.counts, self.counts,),
+            #(self.counts, self.counts, self.counts,),
+            (
+                self.counts[:, 0], self.counts[:, 0], self.counts[:, 0],  # 0, 1, 2
+                self.counts[:, 1], self.counts[:, 1], self.counts[:, 1],  # 3, 4, 5
+            ),
             axis=1,
         )
 
         # length-normalise the lnorm columns
-        self.counts[:, 2:4] /= lengths[:, None]
+        # self.counts[:, 2:4] /= lengths[:, None]
+        self.counts[:, 1::2] /= lengths[:, None]
 
         count_sums = self.counts.sum(axis=0)
 
-        uniq_scaling_factor = (count_sums[0] / count_sums[2], 1.0)[count_sums[2] == 0]
-        ambig_scaling_factor = (count_sums[1] / count_sums[3], 1.0)[count_sums[3] == 0]
-
-        logger.info(
-            "AC:: TOTAL GENE COUNTS: uraw=%s unorm=%s araw=%s anorm=%s => SF: %s %s",
-            count_sums[0], count_sums[2], count_sums[1], count_sums[3],
-            uniq_scaling_factor, ambig_scaling_factor,
+        # uniq_scaling_factor = (count_sums[0] / count_sums[2], 1.0)[count_sums[2] == 0]
+        # ambig_scaling_factor = (count_sums[1] / count_sums[3], 1.0)[count_sums[3] == 0]
+        uniq_scaling_factor, combined_scaling_factor = (
+            AlignmentCounter.calculate_scaling_factor(*count_sums[0:2]),
+            AlignmentCounter.calculate_scaling_factor(*count_sums[3:5]),
         )
 
+        logger.info(
+            "AC:: TOTAL GENE COUNTS: uraw=%s unorm=%s craw=%s cnorm=%s => SF: %s %s",
+            count_sums[0], count_sums[2], count_sums[1], count_sums[3],
+            uniq_scaling_factor, combined_scaling_factor,
+        )
+
+        # apply scaling factors
+        self.counts[:, 2] *= uniq_scaling_factor
+        self.counts[:, 5] *= combined_scaling_factor
+
         # return count sums and scaling factors
-        return count_sums, uniq_scaling_factor, ambig_scaling_factor
+        return count_sums, uniq_scaling_factor, combined_scaling_factor
+    
+    @staticmethod
+    def calculate_scaling_factor(raw, norm):
+        if norm == 0.0:
+            return 1.0
+        return raw / norm
 
     def group_gene_count_matrix(self, refmgr):
         ggroup_index = {}
