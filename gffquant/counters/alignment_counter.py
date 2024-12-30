@@ -236,7 +236,7 @@ class AlignmentCounter:
 
         logger.info(
             "AC:: TOTAL GENE COUNTS: uraw=%s unorm=%s craw=%s cnorm=%s => SF: %s %s",
-            count_sums[0], count_sums[2], count_sums[1], count_sums[3],
+            count_sums[0], count_sums[1], count_sums[3], count_sums[4],
             uniq_scaling_factor, combined_scaling_factor,
         )
 

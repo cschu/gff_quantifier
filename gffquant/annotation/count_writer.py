@@ -152,22 +152,22 @@ class CountWriter:
                 cat_counts = counts[0]
                 logger.info("CAT %s: %s", category, str(cat_counts))
                 if cat_counts is not None:
-                    cat_row = self.compile_output_row(
-                        cat_counts,
-                        scaling_factor=unique_sf,
-                        ambig_scaling_factor=ambig_sf,
-                    )
-                    CountWriter.write_row("category", cat_row, stream=feat_out)
+                    # cat_row = self.compile_output_row(
+                    #     cat_counts,
+                    #     scaling_factor=unique_sf,
+                    #     ambig_scaling_factor=ambig_sf,
+                    # )
+                    CountWriter.write_row("category", counts[0], stream=feat_out)
 
             for fid, i in index.items():
                 f_counts = counts[i]
                 if report_unseen or f_counts.sum():
-                    out_row = self.compile_output_row(
-                        f_counts,
-                        scaling_factor=unique_sf,
-                        ambig_scaling_factor=ambig_sf,
-                    )
-                    CountWriter.write_row(names[fid], out_row, stream=feat_out)
+                    # out_row = self.compile_output_row(
+                    #     f_counts,
+                    #     scaling_factor=unique_sf,
+                    #     ambig_scaling_factor=ambig_sf,
+                    # )
+                    CountWriter.write_row(names[fid], counts[i], stream=feat_out)
 
     def write_gene_counts(
         self,

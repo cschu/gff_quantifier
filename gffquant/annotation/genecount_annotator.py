@@ -24,7 +24,7 @@ class GeneCountAnnotator(CountAnnotator):
         for category in db.get_categories():
             features = tuple(db.get_features(category.id))
             category_counts = np.zeros(
-                (len(features) + 1, 4,),
+                (len(features) + 1, 6,),
                 dtype='float64',
             )
             category_index = {
@@ -35,8 +35,9 @@ class GeneCountAnnotator(CountAnnotator):
                 feature.id: feature.name
                 for feature in features
             }
-            for rid in counter.get_all_regions():
-                counts = counter.get_counts(rid, strand_specific=self.strand_specific)
+            for rid in counter:
+                # counts = counter.get_counts(rid, strand_specific=self.strand_specific)
+                counts = counter[rid]
                 if gene_group_db:
                     # gene_id, ggroup_id = rid, rid
                     ggroup_id = rid
@@ -65,17 +66,22 @@ class GeneCountAnnotator(CountAnnotator):
             # uniq_scaling_factor = (count_sums[0] / count_sums[1], 1.0)[count_sums[1] == 0]
             # ambig_scaling_factor = (count_sums[2] / count_sums[3], 1.0)[count_sums[3] == 0]
             # pre 2.19 category count scaling was based on total counts
-            uniq_scaling_factor, ambig_scaling_factor = 1.0, 1.0
-            if category_counts[0][1]:
-                uniq_scaling_factor = category_counts[0][0] / category_counts[0][1]
-            if category_counts[0][3]:
-                ambig_scaling_factor = category_counts[0][2] / category_counts[0][3]
+            # uniq_scaling_factor, ambig_scaling_factor = 1.0, 1.0
+            # if category_counts[0][1]:
+            #     uniq_scaling_factor = category_counts[0][0] / category_counts[0][1]
+            # if category_counts[0][3]:
+            #     ambig_scaling_factor = category_counts[0][2] / category_counts[0][3]
+            uniq_scaling_factor, combined_scaling_factor = (
+            AlignmentCounter.calculate_scaling_factor(*count_sums[0:2]),
+            AlignmentCounter.calculate_scaling_factor(*count_sums[3:5]),
+        )
 
             logger.info(
                 "GCA:: %s CATEGORY COUNTS: uraw=%s unorm=%s araw=%s anorm=%s => SF: %s %s",
                 category.name,
-                *count_sums,
-                uniq_scaling_factor, ambig_scaling_factor,
+                # *count_sums,
+                count_sums[0], count_sums[1], count_sums[3], count_sums[4],
+                uniq_scaling_factor, combined_scaling_factor,
             )
 
             yield (
@@ -84,7 +90,7 @@ class GeneCountAnnotator(CountAnnotator):
                 category_index,
                 category_names,
                 uniq_scaling_factor,
-                ambig_scaling_factor,
+                combined_scaling_factor,
             )
 
     def annotate(self, refmgr, db: AnnotationDatabaseManager, counter: AlignmentCounter, gene_group_db=False):
