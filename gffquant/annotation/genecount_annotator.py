@@ -59,7 +59,8 @@ class GeneCountAnnotator(CountAnnotator):
                 # elif it == 0:
                 #     self.unannotated_counts += counts[:4]
 
-            count_sums = category_counts[1:].sum(axis=0)
+            # count_sums = category_counts[1:].sum(axis=0)
+            count_sums = category_counts[0]
 
             # should scaled counts use a factor derived from all counts
             # or should multi-feature counts only contribute once?
@@ -72,9 +73,9 @@ class GeneCountAnnotator(CountAnnotator):
             # if category_counts[0][3]:
             #     ambig_scaling_factor = category_counts[0][2] / category_counts[0][3]
             uniq_scaling_factor, combined_scaling_factor = (
-            AlignmentCounter.calculate_scaling_factor(*count_sums[0:2]),
-            AlignmentCounter.calculate_scaling_factor(*count_sums[3:5]),
-        )
+                AlignmentCounter.calculate_scaling_factor(*count_sums[0:2]),
+                AlignmentCounter.calculate_scaling_factor(*count_sums[3:5]),
+            )
 
             logger.info(
                 "GCA:: %s CATEGORY COUNTS: uraw=%s unorm=%s araw=%s anorm=%s => SF: %s %s",
