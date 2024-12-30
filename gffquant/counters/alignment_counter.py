@@ -223,7 +223,7 @@ class AlignmentCounter:
 
         # length-normalise the lnorm columns
         # self.counts[:, 2:4] /= lengths[:, None]
-        self.counts[:, 1::2] /= lengths[:, None]
+        self.counts[:, 1::3] /= lengths[:, None]
 
         count_sums = self.counts.sum(axis=0)
 
@@ -241,8 +241,8 @@ class AlignmentCounter:
         )
 
         # apply scaling factors
-        self.counts[:, 2] *= uniq_scaling_factor
-        self.counts[:, 5] *= combined_scaling_factor
+        self.counts[:, 2] = self.counts[:, 1] * uniq_scaling_factor
+        self.counts[:, 5] = self.counts[:, 4] * combined_scaling_factor
 
         # return count sums and scaling factors
         return count_sums, uniq_scaling_factor, combined_scaling_factor
