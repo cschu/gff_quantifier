@@ -212,13 +212,13 @@ class AlignmentCounter:
         self.counts[:, 1:2] += self.counts[:, 0:1]
 
         # duplicate the raw counts
-        self.counts = np.concatenate(
+        self.counts = np.column_stack(
             #(self.counts, self.counts, self.counts,),
             (
                 self.counts[:, 0], self.counts[:, 0], self.counts[:, 0],  # 0, 1, 2
                 self.counts[:, 1], self.counts[:, 1], self.counts[:, 1],  # 3, 4, 5
             ),
-            axis=1,
+            # axis=1,
         )
 
         # length-normalise the lnorm columns
