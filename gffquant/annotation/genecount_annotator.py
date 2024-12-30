@@ -77,6 +77,10 @@ class GeneCountAnnotator(CountAnnotator):
                 AlignmentCounter.calculate_scaling_factor(*count_sums[3:5]),
             )
 
+            # apply scaling factors
+            category_counts[:, 2] = category_counts[:, 1] * uniq_scaling_factor
+            category_counts[:, 5] = category_counts[:, 4] * combined_scaling_factor
+
             logger.info(
                 "GCA:: %s CATEGORY COUNTS: uraw=%s unorm=%s araw=%s anorm=%s => SF: %s %s",
                 category.name,
