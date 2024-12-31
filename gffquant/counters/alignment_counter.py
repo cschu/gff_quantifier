@@ -99,8 +99,9 @@ class AlignmentCounter:
         # return bool(self.counts[:, 1].sum() != 0)
         return bool(self.counts.colsum(1) != 0)
 
-    # def __iter__(self):
-    #     yield from self.index.keys()
+    def __iter__(self):
+        # yield from self.index.keys()
+        yield from self.counts
 
     # def __getitem__(self, key):
     #     key_index = self.index.get(key)
