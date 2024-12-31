@@ -9,7 +9,7 @@ from collections import Counter
 
 import numpy as np
 
-from count_matrix import CountMatrix
+from .count_matrix import CountMatrix
 from .. import DistributionMode
 
 
