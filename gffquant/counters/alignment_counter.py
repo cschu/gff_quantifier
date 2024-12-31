@@ -103,6 +103,9 @@ class AlignmentCounter:
         # yield from self.index.keys()
         yield from self.counts
 
+    def __getitem__(self, key):
+        return self.counts[key]
+
     # def __getitem__(self, key):
     #     key_index = self.index.get(key)
     #     if key_index is None:
