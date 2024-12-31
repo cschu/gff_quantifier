@@ -205,7 +205,7 @@ class AlignmentCounter:
         gene_lengths = np.array(
             tuple(
                 (refmgr.get(key[0] if isinstance(key, tuple) else key))[1]
-                for key in self.index
+                for key, _ in self.counts
             )
         )
 
