@@ -145,7 +145,7 @@ class FeatureQuantifier(ABC):
         count_writer.write_gene_counts(
             self.counter,
             self.reference_manager,
-            u_sf, a_sf,
+            # u_sf, a_sf,
             gene_group_db=gene_group_db,
         )
 
