@@ -85,6 +85,8 @@ class CountMatrix:
         counts[:, 2] = counts[:, 1] * uniq_scaling_factor
         counts[:, 5] = counts[:, 4] * combined_scaling_factor
 
+        self.counts = counts
+
         return self
     
     def group_gene_counts(self, ggroups):
