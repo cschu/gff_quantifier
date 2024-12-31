@@ -173,12 +173,12 @@ class CountWriter:
         self,
         gene_counts: AlignmentCounter,
         refmgr,
-        uniq_scaling_factor,
-        ambig_scaling_factor,
+        # uniq_scaling_factor,
+        # ambig_scaling_factor,
         gene_group_db=False
     ):
-        if "scaled" in self.publish_reports:
-            logger.info("SCALING_FACTORS %s %s", uniq_scaling_factor, ambig_scaling_factor)
+        # if "scaled" in self.publish_reports:
+        #     logger.info("SCALING_FACTORS %s %s", uniq_scaling_factor, ambig_scaling_factor)
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
 
