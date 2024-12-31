@@ -4,4 +4,5 @@
 """module docstring"""
 
 from .alignment_counter import AlignmentCounter
+from .count_matrix import CountMatrix
 from .region_counter import RegionCounter

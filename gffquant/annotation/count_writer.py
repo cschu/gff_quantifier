@@ -187,7 +187,7 @@ class CountWriter:
                     refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0],
                     rid,
                 )
-                for rid in gene_counts.get_all_regions()
+                for rid, _ in gene_counts  #.get_all_regions()
             )
 
             for ref, rid in sorted(ref_stream):

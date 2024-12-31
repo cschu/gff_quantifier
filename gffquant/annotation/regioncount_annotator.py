@@ -10,6 +10,7 @@ class RegionCountAnnotator(CountAnnotator):
     """ CountAnnotator subclass for contig/region-based counting. """
 
     def __init__(self, strand_specific, report_scaling_factors=True):
+        raise NotImplementedError()
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
     # pylint: disable=R0914,W0613
