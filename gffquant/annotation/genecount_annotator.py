@@ -48,6 +48,8 @@ class GeneCountAnnotator(CountAnnotator):
                     for feature_id in features:
                         feature_id = int(feature_id)
                         functional_counts[(category_id, feature_id)] += counts
+
+        functional_counts.drop_unindexed()
         
         for i, category in enumerate(categories):
             u_sf, c_sf = (

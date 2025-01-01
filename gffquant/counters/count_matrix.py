@@ -54,6 +54,9 @@ class CountMatrix:
         else:
             self.counts[rows, col_index + 1] = self.counts[rows, col_index] * factor
 
+    def drop_unindexed(self):
+        self.counts = self.counts[0:len(self.index), :]
+
     def generate_gene_counts(self, lengths):
         logger.info("LENGTHS ARRAY = %s", lengths.shape)
         logger.info("INDEX SIZE = %s", len(self.index))
