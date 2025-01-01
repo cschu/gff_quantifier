@@ -1,9 +1,12 @@
+""" module docstring """
+
 import logging
 
 import numpy as np
 
 
 logger = logging.getLogger(__name__)
+
 
 class CountMatrix:
 
@@ -28,16 +31,16 @@ class CountMatrix:
                 ((0, nrows + 1000), (0, 0),),
             )
         return len(self.index)
-    
+
     def __getitem__(self, key):
         key_index = self.index.get(key)
         if key_index is None:
             key_index = self.index[key] = self._resize()
         return self.counts[key_index]
-    
+
     def __setitem__(self, key, value):
         key_index = self.index.get(key)
-        if key_index is None:			
+        if key_index is None:
             key_index = self.index[key] = self._resize()
         self.counts[key_index] = value
 
@@ -98,10 +101,10 @@ class CountMatrix:
         self.counts = counts
 
         return self
-    
+
     def group_gene_counts(self, ggroups):
         ggroup_index = {}
-        for (key, key_index), ggroup_id in zip(self.index.items(), ggroups):
+        for (key, _), ggroup_id in zip(self.index.items(), ggroups):
             g_key_index = ggroup_index.get(ggroup_id)
             gene_counts = self.counts[self.index[key]]
             if g_key_index is None:
@@ -117,13 +120,6 @@ class CountMatrix:
         self.counts = self.counts[0:len(self.index), :]
 
         return self
-    
+
     def colsum(self, col):
         return self.counts[:, col].sum()
-    
-    def get_category(self, category_id):
-        rows = tuple(
-            cid == category_id
-            for (cid, _), _ in self
-        )
-        return self

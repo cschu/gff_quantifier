@@ -42,7 +42,7 @@ class RegionCounter(AlignmentCounter):
     def update_counts(self, count_stream, increment=1):
         contributed_counts = 0
         for hits, aln_count in count_stream:
-            inc = increment if aln_count == 1 else self.get_increment(aln_count, increment)
+            inc = increment if aln_count == 1 else AlignmentCounter.get_increment(aln_count, increment, self.distribution_mode)
             for hit in hits:
                 self._update_region(
                     hit.rid, hit.start, hit.end, hit.rev_strand, increment=inc,

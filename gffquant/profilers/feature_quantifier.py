@@ -145,7 +145,6 @@ class FeatureQuantifier(ABC):
         count_writer.write_gene_counts(
             self.counter,
             self.reference_manager,
-            # u_sf, a_sf,
             gene_group_db=gene_group_db,
         )
 
@@ -160,7 +159,7 @@ class FeatureQuantifier(ABC):
         )
 
         logger.info("FC-index: %s", str(list(functional_counts.index.keys())[:10]))
-        logger.info("FC-counts: %s", str(functional_counts.counts[0:10,:]))
+        logger.info("FC-counts: %s", str(functional_counts.counts[0:10, :]))
 
         categories = self.adm.get_categories()
         for category, category_sum in zip(categories, category_sums):
@@ -169,7 +168,7 @@ class FeatureQuantifier(ABC):
                 for feature in self.adm.get_features(category.id)
             }
             logger.info("PROCESSING CATEGORY=%s", category.name)
-            count_writer.write_category2(
+            count_writer.write_category(
                 category.id,
                 category.name,
                 category_sum,
@@ -177,23 +176,6 @@ class FeatureQuantifier(ABC):
                 feature_names,
                 unannotated_reads=(None, unannotated_reads)[report_unannotated],
             )
-
-        # for category, c_counts, c_index, c_names, u_sf, a_sf in count_annotator.annotate(
-        #     self.reference_manager,
-        #     self.adm,
-        #     self.counter,
-        #     gene_group_db=gene_group_db,
-        # ):
-        #     logger.info("PROCESSING CATEGORY=%s", category)
-        #     count_writer.write_category(
-        #         category,
-        #         c_counts,
-        #         c_index,
-        #         c_names,
-        #         u_sf,
-        #         a_sf,
-        #         unannotated_reads=(None, unannotated_reads)[report_unannotated],
-        #     )
 
         self.adm.clear_caches()
 
