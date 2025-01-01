@@ -26,10 +26,10 @@ class GeneCountAnnotator(CountAnnotator):
         category_sums = np.zeros((len(categories), 6))
         functional_counts = CountMatrix(6)
 
-        for category_id in categories:
-            features = db.get_features(category_id)
-            for feature_id in sorted(features):
-                _ = functional_counts[(category_id, feature_id)]
+        for category in categories:
+            features = db.get_features(category.id)
+            for feature in sorted(features):
+                _ = functional_counts[(category.id, feature.id)]
 
         for rid in counter:
             counts = counter[rid]
@@ -49,16 +49,14 @@ class GeneCountAnnotator(CountAnnotator):
                         feature_id = int(feature_id)
                         functional_counts[(category_id, feature_id)] += counts[:4]
         
-        for i, category_id in enumerate(categories):
+        for i, category in enumerate(categories):
             u_sf, c_sf = (
                 CountMatrix.calculate_scaling_factor(*category_sums[i][0:2]),
                 CountMatrix.calculate_scaling_factor(*category_sums[i][2:4]),
             )
 
-            category_id = int(category_id)
-
             rows = tuple(
-                key[0] == category_id
+                key[0] == category.id
                 for key, _ in functional_counts
             )
 
