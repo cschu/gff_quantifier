@@ -31,19 +31,20 @@ class GeneCountAnnotator(CountAnnotator):
             for _, feature in sorted(features, key=lambda x:x[0]):
                 _ = functional_counts[(category.id, feature.id)]
 
-        for rid, counts in counter:
-            counts = counter[rid]
-            if gene_group_db:
-                ggroup_id = rid
-            else:
-                ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
-                ggroup_id = ref
+        with open("GGROUP_DATA.txt", "wt") as _out:
 
-            with open("GGROUP_DATA.txt", "wt") as _out:
+            for rid, counts in counter:
+                counts = counter[rid]
+                if gene_group_db:
+                    ggroup_id = rid
+                else:
+                    ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
+                    ggroup_id = ref
+
                 region_annotation = db.query_sequence(ggroup_id)
                 if region_annotation is not None:
                     _, _, region_annotation = region_annotation
-                    print(ggroup_id, *(f"{category_id}={features}" for category_id, features in region_annotation), sep="\t", file=_out)
+                    print(ggroup_id, *(f"{category_id}={','.join(features)}" for category_id, features in region_annotation), sep="\t", file=_out)
                     for category_id, features in region_annotation:
                         category_id = int(category_id)
                         category_sums[category_id] += counts

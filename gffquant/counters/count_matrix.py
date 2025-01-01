@@ -25,7 +25,7 @@ class CountMatrix:
         if len(self.index) == nrows:
             self.counts = np.pad(
                 self.counts,
-                ((0, nrows * 2), (0, 0),),
+                ((0, nrows + 1000), (0, 0),),
             )
         return len(self.index)
     
