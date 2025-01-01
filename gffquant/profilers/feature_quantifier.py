@@ -168,7 +168,7 @@ class FeatureQuantifier(ABC):
                 feature.id: feature.name
                 for feature in self.adm.get_features(category.id)
             }
-            logger.info("PROCESSING CATEGORY=%s", category)
+            logger.info("PROCESSING CATEGORY=%s", category.name)
             count_writer.write_category2(
                 category.id,
                 category.name,

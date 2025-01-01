@@ -39,15 +39,17 @@ class GeneCountAnnotator(CountAnnotator):
                 ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
                 ggroup_id = ref
 
-            region_annotation = db.query_sequence(ggroup_id)
-            if region_annotation is not None:
-                _, _, region_annotation = region_annotation
-                for category_id, features in region_annotation:
-                    category_id = int(category_id)
-                    category_sums[category_id] += counts
-                    for feature_id in features:
-                        feature_id = int(feature_id)
-                        functional_counts[(category_id, feature_id)] += counts
+            with open("GGROUP_DATA.txt", "wt") as _out:
+                region_annotation = db.query_sequence(ggroup_id)
+                if region_annotation is not None:
+                    _, _, region_annotation = region_annotation
+                    print(ggroup_id, *(f"{category_id}={features}" for category_id, features in region_annotation), sep="\t", file=_out)
+                    for category_id, features in region_annotation:
+                        category_id = int(category_id)
+                        category_sums[category_id] += counts
+                        for feature_id in features:
+                            feature_id = int(feature_id)
+                            functional_counts[(category_id, feature_id)] += counts
 
         functional_counts.drop_unindexed()
         
