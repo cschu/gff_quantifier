@@ -149,13 +149,18 @@ class CountWriter:
                     CountWriter.write_row("category", category_sum, stream=feat_out)
 
             for item in counts:
-                logger.info("ITEM: %s", str(item))
-
-
-
-            for (cid, fid), fcounts in counts:
+                if not isinstance(item[0], tuple):
+                    logger.info("ITEM: %s", str(item))
+                    raise TypeError(f"Weird key: {str(item)}")
+                (cid, fid), fcounts = item
                 if (report_unseen or fcounts.sum()) and cid == category_id:
                     CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
+
+
+
+            # for (cid, fid), fcounts in counts:
+            #     if (report_unseen or fcounts.sum()) and cid == category_id:
+            #         CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
 
 
     def write_category(
