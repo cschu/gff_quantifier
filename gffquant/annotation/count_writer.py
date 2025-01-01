@@ -143,7 +143,8 @@ class CountWriter:
                 )
 
             if "category" in self.publish_reports:
-                cat_counts = counts[0]
+                # cat_counts = counts[0]
+                cat_counts = category_sum
                 logger.info("CAT %s: %s", category_name, str(cat_counts))
                 if cat_counts is not None:
                     CountWriter.write_row("category", category_sum, stream=feat_out)
