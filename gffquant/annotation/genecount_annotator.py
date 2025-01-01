@@ -54,7 +54,7 @@ class GeneCountAnnotator(CountAnnotator):
         for i, category in enumerate(categories):
             u_sf, c_sf = (
                 CountMatrix.calculate_scaling_factor(*category_sums[i][0:2]),
-                CountMatrix.calculate_scaling_factor(*category_sums[i][2:4]),
+                CountMatrix.calculate_scaling_factor(*category_sums[i][3:5]),
             )
 
             rows = tuple(
