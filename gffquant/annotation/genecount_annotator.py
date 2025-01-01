@@ -31,7 +31,7 @@ class GeneCountAnnotator(CountAnnotator):
             for _, feature in sorted(features, key=lambda x:x[0]):
                 _ = functional_counts[(category.id, feature.id)]
 
-        for rid in counter:
+        for rid, counts in counter:
             counts = counter[rid]
             if gene_group_db:
                 ggroup_id = rid
