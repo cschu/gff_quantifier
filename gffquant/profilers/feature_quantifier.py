@@ -152,6 +152,29 @@ class FeatureQuantifier(ABC):
         self.counter.group_gene_count_matrix(self.reference_manager)
         unannotated_reads = self.counter.get_unannotated_reads() + self.aln_counter["unannotated_ambig"]
 
+        functional_counts, category_sums = count_annotator.annotate_gene_counts(
+            self.reference_manager,
+            self.adm,
+            self.counter,
+            gene_group_db=gene_group_db,
+        )
+
+        categories = self.adm.get_categories()
+        for category, category_sum in zip(categories, category_sums):
+            feature_names = {
+                feature.id: feature.name
+                for feature in self.adm.get_features(category.id)
+            }
+            logger.info("PROCESSING CATEGORY=%s", category)
+            count_writer.write_category2(
+                category.id,
+                category.name,
+                category_sum,
+                functional_counts,
+                feature_names,
+                unannotated_reads=(None, unannotated_reads)[report_unannotated],
+            )
+
         # for category, c_counts, c_index, c_names, u_sf, a_sf in count_annotator.annotate(
         #     self.reference_manager,
         #     self.adm,

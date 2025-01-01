@@ -7,6 +7,7 @@ import numpy as np
 
 from .count_annotator import CountAnnotator
 from ..counters import AlignmentCounter
+from ..counters.count_matrix import CountMatrix
 from ..db.annotation_db import AnnotationDatabaseManager
 
 
@@ -20,29 +21,58 @@ class GeneCountAnnotator(CountAnnotator):
         """ __init__() """
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
-    # def annotate_gene_counts(self, refmgr, db: AnnotationDatabaseManager, counter: AlignmentCounter, gene_group_db=False):
-    #     category_sums = np.zeros((len(db.get_categories()), 6))
-    #     functional_counts = np.zeros(())
-    #     for rid in counter:
-    #         counts = counter[rid]
-    #         if gene_group_db:
-    #             ggroup_id = rid
-    #         else:
-    #             ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
-    #             ggroup_id = ref
+    def annotate_gene_counts(self, refmgr, db: AnnotationDatabaseManager, counter: AlignmentCounter, gene_group_db=False):
+        categories = list(db.get_categories())
+        category_sums = np.zeros((len(categories), 6))
+        functional_counts = CountMatrix(6)
 
-    #         region_annotation = db.query_sequence(ggroup_id)
-    #         if region_annotation is not None:
-    #             _, _, region_annotation = region_annotation
-    #             for category_id, features in region_annotation:
-    #                 category_sums[int(category_id)] += counts
+        for category_id in categories:
+            features = db.get_features(category_id)
+            for feature_id in sorted(features):
+                _ = functional_counts[(category_id, feature_id)]
+
+        for rid in counter:
+            counts = counter[rid]
+            if gene_group_db:
+                ggroup_id = rid
+            else:
+                ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
+                ggroup_id = ref
+
+            region_annotation = db.query_sequence(ggroup_id)
+            if region_annotation is not None:
+                _, _, region_annotation = region_annotation
+                for category_id, features in region_annotation:
+                    category_id = int(category_id)
+                    category_sums[category_id] += counts
+                    for feature_id in features:
+                        feature_id = int(feature_id)
+                        functional_counts[(category_id, feature_id)] += counts[:4]
+        
+        for i, category_id in enumerate(categories):
+            u_sf, c_sf = (
+                CountMatrix.calculate_scaling_factor(*category_sums[i][0:2]),
+                CountMatrix.calculate_scaling_factor(*category_sums[i][2:4]),
+            )
+
+            category_id = int(category_id)
+
+            rows = tuple(
+                key[0] == category_id
+                for key, _ in functional_counts
+            )
+
+            functional_counts.scale_column(1, u_sf, rows=rows)
+            functional_counts.scale_column(4, c_sf, rows=rows)
+
+            category_sums[i, 2] = category_sums[i, 1] * u_sf
+            category_sums[i, 5] = category_sums[i, 4] * c_sf
+
+        return functional_counts, category_sums
+            
 
 
-    #                 category_features = dict(region_annotation).get(str(category.id))
-    #                 if category_features is not None:
-    #                     category_counts[0] += counts  # category row
-    #                     for cf in category_features:
-    #                         category_counts[category_index.get(int(cf))] += counts
+                    
 
 
 

@@ -47,6 +47,13 @@ class CountMatrix:
     def sum(self):
         return self.counts.sum(axis=0)
 
+    def scale_column(self, col_index, factor, rows=None):
+        # apply scaling factors
+        if rows is None:
+            self.counts[:, col_index + 1] = self.counts[:, col_index] * factor
+        else:
+            self.counts[rows, col_index + 1] = self.counts[rows, col_index] * factor
+
     def generate_gene_counts(self, lengths):
         logger.info("LENGTHS ARRAY = %s", lengths.shape)
         logger.info("INDEX SIZE = %s", len(self.index))
@@ -110,3 +117,10 @@ class CountMatrix:
     
     def colsum(self, col):
         return self.counts[:, col].sum()
+    
+    def get_category(self, category_id):
+        rows = tuple(
+            cid == category_id
+            for (cid, _), _ in self
+        )
+        return self

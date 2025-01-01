@@ -110,6 +110,49 @@ class CountWriter:
     def write_row(header, data, stream=sys.stdout):
         print(header, *(f"{c:.5f}" for c in data), flush=True, sep="\t", file=stream)
 
+
+    def write_category2(
+        self,
+        category_id,
+        category_name,
+        category_sum,
+        counts,
+        feature_names,
+        unannotated_reads=None,
+        report_unseen=True,
+    ):
+        with gzip.open(f"{self.out_prefix}.{category_name}.txt.gz", "wt") as feat_out:
+            header = self.get_header()
+            print("feature", *header, sep="\t", file=feat_out)
+
+            if unannotated_reads is not None:
+                print("unannotated", unannotated_reads, sep="\t", file=feat_out)
+
+            if "total_readcount" in self.publish_reports:
+                CountWriter.write_row(
+                    "total_reads",
+                    np.zeros(len(header)) + self.total_readcount,
+                    stream=feat_out,
+                )
+
+            if "filtered_readcount" in self.publish_reports:
+                CountWriter.write_row(
+                    "filtered_reads",
+                    np.zeros(len(header)) + self.filtered_readcount,
+                    stream=feat_out,
+                )
+
+            if "category" in self.publish_reports:
+                cat_counts = counts[0]
+                logger.info("CAT %s: %s", category_name, str(cat_counts))
+                if cat_counts is not None:
+                    CountWriter.write_row("category", category_sum, stream=feat_out)
+
+            for (cid, fid), fcounts in counts:
+                if (report_unseen or fcounts.sum()) and cid == category_id:
+                    CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
+
+
     def write_category(
         self,
         category,
