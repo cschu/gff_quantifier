@@ -159,6 +159,9 @@ class FeatureQuantifier(ABC):
             gene_group_db=gene_group_db,
         )
 
+        logger.info("FC-index: %s", str(list(functional_counts.index.keys())[:10]))
+        logger.info("FC-counts: %s", str(functional_counts.counts[0:10,:]))
+
         categories = self.adm.get_categories()
         for category, category_sum in zip(categories, category_sums):
             feature_names = {
