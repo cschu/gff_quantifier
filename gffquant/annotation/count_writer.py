@@ -148,6 +148,11 @@ class CountWriter:
                 if cat_counts is not None:
                     CountWriter.write_row("category", category_sum, stream=feat_out)
 
+            for item in counts:
+                logger.info("ITEM: %s", str(item))
+
+
+
             for (cid, fid), fcounts in counts:
                 if (report_unseen or fcounts.sum()) and cid == category_id:
                     CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
