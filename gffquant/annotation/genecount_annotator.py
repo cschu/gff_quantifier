@@ -47,7 +47,7 @@ class GeneCountAnnotator(CountAnnotator):
                     category_sums[category_id] += counts
                     for feature_id in features:
                         feature_id = int(feature_id)
-                        functional_counts[(category_id, feature_id)] += counts[:4]
+                        functional_counts[(category_id, feature_id)] += counts
         
         for i, category in enumerate(categories):
             u_sf, c_sf = (
