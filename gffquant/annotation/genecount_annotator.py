@@ -27,8 +27,8 @@ class GeneCountAnnotator(CountAnnotator):
         functional_counts = CountMatrix(6)
 
         for category in categories:
-            features = db.get_features(category.id)
-            for feature in sorted(features):
+            features = ((feature.id, feature) for feature in db.get_features(category.id))
+            for _, feature in sorted(features, key=lambda x:x[0]):
                 _ = functional_counts[(category.id, feature.id)]
 
         for rid in counter:
