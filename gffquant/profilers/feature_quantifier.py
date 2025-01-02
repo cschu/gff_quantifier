@@ -11,6 +11,8 @@ import time
 from abc import ABC
 from collections import Counter
 
+import numpy as np
+
 from .panda_coverage_profiler import PandaCoverageProfiler
 from ..alignment import AlignmentGroup, AlignmentProcessor, ReferenceHit, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
@@ -152,54 +154,99 @@ class FeatureQuantifier(ABC):
         self.counter.group_gene_count_matrix(self.reference_manager)
         unannotated_reads = self.counter.get_unannotated_reads() + self.aln_counter["unannotated_ambig"]
 
-        functional_counts, category_sums = count_annotator.annotate_gene_counts(
-            self.reference_manager,
-            self.adm,
-            self.counter,
-            gene_group_db=gene_group_db,
-        )
-
-        logger.info("FC-index: %s", str(list(functional_counts.index.keys())[:10]))
-        logger.info("FC-counts: %s", str(functional_counts.counts[0:10, :]))
 
         categories = self.adm.get_categories()
-        for category, category_sum in zip(categories, category_sums):
-            features = tuple(self.adm.get_features(category.id))
-            feature_names = {
-                feature.id: feature.name
-                for feature in features
-            }
-            rows = tuple(
-                key[0] == category.id
-                for key, _ in functional_counts
+        category_sum = np.array(6)
+
+        for category in categories:
+            logger.info("PROCESSING CATEGORY=%s", category.name)
+            category_counts = CountMatrix(ncols=6)
+            for rid, counts in self.counter:
+                if gene_group_db:
+                    ggroup_id = rid
+                else:
+                    ref, _ = self.reference_manager.get(rid[0] if isinstance(rid, tuple) else rid)
+                    ggroup_id = ref
+
+                region_annotation = self.adm.query_sequence(ggroup_id)
+                if region_annotation is not None:
+                    _, _, region_annotation = region_annotation
+                    for category_id, features in region_annotation:
+                        if int(category_id) == category.id:
+                            category_sum += counts
+                            for feature_id in features:
+                                category_counts[(category.id, int(feature_id))] += counts
+                            break
+
+            u_sf, c_sf = (
+                CountMatrix.calculate_scaling_factor(*category_sum[0:2]),
+                CountMatrix.calculate_scaling_factor(*category_sum[3:5]),
             )
 
-            cat_counts = CountMatrix.from_count_matrix(functional_counts, rows=rows)
-            # cat_counts = CountMatrix(ncols=6, nrows=len(feature_names))
-            # for feature in features:
-            #     key = (category.id, feature.id)
-            #     if functional_counts.has_record(key):
-            #         cat_counts[key] += functional_counts[key]
-            #     else:
-            #         _ = cat_counts[key]            
-            
-            # for category in categories:
-            # features = ((feature.name, feature) for feature in db.get_features(category.id))
-            # for _, feature in sorted(features, key=lambda x: x[0]):
-            #     _ = functional_counts[(category.id, feature.id)]
+            category_counts.scale_column(1, u_sf)
+            category_counts.scale_column(4, c_sf)
 
-
-            logger.info("PROCESSING CATEGORY=%s", category.name)
+            features = tuple(self.adm.get_features(category.id))
             count_writer.write_category(
                 category.id,
                 category.name,
                 category_sum,
-                # functional_counts,
-                cat_counts,
-                # feature_names,
+                category_counts,
                 features,
                 unannotated_reads=(None, unannotated_reads)[report_unannotated],
             )
+        
+
+
+
+        # functional_counts, category_sums = count_annotator.annotate_gene_counts(
+        #     self.reference_manager,
+        #     self.adm,
+        #     self.counter,
+        #     gene_group_db=gene_group_db,
+        # )
+
+        # logger.info("FC-index: %s", str(list(functional_counts.index.keys())[:10]))
+        # logger.info("FC-counts: %s", str(functional_counts.counts[0:10, :]))
+
+        # categories = self.adm.get_categories()
+        # for category, category_sum in zip(categories, category_sums):
+        #     features = tuple(self.adm.get_features(category.id))
+        #     feature_names = {
+        #         feature.id: feature.name
+        #         for feature in features
+        #     }
+        #     rows = tuple(
+        #         key[0] == category.id
+        #         for key, _ in functional_counts
+        #     )
+
+        #     cat_counts = CountMatrix.from_count_matrix(functional_counts, rows=rows)
+        #     # cat_counts = CountMatrix(ncols=6, nrows=len(feature_names))
+        #     # for feature in features:
+        #     #     key = (category.id, feature.id)
+        #     #     if functional_counts.has_record(key):
+        #     #         cat_counts[key] += functional_counts[key]
+        #     #     else:
+        #     #         _ = cat_counts[key]            
+            
+        #     # for category in categories:
+        #     # features = ((feature.name, feature) for feature in db.get_features(category.id))
+        #     # for _, feature in sorted(features, key=lambda x: x[0]):
+        #     #     _ = functional_counts[(category.id, feature.id)]
+
+
+        #     logger.info("PROCESSING CATEGORY=%s", category.name)
+        #     count_writer.write_category(
+        #         category.id,
+        #         category.name,
+        #         category_sum,
+        #         # functional_counts,
+        #         cat_counts,
+        #         # feature_names,
+        #         features,
+        #         unannotated_reads=(None, unannotated_reads)[report_unannotated],
+        #     )
 
         self.adm.clear_caches()
 
