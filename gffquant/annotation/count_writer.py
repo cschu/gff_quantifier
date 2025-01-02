@@ -157,7 +157,7 @@ class CountWriter:
             #     if (report_unseen or fcounts.sum()) and cid == category_id:
             #         CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
 
-            empty_row = np.zeros((1, 6), dtype='float64')
+            empty_row = np.zeros(6, dtype='float64')
             for feature in features:
                 key = (category_id, feature.id)
                 if counts.has_record(key):
