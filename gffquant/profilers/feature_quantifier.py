@@ -15,6 +15,7 @@ from .panda_coverage_profiler import PandaCoverageProfiler
 from ..alignment import AlignmentGroup, AlignmentProcessor, ReferenceHit, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import AlignmentCounter
+from ..counters.count_matrix import CountMatrix
 from ..db.annotation_db import AnnotationDatabaseManager
 
 from .. import __tool__, DistributionMode, RunMode
@@ -163,16 +164,38 @@ class FeatureQuantifier(ABC):
 
         categories = self.adm.get_categories()
         for category, category_sum in zip(categories, category_sums):
+            features = tuple(self.adm.get_features(category.id))
             feature_names = {
                 feature.id: feature.name
-                for feature in self.adm.get_features(category.id)
+                for feature in features
             }
+            # rows = tuple(
+            #     key[0] == category.id
+            #     for key, _ in functional_counts
+            # )
+
+            # cat_counts = CountMatrix.from_count_matrix(functional_counts, rows=rows)
+            cat_counts = CountMatrix(ncols=6, nrows=len(feature_names))
+            for feature in features:
+                key = (category.id, feature.id)
+                if functional_counts.has_record(key):
+                    cat_counts[key] += functional_counts[key]
+                else:
+                    _ = cat_counts[key]            
+            
+            # for category in categories:
+            # features = ((feature.name, feature) for feature in db.get_features(category.id))
+            # for _, feature in sorted(features, key=lambda x: x[0]):
+            #     _ = functional_counts[(category.id, feature.id)]
+
+
             logger.info("PROCESSING CATEGORY=%s", category.name)
             count_writer.write_category(
                 category.id,
                 category.name,
                 category_sum,
-                functional_counts,
+                # functional_counts,
+                cat_counts,
                 feature_names,
                 unannotated_reads=(None, unannotated_reads)[report_unannotated],
             )

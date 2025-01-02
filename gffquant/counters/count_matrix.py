@@ -10,18 +10,39 @@ logger = logging.getLogger(__name__)
 
 class CountMatrix:
 
+    @classmethod
+    def from_count_matrix(cls, cmatrix, rows=None):
+        if rows is None:
+            counts = np.array(cmatrix.counts)
+            index = dict(counts.index.items())
+        else:
+            counts = cmatrix.counts[rows, :]
+            index = {
+                key: value
+                for (key, value), keep in zip(counts.index.items(), rows)
+                if keep
+            }
+        return cls(index=index, counts=counts)        
+
     @staticmethod
     def calculate_scaling_factor(raw, norm):
         if norm == 0.0:
             return 1.0
         return raw / norm
 
-    def __init__(self, ncols, nrows=1000):
-        self.index = {}
-        self.counts = np.zeros(
-            (nrows, ncols,),
-            dtype='float64',
-        )
+    def __init__(self, ncols=2, nrows=1000, index=None, counts=None,):
+        if index is not None and counts is not None:
+            self.index = dict(index.items())
+            self.counts = counts
+        else:
+            self.index = {}
+            self.counts = np.zeros(
+                (nrows, ncols,),
+                dtype='float64',
+            )
+
+    def has_record(self, key):
+        return self.index.get(key) is not None
 
     def _resize(self):
         nrows = self.counts.shape[0]
