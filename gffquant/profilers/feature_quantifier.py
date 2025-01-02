@@ -156,7 +156,7 @@ class FeatureQuantifier(ABC):
 
 
         categories = self.adm.get_categories()
-        category_sum = np.array(6)
+        category_sum = np.array(6, dtype='float64')
 
         for category in categories:
             logger.info("PROCESSING CATEGORY=%s", category.name)
