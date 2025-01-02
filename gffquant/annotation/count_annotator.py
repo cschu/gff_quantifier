@@ -315,14 +315,14 @@ class GeneCountAnnotator(CountAnnotator):
             region_annotation = db.query_sequence(ggroup_id)
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
-                logger.info(
-                    "GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s",
-                    gene_id, ggroup_id, counts[0], counts[2],
-                )
+                # logger.info(
+                #     "GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s",
+                #     gene_id, ggroup_id, counts[0], counts[2],
+                # )
                 self.distribute_feature_counts(counts, region_annotation)
 
             else:
-                logger.info("GCAnnotator: Gene %s (group=%s) has no information in database.", gene_id, ggroup_id)
+                # logger.info("GCAnnotator: Gene %s (group=%s) has no information in database.", gene_id, ggroup_id)
                 self.unannotated_counts += counts[:4]
 
         self.calculate_scaling_factors()
