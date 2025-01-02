@@ -9,6 +9,7 @@ import sys
 import numpy as np
 
 from ..counters import AlignmentCounter
+from ..counters.count_matrix import CountMatrix
 
 
 logger = logging.getLogger(__name__)
@@ -157,7 +158,7 @@ class CountWriter:
             #     if (report_unseen or fcounts.sum()) and cid == category_id:
             #         CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
 
-            empty_row = np.zeros(6, dtype='float64')
+            empty_row = np.zeros(6, dtype=CountMatrix.NUMPY_DTYPE)
             for feature in features:
                 key = (category_id, feature.id)
                 if counts.has_record(key):

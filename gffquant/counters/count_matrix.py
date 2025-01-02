@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class CountMatrix:
+    NUMPY_DTYPE = 'float32'
 
     @classmethod
     def from_count_matrix(cls, cmatrix, rows=None):
@@ -42,7 +43,7 @@ class CountMatrix:
             self.index = {}
             self.counts = np.zeros(
                 (nrows, ncols,),
-                dtype='float64',
+                dtype=CountMatrix.NUMPY_DTYPE,
             )
 
     def has_record(self, key):
