@@ -14,12 +14,12 @@ class CountMatrix:
     def from_count_matrix(cls, cmatrix, rows=None):
         if rows is None:
             counts = np.array(cmatrix.counts)
-            index = dict(counts.index.items())
+            index = dict(cmatrix.index.items())
         else:
             counts = cmatrix.counts[rows, :]
             index = {
                 key: value
-                for (key, value), keep in zip(counts.index.items(), rows)
+                for (key, value), keep in zip(cmatrix.index.items(), rows)
                 if keep
             }
         return cls(index=index, counts=counts)        
