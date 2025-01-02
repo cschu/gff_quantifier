@@ -17,11 +17,15 @@ class CountMatrix:
             index = dict(cmatrix.index.items())
         else:
             counts = cmatrix.counts[rows, :]
-            index = {
-                key: value
-                for (key, value), keep in zip(cmatrix.index.items(), rows)
-                if keep
-            }
+            index = {}
+            for (key, _), keep in zip(cmatrix.index.items(), rows):
+                if keep:
+                    index[key] = len(index)
+            # index = {
+            #     key: value
+            #     for (key, value), keep in zip(cmatrix.index.items(), rows)
+            #     if keep
+            # }
         return cls(index=index, counts=counts)        
 
     @staticmethod
