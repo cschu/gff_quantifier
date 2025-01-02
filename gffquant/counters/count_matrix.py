@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class CountMatrix:
-    NUMPY_DTYPE = 'float16'
+    NUMPY_DTYPE = 'float64'  # float16 causes some overflow issue during testing
 
     @classmethod
     def from_count_matrix(cls, cmatrix, rows=None):
