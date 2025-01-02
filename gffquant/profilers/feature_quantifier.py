@@ -156,10 +156,10 @@ class FeatureQuantifier(ABC):
 
 
         categories = self.adm.get_categories()
-        category_sum = np.array(6, dtype='float64')
 
         for category in categories:
             logger.info("PROCESSING CATEGORY=%s", category.name)
+            category_sum = np.zeros(6, dtype='float64')
             category_counts = CountMatrix(ncols=6)
             for rid, counts in self.counter:
                 if gene_group_db:
