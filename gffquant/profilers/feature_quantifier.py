@@ -169,19 +169,19 @@ class FeatureQuantifier(ABC):
                 feature.id: feature.name
                 for feature in features
             }
-            # rows = tuple(
-            #     key[0] == category.id
-            #     for key, _ in functional_counts
-            # )
+            rows = tuple(
+                key[0] == category.id
+                for key, _ in functional_counts
+            )
 
-            # cat_counts = CountMatrix.from_count_matrix(functional_counts, rows=rows)
-            cat_counts = CountMatrix(ncols=6, nrows=len(feature_names))
-            for feature in features:
-                key = (category.id, feature.id)
-                if functional_counts.has_record(key):
-                    cat_counts[key] += functional_counts[key]
-                else:
-                    _ = cat_counts[key]            
+            cat_counts = CountMatrix.from_count_matrix(functional_counts, rows=rows)
+            # cat_counts = CountMatrix(ncols=6, nrows=len(feature_names))
+            # for feature in features:
+            #     key = (category.id, feature.id)
+            #     if functional_counts.has_record(key):
+            #         cat_counts[key] += functional_counts[key]
+            #     else:
+            #         _ = cat_counts[key]            
             
             # for category in categories:
             # features = ((feature.name, feature) for feature in db.get_features(category.id))
@@ -196,7 +196,8 @@ class FeatureQuantifier(ABC):
                 category_sum,
                 # functional_counts,
                 cat_counts,
-                feature_names,
+                # feature_names,
+                features,
                 unannotated_reads=(None, unannotated_reads)[report_unannotated],
             )
 

@@ -116,7 +116,8 @@ class CountWriter:
         category_name,
         category_sum,
         counts,
-        feature_names,
+        # feature_names,
+        features,
         unannotated_reads=None,
         report_unseen=True,
     ):
@@ -156,9 +157,20 @@ class CountWriter:
             #     if (report_unseen or fcounts.sum()) and cid == category_id:
             #         CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
 
-            for (cid, fid), fcounts in counts:
-                if (report_unseen or fcounts.sum()) and cid == category_id:
-                    CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
+            empty_row = np.zeros((1, 6), dtype='float64')
+            for feature in features:
+                key = (category_id, feature.id)
+                if counts.has_record(key):
+                    row = counts[key]
+                else:
+                    row = empty_row
+                if (report_unseen or row.sum()):
+                    CountWriter.write_row(feature.name, row, stream=feat_out,)
+                
+
+            # for (cid, fid), fcounts in counts:
+            #     if (report_unseen or fcounts.sum()) and cid == category_id:
+            #         CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
 
     def write_gene_counts(
         self,
