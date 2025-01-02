@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class CountMatrix:
-    NUMPY_DTYPE = 'float32'
+    NUMPY_DTYPE = 'float16'
 
     @classmethod
     def from_count_matrix(cls, cmatrix, rows=None):
