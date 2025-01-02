@@ -10,51 +10,18 @@ import time
 
 from abc import ABC
 from collections import Counter
-from dataclasses import dataclass, asdict
 
 from .panda_coverage_profiler import PandaCoverageProfiler
-from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
+from ..alignment import AlignmentGroup, AlignmentProcessor, ReferenceHit, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
-from ..counters import CountManager
+from ..counters import AlignmentCounter
+from ..counters.count_matrix import CountMatrix
 from ..db.annotation_db import AnnotationDatabaseManager
 
 from .. import __tool__, DistributionMode, RunMode
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(slots=True)
-class ReferenceHit:
-    rid: int = None
-    start: int = None
-    end: int = None
-    rev_strand: bool = None
-    cov_start: int = None
-    cov_end: int = None
-    has_annotation: bool = None
-    n_aln: int = None
-    is_ambiguous: bool = None
-    library_mod: int = None
-    mate_id: int = None
-
-    def __hash__(self):
-        return hash(tuple(asdict(self).values()))
-
-    def __eq__(self, other):
-        return all(
-            item[0][1] == item[1][1]
-            for item in zip(
-                sorted(asdict(self).items()),
-                sorted(asdict(other).items())
-            )
-        )
-
-    def __str__(self):
-        return "\t".join(map(str, asdict(self).values()))
-
-    def __repr__(self):
-        return str(self)
 
 
 class FeatureQuantifier(ABC):
@@ -93,17 +60,15 @@ class FeatureQuantifier(ABC):
         self.db = db
         self.adm = None
         self.run_mode = run_mode
-        self.count_manager = CountManager(
+        self.counter = AlignmentCounter(
             distribution_mode=distribution_mode,
-            region_counts=run_mode.overlap_required,
-            strand_specific=strand_specific and not run_mode.overlap_required,
+            strand_specific=strand_specific,
             paired_end_count=paired_end_count,
         )
         self.out_prefix = out_prefix
         self.distribution_mode = distribution_mode
         self.reference_manager = {}
         self.strand_specific = strand_specific
-        # self.coverage_counter = {}
         self.debug = debug
         self.panda_cv = PandaCoverageProfiler(dump_dataframes=self.debug) if calculate_coverage else None
 
@@ -158,17 +123,16 @@ class FeatureQuantifier(ABC):
             self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
         if dump_counters:
-            self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
+            self.counter.dump(self.out_prefix, self.reference_manager,)
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
         Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
-        count_annotator.annotate(self.reference_manager, self.adm, self.count_manager, gene_group_db=gene_group_db,)
 
         count_writer = CountWriter(
             self.out_prefix,
-            has_ambig_counts=self.count_manager.has_ambig_counts(),
+            has_ambig_counts=self.counter.has_ambig_counts(),
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
             report_category=report_category,
@@ -176,20 +140,66 @@ class FeatureQuantifier(ABC):
             filtered_readcount=self.aln_counter["filtered_read_count"],
         )
 
-        unannotated_reads = self.count_manager.get_unannotated_reads()
-        unannotated_reads += self.aln_counter["unannotated_ambig"]
-
-        count_writer.write_feature_counts(
-            self.adm,
-            count_annotator,
-            (None, unannotated_reads)[report_unannotated],
-        )
+        total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager)
+        logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
 
         count_writer.write_gene_counts(
-            count_annotator.gene_counts,
-            count_annotator.scaling_factors["total_gene_uniq"],
-            count_annotator.scaling_factors["total_gene_ambi"]
+            self.counter,
+            self.reference_manager,
+            gene_group_db=gene_group_db,
         )
+
+        self.counter.group_gene_count_matrix(self.reference_manager)
+        unannotated_reads = self.counter.get_unannotated_reads() + self.aln_counter["unannotated_ambig"]
+
+        functional_counts, category_sums = count_annotator.annotate_gene_counts(
+            self.reference_manager,
+            self.adm,
+            self.counter,
+            gene_group_db=gene_group_db,
+        )
+
+        logger.info("FC-index: %s", str(list(functional_counts.index.keys())[:10]))
+        logger.info("FC-counts: %s", str(functional_counts.counts[0:10, :]))
+
+        categories = self.adm.get_categories()
+        for category, category_sum in zip(categories, category_sums):
+            features = tuple(self.adm.get_features(category.id))
+            feature_names = {
+                feature.id: feature.name
+                for feature in features
+            }
+            rows = tuple(
+                key[0] == category.id
+                for key, _ in functional_counts
+            )
+
+            cat_counts = CountMatrix.from_count_matrix(functional_counts, rows=rows)
+            # cat_counts = CountMatrix(ncols=6, nrows=len(feature_names))
+            # for feature in features:
+            #     key = (category.id, feature.id)
+            #     if functional_counts.has_record(key):
+            #         cat_counts[key] += functional_counts[key]
+            #     else:
+            #         _ = cat_counts[key]            
+            
+            # for category in categories:
+            # features = ((feature.name, feature) for feature in db.get_features(category.id))
+            # for _, feature in sorted(features, key=lambda x: x[0]):
+            #     _ = functional_counts[(category.id, feature.id)]
+
+
+            logger.info("PROCESSING CATEGORY=%s", category.name)
+            count_writer.write_category(
+                category.id,
+                category.name,
+                category_sum,
+                # functional_counts,
+                cat_counts,
+                # feature_names,
+                features,
+                unannotated_reads=(None, unannotated_reads)[report_unannotated],
+            )
 
         self.adm.clear_caches()
 
@@ -226,7 +236,7 @@ class FeatureQuantifier(ABC):
             filtered_sam=debug_samfile,
         )
 
-        self.count_manager.toggle_single_read_handling(unmarked_orphans)
+        self.counter.toggle_single_read_handling(unmarked_orphans)
         ac = self.aln_counter
 
         read_count = 0
@@ -447,7 +457,7 @@ class FeatureQuantifier(ABC):
                 )
             )
 
-            contributed_counts = self.count_manager.update_counts(
+            contributed_counts = self.counter.update(
                 count_stream,
                 ambiguous_counts=is_ambiguous_group,
                 pair=aln_group.is_paired(),

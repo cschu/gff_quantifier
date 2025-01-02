@@ -95,6 +95,7 @@ class CountAnnotator(dict):
             return (raw / normed) if normed else default
 
         total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_counts
+        # total_uniq, total_ambi, total_uniq_normed, total_ambi_normed = self.total_counts
         logger.info(
             "TOTAL COUNTS: uraw=%s unorm=%s araw=%s anorm=%s",
             total_uniq, total_uniq_normed, total_ambi, total_ambi_normed
@@ -108,19 +109,20 @@ class CountAnnotator(dict):
             total_ambi, total_ambi_normed, default_scaling_factor
         )
 
-        total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_gene_counts
-        logger.info(
-            "TOTAL GENE COUNTS: uraw=%s unorm=%s araw=%s anorm=%s",
-            total_uniq, total_uniq_normed, total_ambi, total_ambi_normed
-        )
+        # total_uniq, total_uniq_normed, total_ambi, total_ambi_normed = self.total_gene_counts
+        # total_uniq, total_ambi, total_uniq_normed, total_ambi_normed = self.total_gene_counts
+        # logger.info(
+        #     "TOTAL GENE COUNTS: uraw=%s unorm=%s araw=%s anorm=%s",
+        #     total_uniq, total_uniq_normed, total_ambi, total_ambi_normed
+        # )
 
-        self.scaling_factors["total_gene_uniq"] = calc_scaling_factor(
-            total_uniq, total_uniq_normed, default_scaling_factor
-        )
+        # self.scaling_factors["total_gene_uniq"] = calc_scaling_factor(
+        #     total_uniq, total_uniq_normed, default_scaling_factor
+        # )
 
-        self.scaling_factors["total_gene_ambi"] = calc_scaling_factor(
-            total_ambi, total_ambi_normed, default_scaling_factor
-        )
+        # self.scaling_factors["total_gene_ambi"] = calc_scaling_factor(
+        #     total_ambi, total_ambi_normed, default_scaling_factor
+        # )
 
         fc_items = self.feature_count_sums.items()
         for category, (
@@ -189,140 +191,3 @@ class CountAnnotator(dict):
         counts[1::2] /= float(length)
 
         return counts
-
-
-class RegionCountAnnotator(CountAnnotator):
-    """ CountAnnotator subclass for contig/region-based counting. """
-
-    def __init__(self, strand_specific, report_scaling_factors=True):
-        CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
-
-    # pylint: disable=R0914,W0613
-    def annotate(self, refmgr, db, count_manager, gene_group_db=False):
-        """
-        Annotate a set of region counts via db-lookup.
-        input:
-        - bam: bamr.BamFile to use as lookup table for reference names
-        - db: GffDatabaseManager holding functional annotation database
-        - count_manager: count_data
-        """
-        for rid in set(count_manager.uniq_regioncounts).union(
-            count_manager.ambig_regioncounts
-        ):
-            ref = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0]
-
-            for region in count_manager.get_regions(rid):
-                if self.strand_specific:
-                    (start, end), rev_strand = region
-                else:
-                    (start, end), rev_strand = region, None
-                # the region_annotation is a tuple of key-value pairs:
-                # (strand, func_category1: subcategories, func_category2: subcategories, ...)
-                # the first is the strand, the second is the gene id, the rest are the features
-
-                region_annotation = db.query_sequence(ref, start=start, end=end)
-                if region_annotation is not None:
-                    region_strand, feature_id, region_annotation = region_annotation
-                    if feature_id is None:
-                        feature_id = ref
-
-                    on_other_strand = (region_strand == "+" and rev_strand) \
-                        or (region_strand == "-" and not rev_strand)
-
-                    antisense_region = self.strand_specific and on_other_strand
-
-                    uniq_counts, ambig_counts = count_manager.get_counts(
-                        (rid, start, end), region_counts=True, strand_specific=self.strand_specific
-                    )
-
-                    if self.strand_specific:
-                        # if the region is antisense, 'sense-counts' (relative to the) region come from the
-                        # negative strand and 'antisense-counts' from the positive strand
-                        # vice-versa for a sense-region
-                        strand_specific_counts = (
-                            (count_manager.MINUS_STRAND, count_manager.PLUS_STRAND)
-                            if antisense_region
-                            else (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
-                        )
-                    else:
-                        strand_specific_counts = None
-
-                    region_length = end - start + 1
-                    counts = self.compute_count_vector(
-                        uniq_counts,
-                        ambig_counts,
-                        region_length,
-                        strand_specific_counts=strand_specific_counts,
-                        region_counts=True,
-                    )
-
-                    self.distribute_feature_counts(counts, region_annotation)
-
-                    gcounts = self.gene_counts.setdefault(
-                        feature_id, np.zeros(self.bins)
-                    )
-                    gcounts += counts
-                    self.total_gene_counts += counts[:4]
-
-        self.calculate_scaling_factors()
-
-
-class GeneCountAnnotator(CountAnnotator):
-    """ CountAnnotator subclass for gene-based counting. """
-
-    def __init__(self, strand_specific, report_scaling_factors=True):
-        CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
-
-    def annotate(self, refmgr, db, count_manager, gene_group_db=False):
-        """
-        Annotate a set of gene counts via db-iteration.
-        input:
-        - bam: bamr.BamFile to use as reverse lookup table for reference ids
-        - db: GffDatabaseManager holding functional annotation database
-        - count_manager: count_data
-        """
-        strand_specific_counts = (
-            (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
-            if self.strand_specific else None
-        )
-
-        for rid in set(count_manager.uniq_seqcounts).union(
-            count_manager.ambig_seqcounts
-        ):
-            ref, region_length = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
-
-            uniq_counts, ambig_counts = count_manager.get_counts(
-                rid, region_counts=False, strand_specific=self.strand_specific
-            )
-
-            counts = self.compute_count_vector(
-                uniq_counts,
-                ambig_counts,
-                region_length,
-                strand_specific_counts=strand_specific_counts,
-            )
-
-            if gene_group_db:
-                ref_tokens = ref.split(".")
-                gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
-            else:
-                ggroup_id, gene_id = ref, ref
-
-            gcounts = self.gene_counts.setdefault(gene_id, np.zeros(self.bins))
-            gcounts += counts
-            self.total_gene_counts += counts[:4]
-
-            region_annotation = db.query_sequence(ggroup_id)
-            if region_annotation is not None:
-                _, _, region_annotation = region_annotation
-                logger.info(
-                    "GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s",
-                    gene_id, ggroup_id, counts[0], counts[2],
-                )
-                self.distribute_feature_counts(counts, region_annotation)
-
-            else:
-                logger.info("GCAnnotator: Gene %s (group=%s) has no information in database.", gene_id, ggroup_id)
-                self.unannotated_counts += counts[:4]
-
-        self.calculate_scaling_factors()

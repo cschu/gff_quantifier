@@ -1,4 +1,4 @@
-# pylint: disable=C0103,W1514,R0913,R0917
+# pylint: disable=C0103,W1514,R0913,R0917,R0914
 
 """ module docstring """
 
@@ -7,6 +7,9 @@ import logging
 import sys
 
 import numpy as np
+
+from ..counters import AlignmentCounter
+from ..counters.count_matrix import CountMatrix
 
 
 logger = logging.getLogger(__name__)
@@ -74,6 +77,7 @@ class CountWriter:
 
         p, row = 0, []
         rpkm_factor = 1e9 / self.filtered_readcount
+
         # unique counts
         row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
         p += 2
@@ -107,69 +111,91 @@ class CountWriter:
     def write_row(header, data, stream=sys.stdout):
         print(header, *(f"{c:.5f}" for c in data), flush=True, sep="\t", file=stream)
 
-    # pylint: disable=R0914
-    def write_feature_counts(self, db, featcounts, unannotated_reads=None, report_unseen=True):
-        for category_id, counts in sorted(featcounts.items()):
-            scaling_factor, ambig_scaling_factor = featcounts.scaling_factors[
-                category_id
-            ]
-            category = db.query_category(category_id).name
-            if "scaled" in self.publish_reports:
-                logger.info(
-                    "SCALING FACTORS %s %s %s",
-                    category, scaling_factor, ambig_scaling_factor
+    def write_category(
+        self,
+        category_id,
+        category_name,
+        category_sum,
+        counts,
+        # feature_names,
+        features,
+        unannotated_reads=None,
+        report_unseen=True,
+    ):
+        with gzip.open(f"{self.out_prefix}.{category_name}.txt.gz", "wt") as feat_out:
+            header = self.get_header()
+            print("feature", *header, sep="\t", file=feat_out)
+
+            if unannotated_reads is not None:
+                print("unannotated", unannotated_reads, sep="\t", file=feat_out)
+
+            if "total_readcount" in self.publish_reports:
+                CountWriter.write_row(
+                    "total_reads",
+                    np.zeros(len(header)) + self.total_readcount,
+                    stream=feat_out,
                 )
-            with gzip.open(f"{self.out_prefix}.{category}.txt.gz", "wt") as feat_out:
-                header = self.get_header()
-                print("feature", *header, sep="\t", file=feat_out)
 
-                if unannotated_reads is not None:
-                    print("unannotated", unannotated_reads, sep="\t", file=feat_out)
+            if "filtered_readcount" in self.publish_reports:
+                CountWriter.write_row(
+                    "filtered_reads",
+                    np.zeros(len(header)) + self.filtered_readcount,
+                    stream=feat_out,
+                )
 
-                if "total_readcount" in self.publish_reports:
-                    CountWriter.write_row(
-                        "total_reads",
-                        np.zeros(len(header)) + self.total_readcount,
-                        stream=feat_out,
-                    )
+            if "category" in self.publish_reports:
+                # cat_counts = counts[0]
+                cat_counts = category_sum
+                logger.info("CAT %s: %s", category_name, str(cat_counts))
+                if cat_counts is not None:
+                    CountWriter.write_row("category", category_sum, stream=feat_out)
 
-                if "filtered_readcount" in self.publish_reports:
-                    CountWriter.write_row(
-                        "filtered_reads",
-                        np.zeros(len(header)) + self.filtered_readcount,
-                        stream=feat_out,
-                    )
+            # for item in counts:
+            #     if not isinstance(item[0], tuple):
+            #         logger.info("ITEM: %s", str(item))
+            #         raise TypeError(f"Weird key: {str(item)}")
+            #     (cid, fid), fcounts = item
+            #     if (report_unseen or fcounts.sum()) and cid == category_id:
+            #         CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
 
-                if "category" in self.publish_reports:
-                    cat_counts = counts.get(f"cat:::{category_id}")
-                    if cat_counts is not None:
-                        cat_row = self.compile_output_row(
-                            cat_counts,
-                            scaling_factor=featcounts.scaling_factors["total_uniq"],
-                            ambig_scaling_factor=featcounts.scaling_factors["total_ambi"],
-                        )
-                        CountWriter.write_row("category", cat_row, stream=feat_out)
+            empty_row = np.zeros(6, dtype=CountMatrix.NUMPY_DTYPE)
+            for feature in features:
+                key = (category_id, feature.id)
+                if counts.has_record(key):
+                    row = counts[key]
+                else:
+                    row = empty_row
+                if (report_unseen or row.sum()):
+                    CountWriter.write_row(feature.name, row, stream=feat_out,)
+                
 
-                for feature in db.get_features(category_id):
-                    f_counts = counts.get(str(feature.id), np.zeros(len(header)))
-                    if report_unseen or f_counts.sum():
-                        out_row = self.compile_output_row(
-                            f_counts,
-                            scaling_factor=scaling_factor,
-                            ambig_scaling_factor=ambig_scaling_factor,
-                        )
-                        CountWriter.write_row(feature.name, out_row, stream=feat_out)
+            # for (cid, fid), fcounts in counts:
+            #     if (report_unseen or fcounts.sum()) and cid == category_id:
+            #         CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
 
-    def write_gene_counts(self, gene_counts, uniq_scaling_factor, ambig_scaling_factor):
-        if "scaled" in self.publish_reports:
-            logger.info("SCALING_FACTORS %s %s", uniq_scaling_factor, ambig_scaling_factor)
+    def write_gene_counts(
+        self,
+        gene_counts: AlignmentCounter,
+        refmgr,
+        gene_group_db=False,
+    ):
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
 
-            for gene, g_counts in sorted(gene_counts.items()):
-                out_row = self.compile_output_row(
-                    g_counts,
-                    scaling_factor=uniq_scaling_factor,
-                    ambig_scaling_factor=ambig_scaling_factor
+            ref_stream = (
+                (
+                    refmgr.get(rid[0] if isinstance(rid, tuple) else rid)[0],
+                    rid,
                 )
-                CountWriter.write_row(gene, out_row, stream=gene_out)
+                for rid, _ in gene_counts
+            )
+
+            for ref, rid in sorted(ref_stream):
+                counts = gene_counts[rid]
+                if gene_group_db:
+                    ref_tokens = ref.split(".")
+                    gene_id, _ = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                else:
+                    gene_id = ref
+
+                CountWriter.write_row(gene_id, counts, stream=gene_out,)
