@@ -109,7 +109,8 @@ class AlignmentCounter:
         return contributed_counts
 
     def get_unannotated_reads(self):
-        return self.counts["c591b65a0f4cd46d5125745a40c8c056"][0]
+        # return self.counts["c591b65a0f4cd46d5125745a40c8c056"][0]
+        return self.counts["c591b65a0f4cd"][0] 
 
     def update_counts(self, count_stream, increment=1, ambiguous_counts=False):
         contributed_counts = 0
