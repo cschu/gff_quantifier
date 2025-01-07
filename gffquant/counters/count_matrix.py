@@ -130,12 +130,12 @@ class CountMatrix:
 
     def group_gene_counts(self, ggroups):
         ggroup_index = {}
-        # for (key, _), ggroup_id in zip(self.index.items(), ggroups):
+        # for gene_id, gene_counts in self:
+        #     ggroup_id = gene_id.split(".")[-1]
         #     g_key_index = ggroup_index.get(ggroup_id)
-        #     gene_counts = self.counts[self.index[key]]
-        for gene_id, gene_counts in self:
-            ggroup_id = gene_id.split(".")[-1]
+        for (_, gene_counts), ggroup_id in zip(self, ggroups):
             g_key_index = ggroup_index.get(ggroup_id)
+            # gene_counts = self.counts[self.index[key]]
             if g_key_index is None:
                 g_key_index = ggroup_index[ggroup_id] = len(ggroup_index)
                 self.counts[g_key_index] = gene_counts
