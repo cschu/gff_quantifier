@@ -192,10 +192,11 @@ class CountWriter:
 
             for ref, rid in sorted(ref_stream):
                 counts = gene_counts[rid]
-                if gene_group_db:
-                    ref_tokens = ref.split(".")
-                    gene_id, _ = ".".join(ref_tokens[:-1]), ref_tokens[-1]
-                else:
-                    gene_id = ref
+                # if gene_group_db:
+                #     ref_tokens = ref.split(".")
+                #     gene_id, _ = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                # else:
+                #     gene_id = ref
+                gene_id = ref
 
                 CountWriter.write_row(gene_id, counts, stream=gene_out,)
