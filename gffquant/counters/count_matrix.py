@@ -139,8 +139,10 @@ class CountMatrix:
             if g_key_index is None:
                 g_key_index = ggroup_index[ggroup_id] = len(ggroup_index)
                 self.counts[g_key_index] = gene_counts
+                logger.info("CM.group_gene_counts: Adding %s to new group %s (%s).", str(gene_counts), ggroup_id, g_key_index)
             else:
                 self.counts[g_key_index] += gene_counts
+                logger.info("CM.group_gene_counts: Adding %s to group %s (%s).", str(gene_counts), ggroup_id, g_key_index)
 
         # replace index with grouped index
         self.index = ggroup_index
