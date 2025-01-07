@@ -164,6 +164,7 @@ class FeatureQuantifier(ABC):
             for rid, counts in self.counter:
                 if gene_group_db:
                     ggroup_id = rid
+                    logger.info("GGROUP %s: %s", ggroup_id, str(counts))
                 else:
                     ref, _ = self.reference_manager.get(rid[0] if isinstance(rid, tuple) else rid)
                     ggroup_id = ref
