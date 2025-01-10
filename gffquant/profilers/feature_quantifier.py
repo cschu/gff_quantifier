@@ -152,7 +152,7 @@ class FeatureQuantifier(ABC):
         )
 
         ggroups = tuple(
-            (self.reference_manager.get(key[0] if isinstance(key, tuple) else key))[0].split(".")[0]
+            (self.reference_manager.get(key[0] if isinstance(key, tuple) else key))[0]  # .split(".")[0]
             for key, _ in self.counter
         )
 
