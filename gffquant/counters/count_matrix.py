@@ -128,10 +128,13 @@ class CountMatrix:
 
         return self
     
-    def dump(self, state="genes"):
+    def dump(self, state="genes", labels=None,):
         with open(f"CountMatrix.{state}.txt", "wt") as _out:
-            for index, counts in self:
-                print(index, *counts, sep="\t", file=_out)
+            if labels is None:
+                for index, counts in self:
+                    print(index, *counts, sep="\t", file=_out)
+                for (index, counts), label in zip(self, labels):
+                    print(label, *counts, sep="\t", file=_out)
 
 
     def group_gene_counts(self, ggroups):

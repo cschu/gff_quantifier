@@ -151,7 +151,13 @@ class FeatureQuantifier(ABC):
             gene_group_db=gene_group_db,
         )
 
-        self.counter.counts.dump()
+        ggroups = (
+            (self.reference_manager.get(key[0] if isinstance(key, tuple) else key))[0].split(".")[0]
+            for key, _ in self.counter.counts
+        )
+
+
+        self.counter.counts.dump(labels=ggroups)
 
         self.counter.group_gene_count_matrix(self.reference_manager)
         unannotated_reads = self.counter.get_unannotated_reads() + self.aln_counter["unannotated_ambig"]
