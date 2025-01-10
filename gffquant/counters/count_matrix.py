@@ -133,6 +133,7 @@ class CountMatrix:
             if labels is None:
                 for index, counts in self:
                     print(index, *counts, sep="\t", file=_out)
+            else:
                 for (index, counts), label in zip(self, labels):
                     print(label, *counts, sep="\t", file=_out)
 
