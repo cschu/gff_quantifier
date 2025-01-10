@@ -151,9 +151,12 @@ class FeatureQuantifier(ABC):
             gene_group_db=gene_group_db,
         )
 
+        self.counter.counts.dump()
+
         self.counter.group_gene_count_matrix(self.reference_manager)
         unannotated_reads = self.counter.get_unannotated_reads() + self.aln_counter["unannotated_ambig"]
 
+        self.counter.counts.dump(state="ggroup")
 
         categories = self.adm.get_categories()
 
@@ -186,6 +189,9 @@ class FeatureQuantifier(ABC):
 
             category_counts.scale_column(1, u_sf)
             category_counts.scale_column(4, c_sf)
+
+            category_sum[2] = category_sum[1] / u_sf
+            category_sum[5] = category_sum[4] / c_sf
 
             features = tuple(self.adm.get_features(category.id))
             count_writer.write_category(
