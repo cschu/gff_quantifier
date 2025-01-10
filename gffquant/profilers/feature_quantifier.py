@@ -157,12 +157,12 @@ class FeatureQuantifier(ABC):
         )
 
 
-        self.counter.counts.dump()
+        self.counter.counts.dump(labels=ggroups)
 
         self.counter.group_gene_count_matrix(self.reference_manager)
         unannotated_reads = self.counter.get_unannotated_reads() + self.aln_counter["unannotated_ambig"]
 
-        self.counter.counts.dump(state="ggroup", labels=ggroups)
+        self.counter.counts.dump(state="ggroup")
 
         categories = self.adm.get_categories()
 
