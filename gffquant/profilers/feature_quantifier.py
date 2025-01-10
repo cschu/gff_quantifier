@@ -151,9 +151,9 @@ class FeatureQuantifier(ABC):
             gene_group_db=gene_group_db,
         )
 
-        ggroups = (
+        ggroups = tuple(
             (self.reference_manager.get(key[0] if isinstance(key, tuple) else key))[0].split(".")[0]
-            for key, _ in self.counter.counts
+            for key, _ in self.counter
         )
 
 
