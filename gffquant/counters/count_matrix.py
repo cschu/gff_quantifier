@@ -139,6 +139,15 @@ class CountMatrix:
 
 
     def group_gene_counts(self, ggroups):
+
+        ggroup_counts = CountMatrix(ncols=6)
+        for (_, gene_counts), ggroup_id in zip(self, ggroups):
+            ggroup_counts[ggroup_id] +=gene_counts
+        
+        return ggroup_counts
+
+
+
         ggroup_index = {}
         # for gene_id, gene_counts in self:
         #     ggroup_id = gene_id.split(".")[-1]
