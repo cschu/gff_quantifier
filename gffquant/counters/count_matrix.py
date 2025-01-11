@@ -142,7 +142,7 @@ class CountMatrix:
 
         ggroup_counts = CountMatrix(ncols=6)
         for (_, gene_counts), ggroup_id in zip(self, ggroups):
-            ggroup_counts[ggroup_id] +=gene_counts
+            ggroup_counts[ggroup_id] += gene_counts
         
         return ggroup_counts
 

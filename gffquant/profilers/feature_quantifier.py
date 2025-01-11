@@ -208,6 +208,7 @@ class FeatureQuantifier(ABC):
                 features,
                 unannotated_reads=(None, unannotated_reads)[report_unannotated],
             )
+            break
         
 
 
