@@ -160,7 +160,7 @@ class AlignmentCounter:
 
     def group_gene_count_matrix(self, refmgr):
 
-        ggroups = (
+        ggroups = tuple(
             (refmgr.get(key[0] if isinstance(key, tuple) else key))[0].split(".")[0]
             for key, _ in self.counts
         )

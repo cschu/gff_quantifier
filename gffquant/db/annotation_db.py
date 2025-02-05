@@ -68,7 +68,7 @@ class AnnotationDatabaseManager(ABC):
         categories = tuple()
         for cat_features in db_sequence.annotation_str.strip().split(";"):
             category, features = cat_features.split("=")
-            categories += ((category, tuple(feature.strip() for feature in features.split(",") if feature.strip())),)
+            categories += ((int(category), tuple(int(feature.strip()) for feature in features.split(",") if feature.strip())),)
         return db_sequence.strand, db_sequence.featureid, categories
 
     @abstractmethod
