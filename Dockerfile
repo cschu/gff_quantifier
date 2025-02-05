@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 LABEL maintainer="cschu1981@gmail.com"
-LABEL version="2.18.1"
+LABEL version="2.18.2"
 LABEL description="gffquant - functional profiling of metagenomic/transcriptomic wgs samples"
 
 

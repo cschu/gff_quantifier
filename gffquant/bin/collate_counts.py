@@ -79,7 +79,7 @@ class FeatureCountCollator:
     # pylint: disable=R0912,R0915
     def _collate_category(self, category, files, index_file=None):
         table_file = f"{self.prefix}.{category}.{self.column}.txt.gz"
-        feature_label = ("feature", "gene")[category.startswith("gene")]
+        feature_label = ("feature", "gene")[category == "gene_counts"]
         print(index_file, index_file is None, os.path.isfile(str(index_file)))
         if index_file is None or not os.path.isfile(index_file):
             index = self._extract_index(files, feature_label)
