@@ -361,7 +361,7 @@ class FeatureQuantifier(ABC):
         external_gene_counts=None,
     ):
 
-        if self.aln_counter.get("aln_count"):
+        if self.aln_counter.get("aln_count") or external_gene_counts:
             if self.adm is None:
                 self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
