@@ -39,10 +39,14 @@ def validate_args(args):
         )
     )
 
-    if tuple(map(bool, (has_fastq, args.bam, args.sam))).count(True) != 1:
-        raise ValueError(f"Need exactly one type of input: bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(has_fastq)}.")
+    if tuple(map(bool, (has_fastq, args.bam, args.sam, args.gene_counts))).count(True) != 1:
+        raise ValueError(
+            "Need exactly one type of input: "
+            f"bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(has_fastq)} "
+            f"gene_counts={bool(args.gene_count)}."
+        )
 
-    args.input_type = "fastq" if has_fastq else ("bam" if args.bam else "sam")
+    args.input_type = "fastq" if has_fastq else ("bam" if args.bam else ("sam" if args.sam else "gene_counts"))
 
     if (args.reference or args.aligner) and not has_fastq:
         raise ValueError("--reference/--aligner are not needed with alignment input (bam, sam).")
@@ -189,6 +193,12 @@ def handle_args(args):
     #         Input from STDOUT can be used with '-'."""
     #     ),
     # )
+    ap.add_argument(
+        "--gene_counts",
+        type=str,
+        help="Path to a file containing a gene_counts matrix from a previous gffquant run."
+    )
+
     ap.add_argument(
         "--bam",
         type=str,

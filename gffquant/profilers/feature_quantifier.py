@@ -330,16 +330,8 @@ class FeatureQuantifier(ABC):
 
         self.aln_counter.update(aln_reader.get_alignment_stats_dict())
 
-    def finalise(
-        self,
-        restrict_reports=None,
-        report_category=False,
-        report_unannotated=False,
-        dump_counters=False,
-        in_memory=True,
-        gene_group_db=False,
-    ):
 
+    def report_alignments(self):
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
             print(
                 AlignmentProcessor.get_alignment_stats_str(
@@ -352,29 +344,7 @@ class FeatureQuantifier(ABC):
                 ),
                 file=aln_stats_out
             )
-
-        if self.aln_counter.get("aln_count"):
-            if self.adm is None:
-                self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
-
-            report_args = {
-                "restrict_reports": restrict_reports,
-                "report_category": report_category,
-                "report_unannotated": report_unannotated,
-            }
-
-            # self.write_coverage()
-
-            self.process_counters(
-                restrict_reports=restrict_reports,
-                report_category=report_category,
-                report_unannotated=report_unannotated,
-                dump_counters=dump_counters,
-                in_memory=in_memory,
-                gene_group_db=gene_group_db,
-            )
-
-            for metric, value in (
+        for metric, value in (
                 ("Input reads", "full_read_count"),
                 ("Aligned reads", "read_count"),
                 ("Alignments", "pysam_total"),
@@ -386,11 +356,37 @@ class FeatureQuantifier(ABC):
             ):
                 logger.info("%s: %s", metric, self.aln_counter.get(value))
 
-            logger.info(
-                "Alignment rate: %s%%, Filter pass rate: %s%%",
-                round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
-                round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
-            )
+        logger.info(
+            "Alignment rate: %s%%, Filter pass rate: %s%%",
+            round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+            round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+        )
+
+    def load_gene_counts(self, gene_count_matrix):
+        self.aln_counter["aln_count"] = 1
+
+    def finalise(
+        self,
+        restrict_reports=None,
+        report_category=False,
+        report_unannotated=False,
+        dump_counters=False,
+        in_memory=True,
+        gene_group_db=False,
+    ):
+
+        if self.aln_counter.get("aln_count"):
+            if self.adm is None:
+                self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
+
+            self.process_counters(
+                restrict_reports=restrict_reports,
+                report_category=report_category,
+                report_unannotated=report_unannotated,
+                dump_counters=dump_counters,
+                in_memory=in_memory,
+                gene_group_db=gene_group_db,
+            )            
 
         self.adm.clear_caches()
         logger.info("Finished.")
