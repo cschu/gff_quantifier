@@ -135,7 +135,7 @@ class FeatureQuantifier(ABC):
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
         
         if external_gene_counts:
-            count_annotator.annotate_external(external_gene_counts)
+            count_annotator.annotate_external(external_gene_counts, self.adm, gene_group_db=gene_group_db,)
             total_readcount = 0
             filtered_readcount = 0
             has_ambig_counts = True
