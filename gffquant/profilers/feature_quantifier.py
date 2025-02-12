@@ -121,31 +121,44 @@ class FeatureQuantifier(ABC):
         dump_counters=True,
         in_memory=True,
         gene_group_db=False,
+        external_gene_counts=None,
     ):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
-        if dump_counters:
+        if dump_counters and not external_gene_counts:
             self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
         Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
-        count_annotator.annotate(self.reference_manager, self.adm, self.count_manager, gene_group_db=gene_group_db,)
+        
+        if external_gene_counts:
+            count_annotator.annotate_external(external_gene_counts)
+            total_readcount = 0
+            filtered_readcount = 0
+            has_ambig_counts = True
+        else:
+            count_annotator.annotate(self.reference_manager, self.adm, self.count_manager, gene_group_db=gene_group_db,)
+            total_readcount = self.aln_counter["read_count"]
+            filtered_readcount = self.aln_counter["filtered_read_count"]
+            has_ambig_counts = self.count_manager.has_ambig_counts()
 
         count_writer = CountWriter(
             self.out_prefix,
-            has_ambig_counts=self.count_manager.has_ambig_counts(),
+            has_ambig_counts=has_ambig_counts,
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
             report_category=report_category,
-            total_readcount=self.aln_counter["read_count"],
-            filtered_readcount=self.aln_counter["filtered_read_count"],
+            total_readcount=total_readcount,
+            filtered_readcount=filtered_readcount,
         )
 
-        unannotated_reads = self.count_manager.get_unannotated_reads()
-        unannotated_reads += self.aln_counter["unannotated_ambig"]
+        unannotated_reads = 0
+        if not external_gene_counts:
+            unannotated_reads += self.count_manager.get_unannotated_reads()
+            unannotated_reads += self.aln_counter["unannotated_ambig"]
 
         count_writer.write_feature_counts(
             self.adm,
@@ -153,11 +166,12 @@ class FeatureQuantifier(ABC):
             (None, unannotated_reads)[report_unannotated],
         )
 
-        count_writer.write_gene_counts(
-            count_annotator.gene_counts,
-            count_annotator.scaling_factors["total_gene_uniq"],
-            count_annotator.scaling_factors["total_gene_ambi"]
-        )
+        if not external_gene_counts:
+            count_writer.write_gene_counts(
+                count_annotator.gene_counts,
+                count_annotator.scaling_factors["total_gene_uniq"],
+                count_annotator.scaling_factors["total_gene_ambi"]
+            )
 
         self.adm.clear_caches()
 
@@ -330,8 +344,9 @@ class FeatureQuantifier(ABC):
             round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
         )
 
-    def load_gene_counts(self, gene_count_matrix):
-        self.aln_counter["aln_count"] = 1
+    # def load_gene_counts(self, gene_count_matrix):
+    #     self.aln_counter["aln_count"] = 1
+    #     self.count_manager.load_data(gene_count_matrix)
 
     def finalise(
         self,
@@ -341,6 +356,7 @@ class FeatureQuantifier(ABC):
         dump_counters=False,
         in_memory=True,
         gene_group_db=False,
+        external_gene_counts=None,
     ):
 
         if self.aln_counter.get("aln_count"):
@@ -354,6 +370,7 @@ class FeatureQuantifier(ABC):
                 dump_counters=dump_counters,
                 in_memory=in_memory,
                 gene_group_db=gene_group_db,
+                external_gene_counts=external_gene_counts,
             )            
 
         self.adm.clear_caches()

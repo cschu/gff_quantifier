@@ -2,6 +2,7 @@
 
 """ This module contains code for transforming gene counts to feature counts. """
 
+import csv
 import logging
 
 from itertools import chain
@@ -324,5 +325,34 @@ class GeneCountAnnotator(CountAnnotator):
             else:
                 # logger.info("GCAnnotator: Gene %s (group=%s) has no information in database.", gene_id, ggroup_id)
                 self.unannotated_counts += counts[:4]
+
+        self.calculate_scaling_factors()
+
+    def annotate_external(self, fn, db, gene_group_db=False):  # refmgr, db, count_manager, gene_group_db=False):
+
+        with open(fn, "rt", encoding="UTF-8") as _in:
+            for row in csv.DictReader(_in, delimiter="\t"):
+                # gene    uniq_raw        uniq_lnorm      uniq_scaled     combined_raw    combined_lnorm  combined_scaled
+                cols = row["uniq_raw"], row["uniq_lnorm"], row["combined_raw"], row["combined_lnorm"]
+                counts = tuple(map(float, cols))
+                ref = row["gene"]
+
+                if gene_group_db:
+                    ref_tokens = ref.split(".")
+                    gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                else:
+                    ggroup_id, gene_id = ref, ref
+
+                gcounts = self.gene_counts.setdefault(gene_id, np.zeros(self.bins))
+                gcounts += counts
+                self.total_gene_counts += counts[:4]
+
+                region_annotation = db.query_sequence(ggroup_id)
+                if region_annotation is not None:
+                    _, _, region_annotation = region_annotation
+                    self.distribute_feature_counts(counts, region_annotation)
+
+                else:
+                    self.unannotated_counts += counts[:4]
 
         self.calculate_scaling_factors()

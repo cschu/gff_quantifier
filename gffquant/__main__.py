@@ -155,7 +155,7 @@ def main():
     
     else:
         
-        profiler.load_gene_counts(args.gene_counts)
+        ...
 
     profiler.finalise(
         restrict_reports=args.restrict_metrics,
@@ -164,6 +164,7 @@ def main():
         dump_counters=args.debug,
         in_memory=args.db_in_memory,
         gene_group_db=args.gene_group_db,
+        external_gene_counts=args.gene_counts,
     )
 
 

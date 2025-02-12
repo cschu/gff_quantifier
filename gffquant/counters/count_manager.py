@@ -1,5 +1,7 @@
 """count_manager"""
 
+import csv
+
 from collections import Counter
 
 from .. import DistributionMode
@@ -155,6 +157,24 @@ class CountManager:
                 uniq_counts, ambig_counts = [uniq_counter[seqid]], [ambig_counter[seqid]]
 
             return uniq_counts, ambig_counts
+        
+    # def set_counts(self, seqid, value, which_counter):
+    #     counter = (self.uniq_seqcounts, self.ambig_seqcounts)[which_counter == "ambig"]
+    #     counter[seqid] = value
+
+    # def load_data(self, fn):
+    #     # gene    uniq_raw        uniq_lnorm      uniq_scaled     combined_raw    combined_lnorm  combined_scaled
+    #     with open(fn, "rt", encoding="UTF-8") as _in:
+    #         try:
+    #             header = next(_in)
+    #         except StopIteration:
+    #             header = ""
+    #         if header:
+    #             for row in csv.reader(_in, delimiter="\t"):
+    #                 gene, counts = row[0], tuple(map(float, row[1:]))
+    #                 self.set_counts()
+
+
 
     def get_regions(self, rid):
         return set(self.uniq_regioncounts.get(rid, set())).union(
