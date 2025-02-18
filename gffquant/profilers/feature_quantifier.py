@@ -392,7 +392,8 @@ class FeatureQuantifier(ABC):
                 round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
             )
 
-        self.adm.clear_caches()
+            self.adm.clear_caches()
+
         logger.info("Finished.")
 
     def evaluate_alignment_group(self, aln_group, is_ambig_alignment):
