@@ -107,6 +107,7 @@ class AlignmentProcessor:
                     continue
 
                 if last_aligned_read is None or pysam_aln.qname != last_aligned_read:
+                    last_aligned_read = pysam_aln.qname
                     self.read_counter[AlignmentProcessor.TOTAL_ALIGNED_READS] += 1
 
                 # if read_unmapped:
