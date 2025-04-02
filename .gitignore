@@ -8,3 +8,4 @@ gffquant/counters/test.py
 *.pyc
 my_tests/
 .vscode/
+.qodo
