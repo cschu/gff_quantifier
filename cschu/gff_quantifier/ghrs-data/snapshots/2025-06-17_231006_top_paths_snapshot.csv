@@ -1,0 +1,9 @@
+url_path,views_total,views_unique
+/cschu/gff_quantifier,7,3
+/cschu/gff_quantifier/actions,1,1
+/cschu/gff_quantifier/actions/runs/15596583158/job/43928260937,1,1
+/cschu/gff_quantifier/actions/runs/15618533500,1,1
+/cschu/gff_quantifier/actions/runs/15618533500/job/43997335136,1,1
+/cschu/gff_quantifier/blob/main/gffquant/__init__.py,1,1
+/cschu/gff_quantifier/blob/main/Singularity.v2.9.6.with_customdb,1,1
+/cschu/gff_quantifier/tree/main/gffquant,1,1
