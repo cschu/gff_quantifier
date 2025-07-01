@@ -1,0 +1,11 @@
+url_path,views_total,views_unique
+/cschu/gff_quantifier,27,16
+/cschu/gff_quantifier/issues,7,3
+/cschu/gff_quantifier/tree/main/gffquant,6,3
+/cschu/gff_quantifier/tree/main/gffquant/db,5,3
+/cschu/gff_quantifier/blob/main/gffquant/annotation/count_annotator.py,3,3
+/cschu/gff_quantifier/blob/main/environment.yml,3,2
+/cschu/gff_quantifier/tree/main,3,2
+/cschu/gff_quantifier/tree/main/gffquant/db/models,3,2
+/cschu/gff_quantifier/tree/main/util,3,2
+/cschu/gff_quantifier/blob/main/gffquant/bin/build_gene_database.py,2,2
