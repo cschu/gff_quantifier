@@ -76,6 +76,8 @@ EMAPPER_FORMATS = {
         "",
     ),
     "v2.1.2": EmapperFormat(
+        #  0      1               2       3       4               5               6               7               8               9       10      11      12              13              14              15              16      17      18      19              20       
+        # #query  seed_ortholog   evalue  score   eggNOG_OGs      max_annot_lvl   COG_category    Description     Preferred_name  GOs     EC      KEGG_ko KEGG_Pathway    KEGG_Module     KEGG_Reaction   KEGG_rclass     BRITE   KEGG_TC CAZy    BiGG_Reaction   PFAMs
         0,
         (4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,),
         (

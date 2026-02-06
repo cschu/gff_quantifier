@@ -27,7 +27,20 @@ class AnnotatedSequence(Base):
     end = Column(Integer)
     strand = Column(Integer)
 
-    annotation_str = Column(String)
+    feature_string_id = Column(Integer, ForeignKey("featurestrings.id"))
+    annotation_str = relationship("FeatureString", back_populates="sequences")
+    # annotation_str = Column(String)
+
+
+class FeatureString(Base):
+    __tablename__ = "featurestrings"
+
+    id = Column(Integer, primary_key=True)
+    sha256 = Column(String, index=True)
+    features = Column(String)
+
+    sequences = relationship("AnnotatedSequence", back_populates="annotation_str")
+
 
 
 class Category(Base):

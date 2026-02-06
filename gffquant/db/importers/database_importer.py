@@ -3,6 +3,7 @@
 """ module docstring """
 
 import gzip
+import hashlib
 import logging
 
 from abc import ABC, abstractmethod
@@ -111,9 +112,17 @@ class GqDatabaseImporter(ABC):
 
                     # logger.info(" Adding annotation %s: %s -> %s", category, features, encoded[-1])
 
-                seq_feature.annotation_str = ";".join(
+                annotation_str = ";".join(
                     f"{cat}={features}" for cat, features in sorted(encoded)
                 )
+
+                annotation_hash = hashlib.sha256(annotation_str.encode()).hexdigest()
+                feature_string = self.db_session.query(db.FeatureString).filter(db.FeatureString.sha256 == annotation_hash).one_or_none()
+                if feature_string is None:
+                    feature_string = db.FeatureString(sha256=annotation_hash, features=annotation_str)
+                    self.db_session.add(feature_string)
+                
+                seq_feature.feature_string_id = feature_string.id
 
                 if self.db_session:
                     self.db_session.add(seq_feature)
