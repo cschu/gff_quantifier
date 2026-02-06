@@ -28,6 +28,7 @@ class GqDatabaseImporter(ABC):
         self.categories = {}
         self.features = {}
         self.na_char = na_char
+        self.hashmap = {}
 
     def extract_features(self, columns):
 
@@ -78,7 +79,7 @@ class GqDatabaseImporter(ABC):
 
     def build_database(self, input_data, input_data2=None):
 
-        category_map, feature_map = {}, {}
+        category_map, feature_map, hash_map = {}, {}, {}
         logger.info(f"{self.update_log_after_n_records=}")
 
         input_data = GqDatabaseImporter.get_open_function(input_data)(input_data, "rb")
@@ -117,12 +118,15 @@ class GqDatabaseImporter(ABC):
                 )
 
                 annotation_hash = hashlib.sha256(annotation_str.encode()).hexdigest()
-                feature_string = self.db_session.query(db.FeatureString).filter(db.FeatureString.sha256 == annotation_hash).one_or_none()
-                if feature_string is None:
-                    feature_string = db.FeatureString(sha256=annotation_hash, features=annotation_str)
-                    self.db_session.add(feature_string)
                 
-                seq_feature.feature_string_id = feature_string.id
+                feature_string_id = hash_map.setdefault(annotation_hash, (len(hash_map), annotation_str))[0]
+                
+                # feature_string = self.db_session.query(db.FeatureString).filter(db.FeatureString.sha256 == annotation_hash).one_or_none()
+                # if feature_string is None:
+                #     feature_string = db.FeatureString(sha256=annotation_hash, features=annotation_str)
+                #     self.db_session.add(feature_string)
+                
+                seq_feature.feature_string_id = feature_string_id
 
                 if self.db_session:
                     self.db_session.add(seq_feature)
@@ -147,11 +151,21 @@ class GqDatabaseImporter(ABC):
                 }
             )
 
+            self.hashmap.update(
+                {
+                    fs_id: db.FeatureString(id=fs_id, sha256=fhash, features=annstr)
+                    for fhash, (fs_id, annstr) in hash_map.items()
+                }
+            )
+
             if self.db_session is not None:
                 for category in self.categories.values():
                     self.db_session.add(category)
                 for feature in self.features.values():
                     self.db_session.add(feature)
+
+                for fstr in self.hashmap.values():
+                    self.db_session.add(fstr)
 
                 self.db_session.commit()
 
