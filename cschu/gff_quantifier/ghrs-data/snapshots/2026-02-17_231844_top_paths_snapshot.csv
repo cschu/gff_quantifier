@@ -1,0 +1,11 @@
+url_path,views_total,views_unique
+/cschu/gff_quantifier,6,4
+/cschu/gff_quantifier/commits/main,4,1
+/cschu/gff_quantifier/blob/71d16b2cafbdd5d6f1443acf10d65a1b340a271f/gffquant/bin/collate_counts.py,2,1
+/cschu/gff_quantifier/blob/main/setup.py,2,1
+/cschu/gff_quantifier/issues,2,1
+/cschu/gff_quantifier/blob/71d16b2cafbdd5d6f1443acf10d65a1b340a271f/gffquant/db/importers/small_genome_database_importer.py,1,1
+/cschu/gff_quantifier/commit/25925a292b271270a55a35f1e156c180f3fa3d1a,1,1
+/cschu/gff_quantifier/commit/32ff6abcb3749f1fa7b579d086f560fa5319a689,1,1
+/cschu/gff_quantifier/commit/71d16b2cafbdd5d6f1443acf10d65a1b340a271f,1,1
+/cschu/gff_quantifier/tree/71d16b2cafbdd5d6f1443acf10d65a1b340a271f,1,1
