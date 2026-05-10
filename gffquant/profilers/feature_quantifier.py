@@ -375,7 +375,8 @@ class FeatureQuantifier(ABC):
                 external_gene_counts=external_gene_counts,
             )            
 
-        self.adm.clear_caches()
+            self.adm.clear_caches()
+
         logger.info("Finished.")
 
     def evaluate_alignment_group(self, aln_group, is_ambig_alignment):

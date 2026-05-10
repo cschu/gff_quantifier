@@ -81,7 +81,6 @@ class Minimap2Runner(AlignmentRunner):
         super().__init__(cpus, ref_index, sample_id=sample_id, blocksize=blocksize)
         self.aligner = "minimap2"
         self.aligner_args += [
-            "--sam-hit-only",
             "-x sr",
             "--secondary=yes",
             "-a",
