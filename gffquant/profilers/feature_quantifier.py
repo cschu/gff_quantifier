@@ -329,16 +329,16 @@ class FeatureQuantifier(ABC):
             # )
 
         for metric, value in (
-                ("Input reads", "full_read_count"),
-                ("Aligned reads", "read_count"),
-                ("Alignments", "pysam_total"),
-                ("Reads passing filters", "filtered_read_count"),
-                ("Alignments passing filters", "pysam_passed"),
-                ("  - Discarded due to seqid", "pysam_seqid_filt"),
-                ("  - Discarded due to length", "pysam_len_filt"),
-                # ("Unannotated multimappers", "unannotated_ambig"),
-            ):
-                logger.info("%s: %s", metric, self.aln_counter.get(value))
+            ("Input reads", "full_read_count"),
+            ("Aligned reads", "read_count"),
+            ("Alignments", "pysam_total"),
+            ("Reads passing filters", "filtered_read_count"),
+            ("Alignments passing filters", "pysam_passed"),
+            ("  - Discarded due to seqid", "pysam_seqid_filt"),
+            ("  - Discarded due to length", "pysam_len_filt"),
+            # ("Unannotated multimappers", "unannotated_ambig"),
+        ):
+            logger.info("%s: %s", metric, self.aln_counter.get(value))
 
         if self.aln_counter["full_read_count"]:
             alignment_rate = round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
