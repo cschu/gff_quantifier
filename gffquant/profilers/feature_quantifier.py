@@ -340,10 +340,16 @@ class FeatureQuantifier(ABC):
             ):
                 logger.info("%s: %s", metric, self.aln_counter.get(value))
 
+        if self.aln_counter["full_read_count"]:
+            alignment_rate = round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+            filter_pass_rate = round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+        else:
+            alignment_rate, filter_pass_rate = None, None
+
         logger.info(
-            "Alignment rate: %s%%, Filter pass rate: %s%%",
-            round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
-            round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+            "Alignment rate: %s%%, Filter pass rate: %s%%" % (
+                alignment_rate, filter_pass_rate,
+            )
         )
 
     # def load_gene_counts(self, gene_count_matrix):
