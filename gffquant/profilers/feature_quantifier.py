@@ -314,7 +314,7 @@ class FeatureQuantifier(ABC):
 
 
     def report_alignments(self):
-        with open(f"{self.out_prefix}.aln_stats.json", "wb") as aln_stats_out:
+        with open(f"{self.out_prefix}.aln_stats.json", "wt") as aln_stats_out:
             json.dump(self.aln_counter, aln_stats_out)
             # print(
             #     AlignmentProcessor.get_alignment_stats_str(
