@@ -131,7 +131,7 @@ class FeatureQuantifier(ABC):
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
-        Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
+        Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required and not external_gene_counts]
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
         
         if external_gene_counts:

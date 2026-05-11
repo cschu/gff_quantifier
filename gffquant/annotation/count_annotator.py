@@ -198,6 +198,9 @@ class RegionCountAnnotator(CountAnnotator):
     def __init__(self, strand_specific, report_scaling_factors=True):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
+    def annotate_external(self, fn, db, gene_group_db=False):
+        raise NotImplementedError()
+
     # pylint: disable=R0914,W0613
     def annotate(self, refmgr, db, count_manager, gene_group_db=False):
         """
