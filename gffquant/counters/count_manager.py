@@ -1,7 +1,5 @@
 """count_manager"""
 
-import csv
-
 from collections import Counter
 
 from .. import DistributionMode
