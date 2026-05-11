@@ -53,6 +53,9 @@ def validate_args(args):
     if bool(args.reference and args.aligner) != has_fastq:
         raise ValueError("--fastq requires --reference and --aligner to be set.")
 
+    if (args.strand_specific and args.gene_counts):
+        raise NotImplementedError("External gene count input is not implemented for strand-specific counts.")
+
     if args.input_type == "fastq":
         args.input_data = check_input_reads(
             fwd_reads=args.reads1, rev_reads=args.reads2,
