@@ -43,7 +43,7 @@ def validate_args(args):
         raise ValueError(
             "Need exactly one type of input: "
             f"bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(has_fastq)} "
-            f"gene_counts={bool(args.gene_count)}."
+            f"gene_counts={bool(args.gene_counts)}."
         )
 
     args.input_type = "fastq" if has_fastq else ("bam" if args.bam else ("sam" if args.sam else "gene_counts"))
