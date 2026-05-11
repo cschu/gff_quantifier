@@ -341,8 +341,10 @@ class GeneCountAnnotator(CountAnnotator):
                 ref = row["gene"]
 
                 if gene_group_db:
-                    ref_tokens = ref.split(".")
-                    gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                    # ref_tokens = ref.split(".")
+                    p = ref.rfind(".")
+                    # gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                    gene_id, ggroup_id = ref[:p], ref[p + 1:]
                 else:
                     ggroup_id, gene_id = ref, ref
 
