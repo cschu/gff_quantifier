@@ -49,7 +49,7 @@ def validate_args(args):
     args.input_type = "fastq" if has_fastq else ("bam" if args.bam else ("sam" if args.sam else "gene_counts"))
 
     if (args.reference or args.aligner) and not has_fastq:
-        raise ValueError("--reference/--aligner are not needed with alignment input (bam, sam).")
+        raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
     if bool(args.reference and args.aligner) != has_fastq:
         raise ValueError("--fastq requires --reference and --aligner to be set.")
 
