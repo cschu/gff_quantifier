@@ -27,9 +27,7 @@ def validate_args(args):
 
     if not all(os.path.isfile(f) for f in db_files):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
-    if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
-        raise ValueError(f"Cannot find reference index at `{args.reference}`.")
-
+    
     has_fastq = any(
         map(
             lambda x: x is not None,
@@ -48,20 +46,30 @@ def validate_args(args):
 
     args.input_type = "fastq" if has_fastq else ("bam" if args.bam else ("sam" if args.sam else "gene_counts"))
 
-    if (args.reference or args.aligner) and not has_fastq:
-        raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
-    if bool(args.reference and args.aligner) != has_fastq:
-        raise ValueError("--fastq requires --reference and --aligner to be set.")
+    if has_fastq:
+        if not bool(args.reference and args.aligner):
+            raise ValueError("--fastq-<readtype> input requires --reference and --aligner to be set.")
 
-    if (args.strand_specific and args.gene_counts):
-        raise NotImplementedError("External gene count input is not implemented for strand-specific counts.")
+        if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
+            raise ValueError(f"Cannot find `${args.aligner}` reference index at `{args.reference}`.")
 
-    if args.input_type == "fastq":
         args.input_data = check_input_reads(
             fwd_reads=args.reads1, rev_reads=args.reads2,
             single_reads=args.singles, orphan_reads=args.orphans,
         )
+    else:
+        if bool(args.reference or args.aligner):
+            raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
+        
+    if (args.strand_specific and args.gene_counts):
+        raise NotImplementedError("External gene count input is not implemented for strand-specific counts.")
 
+    # if (args.reference or args.aligner) and not has_fastq:
+    #     raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
+    
+    # if bool(args.reference and args.aligner) != has_fastq:
+    #     raise ValueError("--fastq-<readtype> input requires --reference and --aligner to be set.")
+    
     if args.restrict_metrics:
         restrict_metrics = set(args.restrict_metrics.split(","))
         invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
