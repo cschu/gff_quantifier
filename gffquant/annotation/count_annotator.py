@@ -304,17 +304,14 @@ class GeneCountAnnotator(CountAnnotator):
                 strand_specific_counts=strand_specific_counts,
             )
 
-            gcounts = self.gene_counts.setdefault(gene_id, np.zeros(self.bins))
-            gcounts += counts
-            self.total_gene_counts += counts[:4]
-
             if gene_group_db:
                 ref_tokens = ref.split(".")
                 gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
                 grouped_counts.setdefault(ggroup_id, np.zeroes(self.bins))
                 grouped_counts += counts
             else:
-                region_annotation = db.query_sequence(ref)
+                gene_id = ref
+                region_annotation = db.query_sequence(gene_id)
                 if region_annotation is not None:
                     _, _, region_annotation = region_annotation
                     # logger.info(
@@ -325,6 +322,10 @@ class GeneCountAnnotator(CountAnnotator):
                 else:
                     # logger.info("GCAnnotator: Gene %s (group=%s) has no information in database.", gene_id, ggroup_id)
                     self.unannotated_counts += counts[:4]
+
+            gcounts = self.gene_counts.setdefault(gene_id, np.zeros(self.bins))
+            gcounts += counts
+            self.total_gene_counts += counts[:4]
 
         for group_id, counts in grouped_counts.items():
             if group_id == "0":
