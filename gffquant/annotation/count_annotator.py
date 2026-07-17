@@ -307,7 +307,7 @@ class GeneCountAnnotator(CountAnnotator):
             if gene_group_db:
                 ref_tokens = ref.split(".")
                 gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
-                grouped_counts.setdefault(ggroup_id, np.zeroes(self.bins))
+                grouped_counts.setdefault(ggroup_id, np.zeros(self.bins))
                 grouped_counts += counts
             else:
                 gene_id = ref
