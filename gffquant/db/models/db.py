@@ -8,6 +8,16 @@ from sqlalchemy.orm import relationship
 from .meta import Base
 
 
+class AnnotationGroup(Base):
+    __tablename__ = "annotation_group"
+
+    id = Column(Integer, primary_key=True)
+    id16 = Column(String, index=True)
+    annotation = Column(String)
+    n_members = Column(Integer)
+    sha256 = Column(String)
+
+
 class AnnotationString(Base):
     __tablename__ = "annotationstring"
 

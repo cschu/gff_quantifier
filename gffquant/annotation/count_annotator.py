@@ -286,6 +286,8 @@ class GeneCountAnnotator(CountAnnotator):
             if self.strand_specific else None
         )
 
+        grouped_counts = {}
+
         for rid in set(count_manager.uniq_seqcounts).union(
             count_manager.ambig_seqcounts
         ):
@@ -302,27 +304,33 @@ class GeneCountAnnotator(CountAnnotator):
                 strand_specific_counts=strand_specific_counts,
             )
 
-            if gene_group_db:
-                ref_tokens = ref.split(".")
-                gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
-            else:
-                ggroup_id, gene_id = ref, ref
-
             gcounts = self.gene_counts.setdefault(gene_id, np.zeros(self.bins))
             gcounts += counts
             self.total_gene_counts += counts[:4]
 
-            region_annotation = db.query_sequence(ggroup_id)
-            if region_annotation is not None:
-                _, _, region_annotation = region_annotation
-                # logger.info(
-                #     "GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s",
-                #     gene_id, ggroup_id, counts[0], counts[2],
-                # )
-                self.distribute_feature_counts(counts, region_annotation)
-
+            if gene_group_db:
+                ref_tokens = ref.split(".")
+                gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                grouped_counts.setdefault(ggroup_id, np.zeroes(self.bins))
+                grouped_counts += counts
             else:
-                # logger.info("GCAnnotator: Gene %s (group=%s) has no information in database.", gene_id, ggroup_id)
+                region_annotation = db.query_sequence(ref)
+                if region_annotation is not None:
+                    _, _, region_annotation = region_annotation
+                    # logger.info(
+                    #     "GCAnnotator: Distributing counts of Gene %s (group=%s) %s %s",
+                    #     gene_id, ggroup_id, counts[0], counts[2],
+                    # )
+                    self.distribute_feature_counts(counts, region_annotation)
+                else:
+                    # logger.info("GCAnnotator: Gene %s (group=%s) has no information in database.", gene_id, ggroup_id)
+                    self.unannotated_counts += counts[:4]
+
+        for group_id, counts in grouped_counts.items():
+            if group_id == "0":
                 self.unannotated_counts += counts[:4]
+            else:
+                _, _, region_annotation = db.query_sequence(int(group_id, 16), grouped_db=True,)
+                self.distribute_feature_counts(counts, region_annotation)
 
         self.calculate_scaling_factors()

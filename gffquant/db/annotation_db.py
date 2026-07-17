@@ -59,14 +59,18 @@ class AnnotationDatabaseManager(ABC):
     def get_categories(self):
         ...
 
-    def query_sequence(self, seqid, start=None, end=None):
+    def query_sequence(self, seqid, start=None, end=None, grouped_db=False,):
         """ Returns strand, seq-feature id (e.g. contig id), functional categories """
-        db_sequence = self.query_sequence_internal(seqid, start=start, end=end)
+        db_sequence = self.query_sequence_internal(seqid, start=start, end=end, grouped_db=grouped_db,)
 
         if db_sequence is None:
             return None
         categories = tuple()
-        for cat_features in db_sequence.annotation_str.strip().split(";"):
+
+        annotation_str = db_sequence.annotation_str if hasattr(db_sequence, "annotation_str") else db_sequence.annotation
+
+        # for cat_features in db_sequence.annotation_str.strip().split(";"):
+        for cat_features in annotation_str.strip().split(";"):
             category, features = cat_features.split("=")
             categories += ((category, tuple(feature.strip() for feature in features.split(",") if feature.strip())),)
         return db_sequence.strand, db_sequence.featureid, categories
@@ -192,8 +196,12 @@ class SQL_ADM(AnnotationDatabaseManager):
         super().__init__()
         self.db_session = db_path
 
-    def query_sequence_internal(self, seqid, start=None, end=None):
-        if start is not None and end is not None:
+    def query_sequence_internal(self, seqid, start=None, end=None, grouped_db=False,):
+        if grouped_db:
+            db_sequence = self.db_session.query(db.AnnotationGroup) \
+                .filter(db.AnnotationGroup.id == seqid) \
+                .one_or_none()  
+        elif start is not None and end is not None:
             db_sequence = self.db_session.query(db.AnnotatedSequence) \
                 .filter(db.AnnotatedSequence.seqid == seqid) \
                 .filter((db.AnnotatedSequence.start == start) & (db.AnnotatedSequence.end == end)).one_or_none()
