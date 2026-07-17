@@ -68,12 +68,14 @@ class AnnotationDatabaseManager(ABC):
         categories = tuple()
 
         annotation_str = db_sequence.annotation_str if hasattr(db_sequence, "annotation_str") else db_sequence.annotation
+        strand = db_sequence.strand if hasattr(db_sequence, "strand") else None
+        featureid = db_sequence.feature_id if hasattr(db_sequence, "feature_id") else None
 
         # for cat_features in db_sequence.annotation_str.strip().split(";"):
         for cat_features in annotation_str.strip().split(";"):
             category, features = cat_features.split("=")
             categories += ((category, tuple(feature.strip() for feature in features.split(",") if feature.strip())),)
-        return db_sequence.strand, db_sequence.featureid, categories
+        return strand, featureid, categories
 
     @abstractmethod
     def query_feature(self, feature_id):
