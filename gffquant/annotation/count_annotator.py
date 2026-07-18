@@ -148,8 +148,9 @@ class CountAnnotator(dict):
                 )
 
     # pylint: disable=R0913
+    @staticmethod
     def compute_count_vector(
-        self,
+        nbins,
         uniq_counts,
         ambig_counts,
         length,
@@ -160,7 +161,7 @@ class CountAnnotator(dict):
         # we have either 4 bins (unstranded) or 12 (strand-specific)
         # UNSTRANDED = {uniq,ambig} x {raw,normalised}
         # STRANDED = UNSTRANDED x {all,sense/plus,antisense/minus}
-        counts = np.zeros(self.bins)
+        counts = np.zeros(nbins)
 
         if strand_specific_counts is not None:
             ss_counts, as_counts = strand_specific_counts
@@ -252,7 +253,8 @@ class RegionCountAnnotator(CountAnnotator):
                         strand_specific_counts = None
 
                     region_length = end - start + 1
-                    counts = self.compute_count_vector(
+                    counts = CountAnnotator.compute_count_vector(
+                        self.bins,
                         uniq_counts,
                         ambig_counts,
                         region_length,
@@ -277,6 +279,16 @@ class GeneCountAnnotator(CountAnnotator):
     def __init__(self, strand_specific, report_scaling_factors=True):
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
 
+    def _process_grouped_counts(self, grouped_counts, db):
+        for group_id, counts in grouped_counts.items():
+            if group_id == "0":
+                self.unannotated_counts += counts[:4]
+            else:
+                region_annotation = db.query_sequence(int(group_id, 16), grouped_db=True,)
+                if region_annotation is not None:
+                    _, _, region_annotation = region_annotation
+                    self.distribute_feature_counts(counts, region_annotation)
+
     def annotate(self, refmgr, db, count_manager, gene_group_db=False):
         """
         Annotate a set of gene counts via db-iteration.
@@ -285,6 +297,8 @@ class GeneCountAnnotator(CountAnnotator):
         - db: GffDatabaseManager holding functional annotation database
         - count_manager: count_data
         """
+        logger.debug("Running annotate()")
+
         strand_specific_counts = (
             (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
             if self.strand_specific else None
@@ -301,7 +315,8 @@ class GeneCountAnnotator(CountAnnotator):
                 rid, region_counts=False, strand_specific=self.strand_specific
             )
 
-            counts = self.compute_count_vector(
+            counts = CountAnnotator.compute_count_vector(
+                self.bins,
                 uniq_counts,
                 ambig_counts,
                 region_length,
@@ -310,7 +325,8 @@ class GeneCountAnnotator(CountAnnotator):
 
             if gene_group_db:
                 ref_tokens = ref.split(".")
-                gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                # gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                gene_id, ggroup_id = ref, ref_tokens[-1]
                 grouped_counts.setdefault(ggroup_id, np.zeros(self.bins))
                 grouped_counts[ggroup_id] += counts
             else:
@@ -326,18 +342,21 @@ class GeneCountAnnotator(CountAnnotator):
             gcounts += counts
             self.total_gene_counts += counts[:4]
 
-        for group_id, counts in grouped_counts.items():
-            if group_id == "0":
-                self.unannotated_counts += counts[:4]
-            else:
-                region_annotation = db.query_sequence(int(group_id, 16), grouped_db=True,)
-                if region_annotation is not None:
-                    _, _, region_annotation = region_annotation
-                    self.distribute_feature_counts(counts, region_annotation)
+        # for group_id, counts in grouped_counts.items():
+        #     if group_id == "0":
+        #         self.unannotated_counts += counts[:4]
+        #     else:
+        #         region_annotation = db.query_sequence(int(group_id, 16), grouped_db=True,)
+        #         if region_annotation is not None:
+        #             _, _, region_annotation = region_annotation
+        #             self.distribute_feature_counts(counts, region_annotation)
+        self._process_grouped_counts(grouped_counts, db)
 
         self.calculate_scaling_factors()
 
     def annotate_external(self, fn, db, gene_group_db=False):  # refmgr, db, count_manager, gene_group_db=False):
+
+        grouped_counts = {}
 
         with open(fn, "rt", encoding="UTF-8") as _in:
             for row in csv.DictReader(_in, delimiter="\t"):
@@ -346,24 +365,43 @@ class GeneCountAnnotator(CountAnnotator):
                 counts = tuple(map(float, cols))
                 ref = row["gene"]
 
+                # if gene_group_db:
+                #     # ref_tokens = ref.split(".")
+                #     p = ref.rfind(".")
+                #     # gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
+                #     # gene_id, ggroup_id = ref[:p], ref[p + 1:]
+                #     gene_id, ggroup_id = ref, ref[p + 1:]
+                # else:
+                #     ggroup_id, gene_id = ref, ref
+
                 if gene_group_db:
-                    # ref_tokens = ref.split(".")
-                    p = ref.rfind(".")
+                    ref_tokens = ref.split(".")
                     # gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
-                    gene_id, ggroup_id = ref[:p], ref[p + 1:]
+                    gene_id, ggroup_id = ref, ref_tokens[-1]
+                    grouped_counts.setdefault(ggroup_id, np.zeros(self.bins))
+                    grouped_counts[ggroup_id] += counts
                 else:
-                    ggroup_id, gene_id = ref, ref
+                    gene_id = ref
+                    region_annotation = db.query_sequence(gene_id)
+                    if region_annotation is not None:
+                        _, _, region_annotation = region_annotation
+                        self.distribute_feature_counts(counts, region_annotation)
+                    else:
+                        self.unannotated_counts += counts[:4]
+
 
                 gcounts = self.gene_counts.setdefault(gene_id, np.zeros(self.bins))
                 gcounts += counts
                 self.total_gene_counts += counts[:4]
 
-                region_annotation = db.query_sequence(ggroup_id)
-                if region_annotation is not None:
-                    _, _, region_annotation = region_annotation
-                    self.distribute_feature_counts(counts, region_annotation)
+                # region_annotation = db.query_sequence(ggroup_id)
+                # if region_annotation is not None:
+                #     _, _, region_annotation = region_annotation
+                #     self.distribute_feature_counts(counts, region_annotation)
 
-                else:
-                    self.unannotated_counts += counts[:4]
+                # else:
+                #     self.unannotated_counts += counts[:4]
+
+        self._process_grouped_counts(grouped_counts, db)
 
         self.calculate_scaling_factors()
