@@ -355,10 +355,11 @@ class GeneCountAnnotator(CountAnnotator):
         self.calculate_scaling_factors()
 
     def annotate_external(self, fn, db, gene_group_db=False):  # refmgr, db, count_manager, gene_group_db=False):
+        from ..db.importers.database_importer import GqDatabaseImporter
 
         grouped_counts = {}
 
-        with open(fn, "rt", encoding="UTF-8") as _in:
+        with GqDatabaseImporter.get_open_function(fn)(fn, "rt", encoding="UTF-8") as _in:
             for row in csv.DictReader(_in, delimiter="\t"):
                 # gene    uniq_raw        uniq_lnorm      uniq_scaled     combined_raw    combined_lnorm  combined_scaled
                 cols = row["uniq_raw"], row["uniq_lnorm"], row["combined_raw"], row["combined_lnorm"]
