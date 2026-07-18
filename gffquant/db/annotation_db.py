@@ -48,7 +48,7 @@ class AnnotationDatabaseManager(ABC):
         return SQL_ADM(db_path)
 
     @abstractmethod
-    def query_sequence_internal(self, seqid, start=None, end=None):
+    def query_sequence_internal(self, seqid, start=None, end=None, grouped_db=False,):
         ...
 
     @abstractmethod
@@ -238,7 +238,7 @@ class Dict_ADM(AnnotationDatabaseManager):
         super().__init__()
         self.db = db_path
 
-    def query_sequence_internal(self, seqid, start=None, end=None):
+    def query_sequence_internal(self, seqid, start=None, end=None, grouped_db=False,):
         if start is not None and end is not None:
             seqs = [
                 seq
