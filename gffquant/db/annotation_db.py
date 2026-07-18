@@ -65,18 +65,12 @@ class AnnotationDatabaseManager(ABC):
 
         if db_sequence is None:
             return None
-    
-        categories = tuple()
 
-        annotation_str = db_sequence.annotation_str
         strand = getattr(db_sequence, "feature_id", None)
         featureid = getattr(db_sequence, "feature_id", None)
-        
-        # db_sequence.strand if hasattr(db_sequence, "strand") else None
-        # featureid = db_sequence.feature_id if hasattr(db_sequence, "feature_id") else None
 
-        # for cat_features in db_sequence.annotation_str.strip().split(";"):
-        for cat_features in annotation_str.strip().split(";"):
+        categories = tuple()
+        for cat_features in db_sequence.annotation_str.strip().split(";"):
             category, features = cat_features.split("=")
             categories += ((category, tuple(feature.strip() for feature in features.split(",") if feature.strip())),)
 
