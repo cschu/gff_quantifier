@@ -66,7 +66,7 @@ class AnnotationDatabaseManager(ABC):
         if db_sequence is None:
             return None
 
-        strand = getattr(db_sequence, "feature_id", None)
+        strand = getattr(db_sequence, "strand", None)
         featureid = getattr(db_sequence, "feature_id", None)
 
         categories = tuple()
