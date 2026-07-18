@@ -13,8 +13,8 @@ class AnnotationGroup(Base):
 
     id = Column(Integer, primary_key=True)
     id16 = Column(String, index=True)
-    annotation = Column(String)
-    nmembers = Column(Integer)
+    annotation_str = Column(String)
+    n_members = Column(Integer)
     sha256 = Column(String)
 
 
