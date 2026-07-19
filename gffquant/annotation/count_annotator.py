@@ -195,8 +195,6 @@ class CountAnnotator(dict):
         counts[1::2] /= float(length)
 
         return counts
-<<<<<<< HEAD
-=======
 
 
 class RegionCountAnnotator(CountAnnotator):
@@ -381,4 +379,3 @@ class GeneCountAnnotator(CountAnnotator):
         self._process_grouped_counts(grouped_counts, db)
 
         self.calculate_scaling_factors()
->>>>>>> main

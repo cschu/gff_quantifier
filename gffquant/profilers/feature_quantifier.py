@@ -14,12 +14,8 @@ from collections import Counter
 import numpy as np
 
 from .panda_coverage_profiler import PandaCoverageProfiler
-<<<<<<< HEAD
-from ..alignment import AlignmentGroup, AlignmentProcessor, ReferenceHit, SamFlags
-=======
 from .reference_hit import ReferenceHit
 from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
->>>>>>> main
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import AlignmentCounter
 from ..counters.count_matrix import CountMatrix
@@ -130,24 +126,13 @@ class FeatureQuantifier(ABC):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
-<<<<<<< HEAD
-        if dump_counters:
-            self.counter.dump(self.out_prefix, self.reference_manager,)
-=======
         if dump_counters and not external_gene_counts:
             self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
->>>>>>> main
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
         Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required and not external_gene_counts]
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
-<<<<<<< HEAD
-
-        count_writer = CountWriter(
-            self.out_prefix,
-            has_ambig_counts=self.counter.has_ambig_counts(),
-=======
         
         if external_gene_counts:
             count_annotator.annotate_external(external_gene_counts, self.adm, gene_group_db=gene_group_db,)
@@ -163,7 +148,6 @@ class FeatureQuantifier(ABC):
         count_writer = CountWriter(
             self.out_prefix,
             has_ambig_counts=has_ambig_counts,
->>>>>>> main
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
             report_category=report_category,
@@ -171,34 +155,34 @@ class FeatureQuantifier(ABC):
             filtered_readcount=filtered_readcount,
         )
 
-<<<<<<< HEAD
         total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager)
         logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
 
-        count_writer.write_gene_counts(
-            self.counter,
-            self.reference_manager,
-            gene_group_db=gene_group_db,
-        )
-=======
-        unannotated_reads = 0
-        if not external_gene_counts:
-            unannotated_reads += self.count_manager.get_unannotated_reads()
-            unannotated_reads += self.aln_counter["unannotated_ambig"]
+        # this is from current main branch
+        # unannotated_reads = 0
+        # if not external_gene_counts:
+        #     unannotated_reads += self.count_manager.get_unannotated_reads()
+        #     unannotated_reads += self.aln_counter["unannotated_ambig"]
 
-        count_writer.write_feature_counts(
-            self.adm,
-            count_annotator,
-            (None, unannotated_reads)[report_unannotated],
-        )
+        # count_writer.write_feature_counts(
+        #     self.adm,
+        #     count_annotator,
+        #     (None, unannotated_reads)[report_unannotated],
+        # )
+
+        # if not external_gene_counts:
+        #     count_writer.write_gene_counts(
+        #         count_annotator.gene_counts,
+        #         count_annotator.scaling_factors["total_gene_uniq"],
+        #         count_annotator.scaling_factors["total_gene_ambi"]
+        #     )
 
         if not external_gene_counts:
             count_writer.write_gene_counts(
-                count_annotator.gene_counts,
-                count_annotator.scaling_factors["total_gene_uniq"],
-                count_annotator.scaling_factors["total_gene_ambi"]
+                self.counter,
+                self.reference_manager,
+                gene_group_db=gene_group_db,
             )
->>>>>>> main
 
         ggroups = tuple(
             (self.reference_manager.get(key[0] if isinstance(key, tuple) else key))[0]  # .split(".")[0]
@@ -209,7 +193,8 @@ class FeatureQuantifier(ABC):
         self.counter.counts.dump(labels=ggroups)
 
         self.counter.group_gene_count_matrix(self.reference_manager)
-        unannotated_reads = self.counter.get_unannotated_reads() + self.aln_counter["unannotated_ambig"]
+        if not external_gene_counts:
+            unannotated_reads = self.counter.get_unannotated_reads() + self.aln_counter["unannotated_ambig"]
 
         self.counter.counts.dump(state="ggroup")
 
