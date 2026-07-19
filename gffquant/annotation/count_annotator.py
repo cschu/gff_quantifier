@@ -9,6 +9,8 @@ from itertools import chain
 
 import numpy as np
 
+from ..db.importers.database_importer import GqDatabaseImporter
+
 
 logger = logging.getLogger(__name__)
 
@@ -297,8 +299,6 @@ class GeneCountAnnotator(CountAnnotator):
         - db: GffDatabaseManager holding functional annotation database
         - count_manager: count_data
         """
-        logger.debug("Running annotate()")
-
         strand_specific_counts = (
             (count_manager.PLUS_STRAND, count_manager.MINUS_STRAND)
             if self.strand_specific else None
@@ -325,7 +325,6 @@ class GeneCountAnnotator(CountAnnotator):
 
             if gene_group_db:
                 ref_tokens = ref.split(".")
-                # gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
                 gene_id, ggroup_id = ref, ref_tokens[-1]
                 grouped_counts.setdefault(ggroup_id, np.zeros(self.bins))
                 grouped_counts[ggroup_id] += counts
@@ -342,21 +341,11 @@ class GeneCountAnnotator(CountAnnotator):
             gcounts += counts
             self.total_gene_counts += counts[:4]
 
-        # for group_id, counts in grouped_counts.items():
-        #     if group_id == "0":
-        #         self.unannotated_counts += counts[:4]
-        #     else:
-        #         region_annotation = db.query_sequence(int(group_id, 16), grouped_db=True,)
-        #         if region_annotation is not None:
-        #             _, _, region_annotation = region_annotation
-        #             self.distribute_feature_counts(counts, region_annotation)
         self._process_grouped_counts(grouped_counts, db)
 
         self.calculate_scaling_factors()
 
     def annotate_external(self, fn, db, gene_group_db=False):  # refmgr, db, count_manager, gene_group_db=False):
-        from ..db.importers.database_importer import GqDatabaseImporter
-
         grouped_counts = {}
 
         with GqDatabaseImporter.get_open_function(fn)(fn, "rt", encoding="UTF-8") as _in:
@@ -366,18 +355,8 @@ class GeneCountAnnotator(CountAnnotator):
                 counts = tuple(map(float, cols))
                 ref = row["gene"]
 
-                # if gene_group_db:
-                #     # ref_tokens = ref.split(".")
-                #     p = ref.rfind(".")
-                #     # gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
-                #     # gene_id, ggroup_id = ref[:p], ref[p + 1:]
-                #     gene_id, ggroup_id = ref, ref[p + 1:]
-                # else:
-                #     ggroup_id, gene_id = ref, ref
-
                 if gene_group_db:
                     ref_tokens = ref.split(".")
-                    # gene_id, ggroup_id = ".".join(ref_tokens[:-1]), ref_tokens[-1]
                     gene_id, ggroup_id = ref, ref_tokens[-1]
                     grouped_counts.setdefault(ggroup_id, np.zeros(self.bins))
                     grouped_counts[ggroup_id] += counts
@@ -394,14 +373,6 @@ class GeneCountAnnotator(CountAnnotator):
                 gcounts = self.gene_counts.setdefault(gene_id, np.zeros(self.bins))
                 gcounts += counts
                 self.total_gene_counts += counts[:4]
-
-                # region_annotation = db.query_sequence(ggroup_id)
-                # if region_annotation is not None:
-                #     _, _, region_annotation = region_annotation
-                #     self.distribute_feature_counts(counts, region_annotation)
-
-                # else:
-                #     self.unannotated_counts += counts[:4]
 
         self._process_grouped_counts(grouped_counts, db)
 
