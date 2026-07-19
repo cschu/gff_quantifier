@@ -85,7 +85,7 @@ class AlignmentProcessor:
         required_flags=0,
         filtered_sam=None,
     ):
-        last_read, last_passed_read = None, None
+        last_read, last_aligned_read, last_passed_read = None, None, None
 
         # pylint: disable=R1732
         filtered_out = open(filtered_sam, "wt", encoding="UTF-8") if filtered_sam else nullcontext()
@@ -100,11 +100,18 @@ class AlignmentProcessor:
                     last_read = pysam_aln.qname
                     self.read_counter[AlignmentProcessor.TOTAL_READS] += 1
 
-                    if not read_unmapped:
-                        self.read_counter[AlignmentProcessor.TOTAL_ALIGNED_READS] += 1
+                    # if not read_unmapped:
+                    #     self.read_counter[AlignmentProcessor.TOTAL_ALIGNED_READS] += 1
 
                 if read_unmapped:
                     continue
+
+                if last_aligned_read is None or pysam_aln.qname != last_aligned_read:
+                    last_aligned_read = pysam_aln.qname
+                    self.read_counter[AlignmentProcessor.TOTAL_ALIGNED_READS] += 1
+
+                # if read_unmapped:
+                #     continue
 
                 if pysam_aln.flag & filter_flags:
                     continue

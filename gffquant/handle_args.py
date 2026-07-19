@@ -27,9 +27,7 @@ def validate_args(args):
 
     if not all(os.path.isfile(f) for f in db_files):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
-    if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
-        raise ValueError(f"Cannot find reference index at `{args.reference}`.")
-
+    
     has_fastq = any(
         map(
             lambda x: x is not None,
@@ -39,22 +37,39 @@ def validate_args(args):
         )
     )
 
-    if tuple(map(bool, (has_fastq, args.bam, args.sam))).count(True) != 1:
-        raise ValueError(f"Need exactly one type of input: bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(has_fastq)}.")
+    if tuple(map(bool, (has_fastq, args.bam, args.sam, args.gene_counts))).count(True) != 1:
+        raise ValueError(
+            "Need exactly one type of input: "
+            f"bam={bool(args.bam)} sam={bool(args.sam)} fastq={bool(has_fastq)} "
+            f"gene_counts={bool(args.gene_counts)}."
+        )
 
-    args.input_type = "fastq" if has_fastq else ("bam" if args.bam else "sam")
+    args.input_type = "fastq" if has_fastq else ("bam" if args.bam else ("sam" if args.sam else "gene_counts"))
 
-    if (args.reference or args.aligner) and not has_fastq:
-        raise ValueError("--reference/--aligner are not needed with alignment input (bam, sam).")
-    if bool(args.reference and args.aligner) != has_fastq:
-        raise ValueError("--fastq requires --reference and --aligner to be set.")
+    if has_fastq:
+        if not bool(args.reference and args.aligner):
+            raise ValueError("--fastq-<readtype> input requires --reference and --aligner to be set.")
 
-    if args.input_type == "fastq":
+        if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
+            raise ValueError(f"Cannot find `${args.aligner}` reference index at `{args.reference}`.")
+
         args.input_data = check_input_reads(
             fwd_reads=args.reads1, rev_reads=args.reads2,
             single_reads=args.singles, orphan_reads=args.orphans,
         )
+    else:
+        if bool(args.reference or args.aligner):
+            raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
+        
+    if (args.strand_specific and args.gene_counts):
+        raise NotImplementedError("External gene count input is not implemented for strand-specific counts.")
 
+    # if (args.reference or args.aligner) and not has_fastq:
+    #     raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
+    
+    # if bool(args.reference and args.aligner) != has_fastq:
+    #     raise ValueError("--fastq-<readtype> input requires --reference and --aligner to be set.")
+    
     if args.restrict_metrics:
         restrict_metrics = set(args.restrict_metrics.split(","))
         invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
@@ -189,6 +204,12 @@ def handle_args(args):
     #         Input from STDOUT can be used with '-'."""
     #     ),
     # )
+    ap.add_argument(
+        "--gene_counts",
+        type=str,
+        help="Path to a file containing a gene_counts matrix from a previous gffquant run."
+    )
+
     ap.add_argument(
         "--bam",
         type=str,
