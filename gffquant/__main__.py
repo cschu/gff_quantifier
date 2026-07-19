@@ -128,26 +128,34 @@ def main():
         **kwargs,
     )
 
-    if args.input_type == "fastq":
+    if args.input_type in ("fastq", "bam", "sam"):
 
-        stream_alignments(args, profiler)
+        if args.input_type == "fastq":
 
+            stream_alignments(args, profiler)        
+
+        else:
+
+            input_file = args.bam if args.input_type == "bam" else args.sam
+            debug_samfile = None
+            if profiler.debug:
+                debug_samfile = f"{profiler.out_prefix}.{args.input_type}.filtered.sam"
+
+            profiler.count_alignments(
+                sys.stdin if input_file == "-" else input_file,
+                aln_format=args.input_type,
+                min_identity=args.min_identity,
+                min_seqlen=args.min_seqlen,
+                external_readcounts=args.import_readcounts,
+                unmarked_orphans=args.unmarked_orphans,
+                debug_samfile=debug_samfile,
+            )
+
+        profiler.report_alignments()
+    
     else:
-
-        input_file = args.bam if args.input_type == "bam" else args.sam
-        debug_samfile = None
-        if profiler.debug:
-            debug_samfile = f"{profiler.out_prefix}.{args.input_type}.filtered.sam"
-
-        profiler.count_alignments(
-            sys.stdin if input_file == "-" else input_file,
-            aln_format=args.input_type,
-            min_identity=args.min_identity,
-            min_seqlen=args.min_seqlen,
-            external_readcounts=args.import_readcounts,
-            unmarked_orphans=args.unmarked_orphans,
-            debug_samfile=debug_samfile,
-        )
+        
+        ...
 
     profiler.finalise(
         restrict_reports=args.restrict_metrics,
@@ -156,6 +164,7 @@ def main():
         dump_counters=args.debug,
         in_memory=args.db_in_memory,
         gene_group_db=args.gene_group_db,
+        external_gene_counts=args.gene_counts,
     )
 
 

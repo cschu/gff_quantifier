@@ -13,6 +13,7 @@ from collections import Counter
 from dataclasses import dataclass, asdict
 
 from .panda_coverage_profiler import PandaCoverageProfiler
+from .reference_hit import ReferenceHit
 from ..alignment import AlignmentGroup, AlignmentProcessor, SamFlags
 from ..annotation import GeneCountAnnotator, RegionCountAnnotator, CountWriter
 from ..counters import CountManager
@@ -22,39 +23,6 @@ from .. import __tool__, DistributionMode, RunMode
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(slots=True)
-class ReferenceHit:
-    rid: int = None
-    start: int = None
-    end: int = None
-    rev_strand: bool = None
-    cov_start: int = None
-    cov_end: int = None
-    has_annotation: bool = None
-    n_aln: int = None
-    is_ambiguous: bool = None
-    library_mod: int = None
-    mate_id: int = None
-
-    def __hash__(self):
-        return hash(tuple(asdict(self).values()))
-
-    def __eq__(self, other):
-        return all(
-            item[0][1] == item[1][1]
-            for item in zip(
-                sorted(asdict(self).items()),
-                sorted(asdict(other).items())
-            )
-        )
-
-    def __str__(self):
-        return "\t".join(map(str, asdict(self).values()))
-
-    def __repr__(self):
-        return str(self)
 
 
 class FeatureQuantifier(ABC):
@@ -153,31 +121,44 @@ class FeatureQuantifier(ABC):
         dump_counters=True,
         in_memory=True,
         gene_group_db=False,
+        external_gene_counts=None,
     ):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
-        if dump_counters:
+        if dump_counters and not external_gene_counts:
             self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
 
-        Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required]
+        Annotator = (GeneCountAnnotator, RegionCountAnnotator)[self.run_mode.overlap_required and not external_gene_counts]
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
-        count_annotator.annotate(self.reference_manager, self.adm, self.count_manager, gene_group_db=gene_group_db,)
+        
+        if external_gene_counts:
+            count_annotator.annotate_external(external_gene_counts, self.adm, gene_group_db=gene_group_db,)
+            total_readcount = 1
+            filtered_readcount = 1
+            has_ambig_counts = True
+        else:
+            count_annotator.annotate(self.reference_manager, self.adm, self.count_manager, gene_group_db=gene_group_db,)
+            total_readcount = self.aln_counter["read_count"]
+            filtered_readcount = self.aln_counter["filtered_read_count"]
+            has_ambig_counts = self.count_manager.has_ambig_counts()
 
         count_writer = CountWriter(
             self.out_prefix,
-            has_ambig_counts=self.count_manager.has_ambig_counts(),
+            has_ambig_counts=has_ambig_counts,
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
             report_category=report_category,
-            total_readcount=self.aln_counter["read_count"],
-            filtered_readcount=self.aln_counter["filtered_read_count"],
+            total_readcount=total_readcount,
+            filtered_readcount=filtered_readcount,
         )
 
-        unannotated_reads = self.count_manager.get_unannotated_reads()
-        unannotated_reads += self.aln_counter["unannotated_ambig"]
+        unannotated_reads = 0
+        if not external_gene_counts:
+            unannotated_reads += self.count_manager.get_unannotated_reads()
+            unannotated_reads += self.aln_counter["unannotated_ambig"]
 
         count_writer.write_feature_counts(
             self.adm,
@@ -185,11 +166,12 @@ class FeatureQuantifier(ABC):
             (None, unannotated_reads)[report_unannotated],
         )
 
-        count_writer.write_gene_counts(
-            count_annotator.gene_counts,
-            count_annotator.scaling_factors["total_gene_uniq"],
-            count_annotator.scaling_factors["total_gene_ambi"]
-        )
+        if not external_gene_counts:
+            count_writer.write_gene_counts(
+                count_annotator.gene_counts,
+                count_annotator.scaling_factors["total_gene_uniq"],
+                count_annotator.scaling_factors["total_gene_ambi"]
+            )
 
         self.adm.clear_caches()
 
@@ -330,6 +312,36 @@ class FeatureQuantifier(ABC):
 
         self.aln_counter.update(aln_reader.get_alignment_stats_dict())
 
+
+    def report_alignments(self):
+        with open(f"{self.out_prefix}.aln_stats.json", "wt") as aln_stats_out:
+            json.dump(self.aln_counter, aln_stats_out)
+
+        for metric, value in (
+            ("Input reads", "full_read_count"),
+            ("Aligned reads", "read_count"),
+            ("Alignments", "pysam_total"),
+            ("Reads passing filters", "filtered_read_count"),
+            ("Alignments passing filters", "pysam_passed"),
+            ("  - Discarded due to seqid", "pysam_seqid_filt"),
+            ("  - Discarded due to length", "pysam_len_filt"),
+            # ("Unannotated multimappers", "unannotated_ambig"),
+        ):
+            logger.info("%s: %s", metric, self.aln_counter.get(value))
+
+        if self.aln_counter["full_read_count"]:
+            alignment_rate = round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+            filter_pass_rate = round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+        else:
+            alignment_rate, filter_pass_rate = None, None
+
+        logger.info(
+            "Alignment rate: %s%%, Filter pass rate: %s%%" % (
+                alignment_rate, filter_pass_rate,
+            )
+        )
+
+
     def finalise(
         self,
         restrict_reports=None,
@@ -338,32 +350,12 @@ class FeatureQuantifier(ABC):
         dump_counters=False,
         in_memory=True,
         gene_group_db=False,
+        external_gene_counts=None,
     ):
 
-        with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
-            print(
-                AlignmentProcessor.get_alignment_stats_str(
-                    [
-                        v
-                        for k, v in self.aln_counter.items()
-                        if k.startswith("pysam_") and not k.endswith("total")
-                    ],
-                    table=True,
-                ),
-                file=aln_stats_out
-            )
-
-        if self.aln_counter.get("aln_count"):
+        if self.aln_counter.get("aln_count") or external_gene_counts:
             if self.adm is None:
                 self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
-
-            report_args = {
-                "restrict_reports": restrict_reports,
-                "report_category": report_category,
-                "report_unannotated": report_unannotated,
-            }
-
-            # self.write_coverage()
 
             self.process_counters(
                 restrict_reports=restrict_reports,
@@ -372,25 +364,8 @@ class FeatureQuantifier(ABC):
                 dump_counters=dump_counters,
                 in_memory=in_memory,
                 gene_group_db=gene_group_db,
-            )
-
-            for metric, value in (
-                ("Input reads", "full_read_count"),
-                ("Aligned reads", "read_count"),
-                ("Alignments", "pysam_total"),
-                ("Reads passing filters", "filtered_read_count"),
-                ("Alignments passing filters", "pysam_passed"),
-                ("  - Discarded due to seqid", "pysam_seqid_filt"),
-                ("  - Discarded due to length", "pysam_len_filt"),
-                # ("Unannotated multimappers", "unannotated_ambig"),
-            ):
-                logger.info("%s: %s", metric, self.aln_counter.get(value))
-
-            logger.info(
-                "Alignment rate: %s%%, Filter pass rate: %s%%",
-                round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
-                round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
-            )
+                external_gene_counts=external_gene_counts,
+            )            
 
             self.adm.clear_caches()
 
