@@ -316,17 +316,6 @@ class FeatureQuantifier(ABC):
     def report_alignments(self):
         with open(f"{self.out_prefix}.aln_stats.json", "wt") as aln_stats_out:
             json.dump(self.aln_counter, aln_stats_out)
-            # print(
-            #     AlignmentProcessor.get_alignment_stats_str(
-            #         [
-            #             v
-            #             for k, v in self.aln_counter.items()
-            #             if k.startswith("pysam_") and not k.endswith("total")
-            #         ],
-            #         table=True,
-            #     ),
-            #     file=aln_stats_out
-            # )
 
         for metric, value in (
             ("Input reads", "full_read_count"),
@@ -352,9 +341,6 @@ class FeatureQuantifier(ABC):
             )
         )
 
-    # def load_gene_counts(self, gene_count_matrix):
-    #     self.aln_counter["aln_count"] = 1
-    #     self.count_manager.load_data(gene_count_matrix)
 
     def finalise(
         self,

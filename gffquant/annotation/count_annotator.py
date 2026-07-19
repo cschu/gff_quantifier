@@ -345,7 +345,7 @@ class GeneCountAnnotator(CountAnnotator):
 
         self.calculate_scaling_factors()
 
-    def annotate_external(self, fn, db, gene_group_db=False):  # refmgr, db, count_manager, gene_group_db=False):
+    def annotate_external(self, fn, db, gene_group_db=False):
         grouped_counts = {}
 
         with GqDatabaseImporter.get_open_function(fn)(fn, "rt", encoding="UTF-8") as _in:
