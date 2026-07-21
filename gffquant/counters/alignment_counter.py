@@ -72,9 +72,8 @@ class AlignmentCounter:
         self.counts = CountMatrix(2, nrows=AlignmentCounter.INITIAL_SIZE)
 
     def dump(self, prefix, refmgr):
-        raise NotImplementedError()
         with gzip.open(f"{prefix}.{self.__class__.__name__}.txt.gz", "wt") as _out:
-            for key, key_index in self.index.items():
+            for key, key_index in self.counts.index.items():
                 ref, reflen = refmgr.get(key[0] if isinstance(key, tuple) else key)
                 print(key, ref, reflen, self.counts[key_index], sep="\t", file=_out)
             # for k, v in self.items():
