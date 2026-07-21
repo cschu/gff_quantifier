@@ -2,7 +2,7 @@
 
 """ module docstring """
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
 
 @dataclass(slots=True)
@@ -23,13 +23,9 @@ class ReferenceHit:
         return hash(tuple(asdict(self).values()))
 
     def __eq__(self, other):
-        return all(
-            item[0][1] == item[1][1]
-            for item in zip(
-                sorted(asdict(self).items()),
-                sorted(asdict(other).items())
-            )
-        )
+        if not isinstance(other, ReferenceHit):
+            raise NotImplementedError(f"{other} is not a valid ReferenceHit object.")
+        return sorted(asdict(self).items()) == sorted(asdict(other).items())
 
     def __str__(self):
         return "\t".join(map(str, asdict(self).values()))
