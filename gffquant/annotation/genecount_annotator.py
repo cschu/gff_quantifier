@@ -45,7 +45,7 @@ class GeneCountAnnotator(CountAnnotator):
                 ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
                 ggroup_id = ref
 
-            region_annotation = db.query_sequence(ggroup_id)
+            region_annotation = db.query_sequence(ggroup_id, grouped_db=gene_group_db,)
             if region_annotation is not None:
                 _, _, region_annotation = region_annotation
                 for category_id, features in region_annotation:
