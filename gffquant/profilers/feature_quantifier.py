@@ -126,7 +126,8 @@ class FeatureQuantifier(ABC):
         if self.adm is None:
             self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
-        if dump_counters and not external_gene_counts:
+        if False and dump_counters and not external_gene_counts:
+            # not sure if that worked in this branch before?
             self.count_manager.dump_raw_counters(self.out_prefix, self.reference_manager)
 
         report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
