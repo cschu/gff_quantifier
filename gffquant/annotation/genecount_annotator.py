@@ -40,7 +40,7 @@ class GeneCountAnnotator(CountAnnotator):
         for rid, counts in counter:
             # counts = counter[rid]
             if gene_group_db:
-                ggroup_id = rid
+                ggroup_id = int(rid, 16)
             else:
                 ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
                 ggroup_id = ref
