@@ -151,7 +151,7 @@ def main():
                 debug_samfile=debug_samfile,
             )
 
-        # profiler.report_alignments()
+        profiler.report_alignments()
 
     profiler.finalise(
         restrict_reports=args.restrict_metrics,

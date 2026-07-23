@@ -437,6 +437,36 @@ class FeatureQuantifier(ABC):
 
         self.aln_counter.update(aln_reader.get_alignment_stats_dict())
 
+
+    def report_alignments(self):
+        with open(f"{self.out_prefix}.aln_stats.json", "wt") as aln_stats_out:
+            json.dump(self.aln_counter, aln_stats_out)
+
+        for metric, value in (
+            ("Input reads", "full_read_count"),
+            ("Aligned reads", "read_count"),
+            ("Alignments", "pysam_total"),
+            ("Reads passing filters", "filtered_read_count"),
+            ("Alignments passing filters", "pysam_passed"),
+            ("  - Discarded due to seqid", "pysam_seqid_filt"),
+            ("  - Discarded due to length", "pysam_len_filt"),
+            # ("Unannotated multimappers", "unannotated_ambig"),
+        ):
+            logger.info("%s: %s", metric, self.aln_counter.get(value))
+
+        if self.aln_counter["full_read_count"]:
+            alignment_rate = round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+            filter_pass_rate = round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+        else:
+            alignment_rate, filter_pass_rate = None, None
+
+        logger.info(
+            "Alignment rate: %s%%, Filter pass rate: %s%%" % (
+                alignment_rate, filter_pass_rate,
+            )
+        )
+
+
     def finalise(
         self,
         restrict_reports=None,
@@ -448,28 +478,29 @@ class FeatureQuantifier(ABC):
         external_gene_counts=None,
     ):
 
-        with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
-            print(
-                AlignmentProcessor.get_alignment_stats_str(
-                    [
-                        v
-                        for k, v in self.aln_counter.items()
-                        if k.startswith("pysam_") and not k.endswith("total")
-                    ],
-                    table=True,
-                ),
-                file=aln_stats_out
-            )
+        # if not external_gene_counts:
+        #     with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
+        #         print(
+        #             AlignmentProcessor.get_alignment_stats_str(
+        #                 [
+        #                     v
+        #                     for k, v in self.aln_counter.items()
+        #                     if k.startswith("pysam_") and not k.endswith("total")
+        #                 ],
+        #                 table=True,
+        #             ),
+        #             file=aln_stats_out
+        #         )
 
-        if self.aln_counter.get("aln_count"):
+        if self.aln_counter.get("aln_count") or external_gene_counts:
             if self.adm is None:
                 self.adm = AnnotationDatabaseManager.from_db(self.db, in_memory=in_memory)
 
-            report_args = {
-                "restrict_reports": restrict_reports,
-                "report_category": report_category,
-                "report_unannotated": report_unannotated,
-            }
+            # report_args = {
+            #     "restrict_reports": restrict_reports,
+            #     "report_category": report_category,
+            #     "report_unannotated": report_unannotated,
+            # }
 
             # self.write_coverage()
 
@@ -483,23 +514,23 @@ class FeatureQuantifier(ABC):
                 external_gene_counts=external_gene_counts,
             )
 
-            for metric, value in (
-                ("Input reads", "full_read_count"),
-                ("Aligned reads", "read_count"),
-                ("Alignments", "pysam_total"),
-                ("Reads passing filters", "filtered_read_count"),
-                ("Alignments passing filters", "pysam_passed"),
-                ("  - Discarded due to seqid", "pysam_seqid_filt"),
-                ("  - Discarded due to length", "pysam_len_filt"),
-                # ("Unannotated multimappers", "unannotated_ambig"),
-            ):
-                logger.info("%s: %s", metric, self.aln_counter.get(value))
+            # for metric, value in (
+            #     ("Input reads", "full_read_count"),
+            #     ("Aligned reads", "read_count"),
+            #     ("Alignments", "pysam_total"),
+            #     ("Reads passing filters", "filtered_read_count"),
+            #     ("Alignments passing filters", "pysam_passed"),
+            #     ("  - Discarded due to seqid", "pysam_seqid_filt"),
+            #     ("  - Discarded due to length", "pysam_len_filt"),
+            #     # ("Unannotated multimappers", "unannotated_ambig"),
+            # ):
+            #     logger.info("%s: %s", metric, self.aln_counter.get(value))
 
-            logger.info(
-                "Alignment rate: %s%%, Filter pass rate: %s%%",
-                round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
-                round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
-            )
+            # logger.info(
+            #     "Alignment rate: %s%%, Filter pass rate: %s%%",
+            #     round(self.aln_counter["read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+            #     round(self.aln_counter["filtered_read_count"] / self.aln_counter["full_read_count"], 3) * 100,
+            # )
 
             self.adm.clear_caches()
 
