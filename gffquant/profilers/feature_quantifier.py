@@ -155,24 +155,33 @@ class FeatureQuantifier(ABC):
             Annotator = RegionCountAnnotator
         else:
             Annotator = GeneCountAnnotator
+
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
 
+        if external_gene_counts:
+            total_gene_counts = self.import_counts(external_gene_counts)
+            logger.info("TOTAL_GENE_COUNTS = %s (IMPORTED)", total_gene_counts)
+            total_readcount = -1
+            filtered_readcount = -11
+            
+        else:
+            total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager)
+            logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
+            total_readcount = self.aln_counter["read_count"]
+            filtered_readcount = self.aln_counter["filtered_read_count"]
+            
+            
         count_writer = CountWriter(
             self.out_prefix,
             has_ambig_counts=self.counter.has_ambig_counts(),
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
             report_category=report_category,
-            total_readcount=self.aln_counter["read_count"],
-            filtered_readcount=self.aln_counter["filtered_read_count"],
+            total_readcount=total_readcount,
+            filtered_readcount=filtered_readcount,
         )
 
-        if external_gene_counts:
-            total_gene_counts = self.import_counts(external_gene_counts)
-            logger.info("TOTAL_GENE_COUNTS = %s (IMPORTED)", total_gene_counts)
-        else:
-            total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager)
-            logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
+        if not external_gene_counts or self.debug:
             count_writer.write_gene_counts(
                 self.counter,
                 self.reference_manager,
