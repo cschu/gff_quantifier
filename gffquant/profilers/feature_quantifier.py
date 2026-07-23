@@ -436,6 +436,7 @@ class FeatureQuantifier(ABC):
         dump_counters=False,
         in_memory=True,
         gene_group_db=False,
+        external_gene_counts=None,
     ):
 
         with gzip.open(f"{self.out_prefix}.aln_stats.txt.gz", "wt") as aln_stats_out:
@@ -470,6 +471,7 @@ class FeatureQuantifier(ABC):
                 dump_counters=dump_counters,
                 in_memory=in_memory,
                 gene_group_db=gene_group_db,
+                external_gene_counts=external_gene_counts,
             )
 
             for metric, value in (
