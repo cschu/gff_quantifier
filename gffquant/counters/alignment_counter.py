@@ -91,6 +91,9 @@ class AlignmentCounter:
 
     def __getitem__(self, key):
         return self.counts[key]
+    
+    def __setitem__(self, key, value):
+        self.counts[key] = value
 
     def update(self, count_stream, ambiguous_counts=False, pair=False, pe_library=None,):
         if pe_library is not None:
@@ -152,7 +155,7 @@ class AlignmentCounter:
 
         self.counts = self.counts.generate_gene_counts(gene_lengths)
 
-        return self.counts.sum()
+        return self.counts.sum()  # is that right?? sums over whole matrix...
 
     @staticmethod
     def calculate_scaling_factor(raw, norm):

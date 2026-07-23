@@ -74,6 +74,27 @@ class FeatureQuantifier(ABC):
         self.debug = debug
         self.panda_cv = PandaCoverageProfiler(dump_dataframes=self.debug) if calculate_coverage else None
 
+    def import_counts(self, fn):
+        with open(fn, "r") as _in:
+            try:
+                _ = next(_in)
+            except StopIteration:
+                raise ValueError(f"Counts file is empty: {fn}")
+            for i, row in enumerate(_in):
+                gene_id, *counts = row.strip().split("\t")
+                # counts = np.array(tuple(map(float, counts)), dtype=np.float64)
+                self.reference_manager[i] = (gene_id, 1)
+                self.counter[i] = np.array(tuple(map(float, counts)), dtype=np.float64)
+
+        # counts = np.column_stack(
+        #     (
+        #         counts[:, 0], counts[:, 0], counts[:, 0],  # 0, 1, 2
+        #         counts[:, 1], counts[:, 1], counts[:, 1],  # 3, 4, 5
+        #     ),
+        # )
+        return -1
+
+
     def check_hits(self, ref, aln):
         """ Check if an alignment hits a region of interest on a reference sequence.
             - in overlap modes, this performs an overlap check against the annotation database
@@ -146,10 +167,12 @@ class FeatureQuantifier(ABC):
             filtered_readcount=self.aln_counter["filtered_read_count"],
         )
 
-        total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager)
-        logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
-
-        if not external_gene_counts:
+        if external_gene_counts:
+            total_gene_counts = self.import_counts(external_gene_counts)
+            logger.info("TOTAL_GENE_COUNTS = %s (IMPORTED)", total_gene_counts)
+        else:
+            total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager)
+            logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
             count_writer.write_gene_counts(
                 self.counter,
                 self.reference_manager,

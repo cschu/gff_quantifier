@@ -173,3 +173,6 @@ class CountMatrix:
 
     def colsum(self, col):
         return self.counts[:, col].sum()
+    
+    def colsums(self):
+        return self.counts.sum(axis=0)
