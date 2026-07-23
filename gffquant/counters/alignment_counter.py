@@ -61,6 +61,7 @@ class AlignmentCounter:
         distribution_mode=DistributionMode.ONE_OVER_N,
         strand_specific=False,
         paired_end_count=1,
+        initial_cols=2,
     ):
         self.distribution_mode = distribution_mode
         self.strand_specific = strand_specific
@@ -69,7 +70,7 @@ class AlignmentCounter:
         self.increments_auto_detect = (1.0, self.paired_end_count / 2.0,)
         self.unannotated_reads = 0
 
-        self.counts = CountMatrix(2, nrows=AlignmentCounter.INITIAL_SIZE)
+        self.counts = CountMatrix(initial_cols, nrows=AlignmentCounter.INITIAL_SIZE)
 
     def dump(self, prefix, refmgr):
         with gzip.open(f"{prefix}.{self.__class__.__name__}.txt.gz", "wt") as _out:

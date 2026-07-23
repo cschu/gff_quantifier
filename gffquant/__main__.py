@@ -94,6 +94,8 @@ def main():
     db_input = None
     if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier
+        if args.gene_counts:
+            kwargs["external_genecounts"] = args.gene_counts
     else:
         Quantifier, kwargs["run_mode"] = RegionQuantifier, args.run_mode
         db_args = {}

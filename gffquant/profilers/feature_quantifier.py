@@ -56,6 +56,7 @@ class FeatureQuantifier(ABC):
         strand_specific=False,
         paired_end_count=1,
         calculate_coverage=False,
+        external_genecounts=None,
         debug=False,
     ):
         self.aln_counter = Counter()
@@ -66,6 +67,7 @@ class FeatureQuantifier(ABC):
             distribution_mode=distribution_mode,
             strand_specific=strand_specific,
             paired_end_count=paired_end_count,
+            initial_cols=6 if external_genecounts else 2,
         )
         self.out_prefix = out_prefix
         self.distribution_mode = distribution_mode
@@ -73,6 +75,7 @@ class FeatureQuantifier(ABC):
         self.strand_specific = strand_specific
         self.debug = debug
         self.panda_cv = PandaCoverageProfiler(dump_dataframes=self.debug) if calculate_coverage else None
+        self.import_counts(external_genecounts)
 
     def import_counts(self, fn):
         with open(fn, "r") as _in:
@@ -80,8 +83,14 @@ class FeatureQuantifier(ABC):
                 _ = next(_in)
             except StopIteration:
                 raise ValueError(f"Counts file is empty: {fn}")
+
+            ncols = None
+            
             for i, row in enumerate(_in):
                 gene_id, *counts = row.strip().split("\t")
+                if ncols is None:
+                    ncols = len(counts)
+
                 # counts = np.array(tuple(map(float, counts)), dtype=np.float64)
                 self.reference_manager[i] = (gene_id, 1)
                 self.counter[i] = np.array(tuple(map(float, counts)), dtype=np.float64)
@@ -92,7 +101,7 @@ class FeatureQuantifier(ABC):
         #         counts[:, 1], counts[:, 1], counts[:, 1],  # 3, 4, 5
         #     ),
         # )
-        return -1
+        return self.counter.counts.colsums()
 
 
     def check_hits(self, ref, aln):
@@ -159,11 +168,10 @@ class FeatureQuantifier(ABC):
         count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
 
         if external_gene_counts:
-            total_gene_counts = self.import_counts(external_gene_counts)
-            logger.info("TOTAL_GENE_COUNTS = %s (IMPORTED)", total_gene_counts)
+            # total_gene_counts = self.import_counts(external_gene_counts)
+            logger.info("TOTAL_GENE_COUNTS = %s (IMPORTED)", self.counter.counts.colsums())
             total_readcount = -1
-            filtered_readcount = -11
-            
+            filtered_readcount = -1            
         else:
             total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager)
             logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
