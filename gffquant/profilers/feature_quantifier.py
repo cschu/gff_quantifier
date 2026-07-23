@@ -178,7 +178,6 @@ class FeatureQuantifier(ABC):
             total_readcount = self.aln_counter["read_count"]
             filtered_readcount = self.aln_counter["filtered_read_count"]
             
-            
         count_writer = CountWriter(
             self.out_prefix,
             has_ambig_counts=self.counter.has_ambig_counts(),
