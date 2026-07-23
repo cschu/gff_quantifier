@@ -27,7 +27,7 @@ class CountMatrix:
             #     for (key, value), keep in zip(cmatrix.index.items(), rows)
             #     if keep
             # }
-        return cls(index=index, counts=counts)        
+        return cls(index=index, counts=counts)
 
     @staticmethod
     def calculate_scaling_factor(raw, norm):
@@ -127,9 +127,9 @@ class CountMatrix:
         self.counts = counts
 
         return self
-    
+
     def dump(self, state="genes", labels=None,):
-        with open(f"CountMatrix.{state}.txt", "wt") as _out:
+        with open(f"CountMatrix.{state}.txt", "wt", encoding="UTF-8",) as _out:
             if labels is None:
                 for index, counts in self:
                     print(index, *counts, sep="\t", file=_out)
@@ -137,42 +137,15 @@ class CountMatrix:
                 for (index, counts), label in zip(self, labels):
                     print(label, *counts, sep="\t", file=_out)
 
-
     def group_gene_counts(self, ggroups):
-
         ggroup_counts = CountMatrix(ncols=6)
         for (_, gene_counts), ggroup_id in zip(self, ggroups):
             ggroup_counts[ggroup_id] += gene_counts
-        
+
         return ggroup_counts
-
-
-
-        ggroup_index = {}
-        # for gene_id, gene_counts in self:
-        #     ggroup_id = gene_id.split(".")[-1]
-        #     g_key_index = ggroup_index.get(ggroup_id)
-        for (_, gene_counts), ggroup_id in zip(self, ggroups):
-            g_key_index = ggroup_index.get(ggroup_id)
-            # gene_counts = self.counts[self.index[key]]
-            if g_key_index is None:
-                g_key_index = ggroup_index[ggroup_id] = len(ggroup_index)
-                self.counts[g_key_index] = gene_counts
-                # logger.info("CM.group_gene_counts: Adding %s to new group %s (%s).", str(gene_counts), ggroup_id, g_key_index)
-            else:
-                self.counts[g_key_index] += gene_counts
-                # logger.info("CM.group_gene_counts: Adding %s to group %s (%s).", str(gene_counts), ggroup_id, g_key_index)
-
-        # replace index with grouped index
-        self.index = ggroup_index
-
-        # remove the un-indexed (ungrouped) rows
-        self.counts = self.counts[0:len(self.index), :]
-
-        return self
 
     def colsum(self, col):
         return self.counts[:, col].sum()
-    
+
     def colsums(self):
         return self.counts.sum(axis=0)

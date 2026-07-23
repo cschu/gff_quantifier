@@ -28,7 +28,6 @@ class PandaProfiler:
         self._buffer_size = 0
         self._max_buffer_size = 400_000_000
 
-
     def get_gene_coords(self):
         if self.with_overlap:
             for rid, start, end in zip(
@@ -283,7 +282,6 @@ class PandaProfiler:
         self._buffer += hits
         self._buffer_size += hits_size
 
-
     def merge_dataframes(self):
         print("BUFFER:", len(self._buffer), self._buffer[:1])
         hits_df = pd.DataFrame(self._buffer)
@@ -318,7 +316,6 @@ class PandaProfiler:
             ) \
                 .groupby(by=self.index_columns, as_index=False) \
                 .sum(numeric_only=True)
-
 
     def add_records_old(self, hits):
 

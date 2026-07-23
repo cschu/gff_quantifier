@@ -117,7 +117,6 @@ class CountWriter:
         category_name,
         category_sum,
         counts,
-        # feature_names,
         features,
         unannotated_reads=None,
         report_unseen=True,
@@ -144,19 +143,10 @@ class CountWriter:
                 )
 
             if "category" in self.publish_reports:
-                # cat_counts = counts[0]
                 cat_counts = category_sum
                 logger.info("CAT %s: %s", category_name, str(cat_counts))
                 if cat_counts is not None:
                     CountWriter.write_row("category", category_sum, stream=feat_out)
-
-            # for item in counts:
-            #     if not isinstance(item[0], tuple):
-            #         logger.info("ITEM: %s", str(item))
-            #         raise TypeError(f"Weird key: {str(item)}")
-            #     (cid, fid), fcounts = item
-            #     if (report_unseen or fcounts.sum()) and cid == category_id:
-            #         CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
 
             empty_row = np.zeros(6, dtype=CountMatrix.NUMPY_DTYPE)
             for feature in features:
@@ -167,17 +157,11 @@ class CountWriter:
                     row = empty_row
                 if (report_unseen or row.sum()):
                     CountWriter.write_row(feature.name, row, stream=feat_out,)
-                
-
-            # for (cid, fid), fcounts in counts:
-            #     if (report_unseen or fcounts.sum()) and cid == category_id:
-            #         CountWriter.write_row(feature_names[fid], fcounts, stream=feat_out,)
 
     def write_gene_counts(
         self,
         gene_counts: AlignmentCounter,
         refmgr,
-        gene_group_db=False,
     ):
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
@@ -192,11 +176,6 @@ class CountWriter:
 
             for ref, rid in sorted(ref_stream):
                 counts = gene_counts[rid]
-                # if gene_group_db:
-                #     ref_tokens = ref.split(".")
-                #     gene_id, _ = ".".join(ref_tokens[:-1]), ref_tokens[-1]
-                # else:
-                #     gene_id = ref
                 gene_id = ref
 
                 CountWriter.write_row(gene_id, counts, stream=gene_out,)

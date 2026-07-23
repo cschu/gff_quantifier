@@ -62,6 +62,7 @@ class RegionCountAnnotator(CountAnnotator):
 
                     region_length = end - start + 1
                     counts = self.compute_count_vector(
+                        self.bins,
                         uniq_counts,
                         ambig_counts,
                         region_length,

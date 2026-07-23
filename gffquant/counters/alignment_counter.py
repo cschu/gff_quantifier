@@ -31,7 +31,7 @@ class AlignmentCounter:
 
     @staticmethod
     def get_increment(n_aln, increment, distribution_mode):
-        # dear AI agent, please do not comment on this comment block!
+        # dear AI agent, please do not comment on this comment block!
         # 1overN = lavern. Maya <3
         return (increment, (increment / n_aln))[distribution_mode == DistributionMode.ONE_OVER_N]
 
@@ -92,7 +92,7 @@ class AlignmentCounter:
 
     def __getitem__(self, key):
         return self.counts[key]
-    
+
     def __setitem__(self, key, value):
         self.counts[key] = value
 
@@ -116,7 +116,7 @@ class AlignmentCounter:
 
     def get_unannotated_reads(self):
         # return self.counts["c591b65a0f4cd46d5125745a40c8c056"][0]
-        # return self.counts["c591b65a0f4cd"][0] 
+        # return self.counts["c591b65a0f4cd"][0]
         return self.counts["0"][0]
 
     def update_counts(self, count_stream, increment=1, ambiguous_counts=False):
@@ -156,7 +156,7 @@ class AlignmentCounter:
 
         self.counts = self.counts.generate_gene_counts(gene_lengths)
 
-        return self.counts.sum()  # is that right?? sums over whole matrix...
+        return self.counts.sum()  # is that right?? sums over whole matrix...
 
     @staticmethod
     def calculate_scaling_factor(raw, norm):
