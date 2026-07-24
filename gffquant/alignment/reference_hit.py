@@ -1,3 +1,5 @@
+# pylint: disable=R0902
+
 """ module docstring """
 
 from dataclasses import asdict, dataclass

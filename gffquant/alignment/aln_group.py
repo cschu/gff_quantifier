@@ -79,6 +79,9 @@ class AlignmentGroup:
                     except TypeError as err:
                         raise TypeError(f"Cannot derive sequencing library from tags: {aln.tags}") from err
 
+                # In <REGION> mode, there can be multiple hits per alignment
+                # (if the alignment overlaps multiple features of the target sequence.)
+                # Whereas in <GENE> mode each alignment is a hit, i.e. there is at most 1 hit / alignment.
                 yield aln.hits, n_aln
 
     def get_ambig_align_counts(self):

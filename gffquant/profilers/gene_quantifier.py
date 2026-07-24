@@ -20,6 +20,7 @@ class GeneQuantifier(FeatureQuantifier):
         strand_specific=False,
         paired_end_count=1,
         calculate_coverage=False,
+        external_genecounts=None,
         debug=False,
     ):
         FeatureQuantifier.__init__(
@@ -31,5 +32,6 @@ class GeneQuantifier(FeatureQuantifier):
             run_mode=RunMode.GENE,
             paired_end_count=paired_end_count,
             calculate_coverage=calculate_coverage,
+            external_genecounts=external_genecounts,
             debug=debug,
         )

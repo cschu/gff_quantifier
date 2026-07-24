@@ -94,6 +94,8 @@ def main():
     db_input = None
     if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier
+        if args.gene_counts:
+            kwargs["external_genecounts"] = args.gene_counts
     else:
         Quantifier, kwargs["run_mode"] = RegionQuantifier, args.run_mode
         db_args = {}
@@ -132,7 +134,7 @@ def main():
 
         if args.input_type == "fastq":
 
-            stream_alignments(args, profiler)        
+            stream_alignments(args, profiler)
 
         else:
 
@@ -152,10 +154,6 @@ def main():
             )
 
         profiler.report_alignments()
-    
-    else:
-        
-        ...
 
     profiler.finalise(
         restrict_reports=args.restrict_metrics,
@@ -164,7 +162,6 @@ def main():
         dump_counters=args.debug,
         in_memory=args.db_in_memory,
         gene_group_db=args.gene_group_db,
-        external_gene_counts=args.gene_counts,
     )
 
 

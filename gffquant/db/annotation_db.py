@@ -201,7 +201,7 @@ class SQL_ADM(AnnotationDatabaseManager):
         if grouped_db:
             db_sequence = self.db_session.query(db.AnnotationGroup) \
                 .filter(db.AnnotationGroup.id == seqid) \
-                .one_or_none()  
+                .one_or_none()
         elif start is not None and end is not None:
             db_sequence = self.db_session.query(db.AnnotatedSequence) \
                 .filter(db.AnnotatedSequence.seqid == seqid) \
