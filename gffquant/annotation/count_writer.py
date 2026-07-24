@@ -162,9 +162,14 @@ class CountWriter:
         self,
         gene_counts: AlignmentCounter,
         refmgr,
+        total_reads,
+        filtered_reads,
     ):
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
+
+            CountWriter.write_row("total_reads", [total_reads] * 6, stream=gene_out,)
+            CountWriter.write_row("filtered_reads", [filtered_reads] * 6, stream=gene_out,)
 
             ref_stream = (
                 (
