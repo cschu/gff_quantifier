@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class CountMatrix:
     NUMPY_DTYPE = 'float64'  # float16 causes some overflow issue during testing
+    NO_ANNOTATION = "0"  # group-tag for genes without emappper functional annotation
 
     @classmethod
     def from_count_matrix(cls, cmatrix, rows=None):
@@ -128,8 +129,8 @@ class CountMatrix:
 
         return self
 
-    def dump(self, state="genes", labels=None,):
-        with open(f"CountMatrix.{state}.txt", "wt", encoding="UTF-8",) as _out:
+    def dump(self, prefix="prefix", state="genes", labels=None,):
+        with open(f"{prefix}.cmatrix.{state}.txt", "wt", encoding="UTF-8",) as _out:
             if labels is None:
                 for index, counts in self:
                     print(index, *counts, sep="\t", file=_out)
