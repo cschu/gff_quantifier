@@ -21,7 +21,6 @@ class CountWriter:
     def __init__(
         self,
         prefix,
-        has_ambig_counts=False,
         strand_specific=False,
         restrict_reports=None,
         report_category=True,
@@ -29,7 +28,6 @@ class CountWriter:
         filtered_readcount=None,
     ):
         self.out_prefix = prefix
-        self.has_ambig_counts = has_ambig_counts
         self.strand_specific = strand_specific
         self.publish_reports = [
             item for item in CountWriter.COUNT_HEADER_ELEMENTS
@@ -53,21 +51,17 @@ class CountWriter:
         ]
         header = []
         header += (f"uniq_{element}" for element in reports)
-        if self.has_ambig_counts:
-            header += (
-                f"combined_{element}" for element in reports
-            )
+        header += (f"combined_{element}" for element in reports)
         if self.strand_specific:
             for strand in ("ss", "as"):
                 header += (
                     f"uniq_{element}_{strand}"
                     for element in reports
                 )
-                if self.has_ambig_counts:
-                    header += (
-                        f"combined_{element}_{strand}"
-                        for element in reports
-                    )
+                header += (
+                    f"combined_{element}_{strand}"
+                    for element in reports
+                )
         return header
 
     def compile_output_row(self, counts, scaling_factor=1, ambig_scaling_factor=1):
@@ -82,22 +76,19 @@ class CountWriter:
         row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
         p += 2
         # ambiguous counts
-        if self.has_ambig_counts:
-            row += compile_block(*counts[p:p + 2], (ambig_scaling_factor, rpkm_factor,))
-            p += 2
+        row += compile_block(*counts[p:p + 2], (ambig_scaling_factor, rpkm_factor,))
+        p += 2
         # sense-strand unique
         if self.strand_specific:
             row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
             p += 2
             # sense-strand ambiguous
-            if self.has_ambig_counts:
-                row += compile_block(*counts[p:p + 2], (ambig_scaling_factor, rpkm_factor,))
-                p += 2
+            row += compile_block(*counts[p:p + 2], (ambig_scaling_factor, rpkm_factor,))
+            p += 2
             # antisense-strand unique
             row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
             p += 2
-            if self.has_ambig_counts:
-                row += compile_block(*counts[p:p + 2], (ambig_scaling_factor, rpkm_factor,))
+            row += compile_block(*counts[p:p + 2], (ambig_scaling_factor, rpkm_factor,))
 
         out_row = []
         n = len(CountWriter.COUNT_HEADER_ELEMENTS)

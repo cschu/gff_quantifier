@@ -83,9 +83,9 @@ class AlignmentCounter:
             # ref, reflen = refmgr.get(k[0] if isinstance(k, tuple) else k)
             # print(k, ref, reflen, v, sep="\t", file=_out)
 
-    def has_ambig_counts(self):
-        # return bool(self.counts[:, 1].sum() != 0)
-        return bool(self.counts.colsum(1) != 0)
+    # def has_ambig_counts(self):
+    #     # return bool(self.counts[:, 1].sum() != 0)
+    #     return bool(self.counts.colsum(1) != 0)
 
     def __iter__(self):
         yield from self.counts

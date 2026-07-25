@@ -180,7 +180,6 @@ class FeatureQuantifier(ABC):
 
         count_writer = CountWriter(
             self.out_prefix,
-            has_ambig_counts=self.counter.has_ambig_counts(),
             strand_specific=self.strand_specific,
             restrict_reports=restrict_reports,
             report_category=report_category,
