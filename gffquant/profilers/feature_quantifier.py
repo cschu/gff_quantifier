@@ -98,12 +98,12 @@ class FeatureQuantifier(ABC):
             rowid, *counts = next(_in).strip().split("\t")
             if rowid != "filtered_reads":
                 raise ValueError(f"Gene count file {fn} misses filtered read counts header.")
-            self.filtered_reads = float(next(_in).split("\t")[0])
+            self.filtered_reads = float(counts[0])
 
             for i, row in enumerate(_in, start=1,):
                 gene_id, *counts = row.strip().split("\t")
                 # counts = np.array(tuple(map(float, counts)), dtype=np.float64)
-                self.reference_manager[i] = (gene_id, 1)
+                self.reference_manager[i] = (gene_id, None)  # if needed can recover length from raw/length = lnorm -> raw = lnorm * length -> length = raw/lnorm
                 self.counter[i] = np.array(tuple(map(float, counts)), dtype=CountMatrix.NUMPY_DTYPE)
 
         return self.counter.counts.colsums()
