@@ -85,13 +85,14 @@ class FeatureQuantifier(ABC):
     def _import_counts(self, fn):
         with get_open_function(fn)(fn, "rt") as _in:
             try:
+                # read header
                 _ = next(_in)
             except StopIteration as exc:
                 raise ValueError(f"Counts file is empty: {fn}") from exc
 
             gene_id, *counts = next(_in).strip().split("\t")
             ncols = len(counts)
-            self.total_reads = float(next(_in).split("\t")[0])
+            self.total_reads = float(counts[0])
             self.filtered_reads = float(next(_in).split("\t")[0])
 
             for i, row in enumerate(_in, start=1,):
