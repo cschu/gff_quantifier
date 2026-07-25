@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 class GeneCountAnnotator(CountAnnotator):
     """ CountAnnotator subclass for gene-based counting. """
-
     def __init__(self, strand_specific, report_scaling_factors=True):
         """ __init__() """
         CountAnnotator.__init__(self, strand_specific, report_scaling_factors=report_scaling_factors)
@@ -26,12 +25,13 @@ class GeneCountAnnotator(CountAnnotator):
         refmgr,
         db: AnnotationDatabaseManager,
         counter: AlignmentCounter,
+        filtered_reads: float,
         gene_group_db=False
     ):
         categories = list(db.get_categories())
-        category_sums = np.zeros((len(categories), 6))
-        functional_counts = CountMatrix(6)
-        unannotated_counts = CountMatrix(6, 1)
+        category_sums = np.zeros((len(categories), 8))
+        functional_counts = CountMatrix(8)
+        unannotated_counts = CountMatrix(8, 1)
 
         for rid, counts in counter:
             if gene_group_db:
@@ -59,19 +59,24 @@ class GeneCountAnnotator(CountAnnotator):
 
         for i, category in enumerate(categories):
             u_sf, c_sf = (
-                CountMatrix.calculate_scaling_factor(*category_sums[i][0:2]),
-                CountMatrix.calculate_scaling_factor(*category_sums[i][3:5]),
+                CountMatrix.calculate_scaling_factor(*category_sums[i][CountMatrix.RAW_COLUMNS[0]:CountMatrix.LNORM_COLUMNS[0] + 1:]),
+                CountMatrix.calculate_scaling_factor(*category_sums[i][CountMatrix.RAW_COLUMNS[1]:CountMatrix.LNORM_COLUMNS[1] + 1:]),
             )
+            rpkm_sf = 1e9 / filtered_reads
 
             rows = tuple(
                 key[0] == category.id
                 for key, _ in functional_counts
             )
 
-            functional_counts.scale_column(1, u_sf, rows=rows)
-            functional_counts.scale_column(4, c_sf, rows=rows)
+            functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[0], CountMatrix.SCALED_COLUMNS[0], u_sf, rows=rows)
+            functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[1], CountMatrix.SCALED_COLUMNS[1], c_sf, rows=rows)
+            functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[0], CountMatrix.SCALED_COLUMNS[0], rpkm_sf, rows=rows)
+            functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[1], CountMatrix.SCALED_COLUMNS[1], rpkm_sf, rows=rows)
 
-            category_sums[i, 2] = category_sums[i, 1] * u_sf
-            category_sums[i, 5] = category_sums[i, 4] * c_sf
+            category_sums[i, CountMatrix.SCALED_COLUMNS[0]] = category_sums[i, CountMatrix.LNORM_COLUMNS[0]] * u_sf
+            category_sums[i, CountMatrix.SCALED_COLUMNS[1]] = category_sums[i, CountMatrix.LNORM_COLUMNS[1]] * c_sf
+            category_sums[i, CountMatrix.RPKM_COLUMNS[0]] = category_sums[i, CountMatrix.LNORM_COLUMNS[0]] * rpkm_sf
+            category_sums[i, CountMatrix.RPKM_COLUMNS[1]] = category_sums[i, CountMatrix.LNORM_COLUMNS[1]] * rpkm_sf
 
         return functional_counts, category_sums, unannotated_counts

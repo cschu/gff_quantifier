@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 class CountMatrix:
     NUMPY_DTYPE = 'float64'  # float16 causes some overflow issue during testing
     NO_ANNOTATION = "0"  # group-tag for genes without emappper functional annotation
+    RAW_COLUMNS = 0, 4
+    LNORM_COLUMNS = 1, 5
+    SCALED_COLUMNS = 2, 6
+    RPKM_COLUMNS = 3, 7
 
     @classmethod
     def from_count_matrix(cls, cmatrix, rows=None):
@@ -51,11 +55,11 @@ class CountMatrix:
         return self.index.get(key) is not None
 
     def _resize(self):
-        nrows = self.counts.shape[0]
+        nrows, ncols = self.counts.shape[0], self.counts.shape[1] 
         if len(self.index) == nrows:
             self.counts = np.pad(
                 self.counts,
-                ((0, nrows + 1000), (0, 0),),
+                ((0, nrows + 1000), tuple(0 for _ in range(ncols)),),
             )
         return len(self.index)
 
@@ -77,12 +81,12 @@ class CountMatrix:
     def sum(self):
         return self.counts.sum(axis=0)
 
-    def scale_column(self, col_index, factor, rows=None):
+    def scale_column(self, col, target_col, factor, rows=None):
         # apply scaling factors
         if rows is None:
-            self.counts[:, col_index + 1] = self.counts[:, col_index] * factor
+            self.counts[:, target_col] = self.counts[:, col] * factor
         else:
-            self.counts[rows, col_index + 1] = self.counts[rows, col_index] * factor
+            self.counts[rows, target_col] = self.counts[rows, col] * factor
 
     def drop_unindexed(self):
         self.counts = self.counts[0:len(self.index), :]
@@ -96,34 +100,34 @@ class CountMatrix:
 
         # calculate combined_raw
         counts[:, 1:2] += counts[:, 0:1]
-
+        
         # duplicate the raw counts
         counts = np.column_stack(
             (
-                counts[:, 0], counts[:, 0], counts[:, 0],  # 0, 1, 2
-                counts[:, 1], counts[:, 1], counts[:, 1],  # 3, 4, 5
+                counts[:, 0], counts[:, 0], counts[:, 0], counts[:, 0], # 0, 1, 2, 3
+                counts[:, 1], counts[:, 1], counts[:, 1], counts[:, 1], # 4, 5, 6, 7
             ),
         )
 
         # length-normalise the lnorm columns
-        counts[:, 1::3] /= lengths[:, None]
+        counts[:, CountMatrix.LNORM_COLUMNS[0]::4] /= lengths[:, None]
 
         count_sums = counts.sum(axis=0)
 
         uniq_scaling_factor, combined_scaling_factor = (
-            CountMatrix.calculate_scaling_factor(*count_sums[0:2]),
-            CountMatrix.calculate_scaling_factor(*count_sums[3:5]),
+            CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[0]:CountMatrix.LNORM_COLUMNS[0]]),
+            CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[1]:CountMatrix.LNORM_COLUMNS[1]]),
         )
 
         logger.info(
             "AC:: TOTAL GENE COUNTS: uraw=%s unorm=%s craw=%s cnorm=%s => SF: %s %s",
-            count_sums[0], count_sums[1], count_sums[3], count_sums[4],
+            count_sums[0], count_sums[1], count_sums[4], count_sums[5],
             uniq_scaling_factor, combined_scaling_factor,
         )
 
         # apply scaling factors
-        counts[:, 2] = counts[:, 1] * uniq_scaling_factor
-        counts[:, 5] = counts[:, 4] * combined_scaling_factor
+        counts[:, CountMatrix.SCALED_COLUMNS[0]] = counts[:, CountMatrix.LNORM_COLUMNS[0]] * uniq_scaling_factor
+        counts[:, CountMatrix.SCALED_COLUMNS[1]] = counts[:, CountMatrix.LNORM_COLUMNS[1]] * combined_scaling_factor
 
         self.counts = counts
 
@@ -139,7 +143,7 @@ class CountMatrix:
                     print(label, *counts, sep="\t", file=_out)
 
     def group_gene_counts(self, ggroups):
-        ggroup_counts = CountMatrix(ncols=6)
+        ggroup_counts = CountMatrix(ncols=8)
         for (_, gene_counts), ggroup_id in zip(self, ggroups):
             ggroup_counts[ggroup_id] += gene_counts
 
