@@ -216,6 +216,7 @@ class FeatureQuantifier(ABC):
             self.reference_manager,
             self.adm,
             self.counter,
+            self.filtered_reads,
             gene_group_db=gene_group_db,
         )
 
