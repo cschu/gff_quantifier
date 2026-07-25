@@ -31,10 +31,12 @@ class GeneCountAnnotator(CountAnnotator):
         categories = list(db.get_categories())
         category_sums = np.zeros((len(categories), 6))
         functional_counts = CountMatrix(6)
+        unannotated_counts = CountMatrix(6, 1)
 
         for rid, counts in counter:
             if gene_group_db:
                 if rid == "0":
+                    unannotated_counts[CountMatrix.NO_ANNOTATION] += counts
                     continue
                 ggroup_id = int(rid, 16)
             else:
@@ -50,6 +52,8 @@ class GeneCountAnnotator(CountAnnotator):
                     for feature_id in features:
                         feature_id = int(feature_id)
                         functional_counts[(category_id, feature_id)] += counts
+            elif not gene_group_db:
+                unannotated_counts[CountMatrix.NO_ANNOTATION] += counts
 
         functional_counts.drop_unindexed()
 
@@ -70,4 +74,4 @@ class GeneCountAnnotator(CountAnnotator):
             category_sums[i, 2] = category_sums[i, 1] * u_sf
             category_sums[i, 5] = category_sums[i, 4] * c_sf
 
-        return functional_counts, category_sums
+        return functional_counts, category_sums, unannotated_counts

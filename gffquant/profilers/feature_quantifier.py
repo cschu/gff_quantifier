@@ -204,18 +204,23 @@ class FeatureQuantifier(ABC):
         if dump_counters or self.debug:
             self.counter.counts.dump(prefix=self.out_prefix, labels=ggroups)
 
-        self.counter.group_gene_count_matrix(self.reference_manager)
-        unannotated_reads = self.counter.counts[CountMatrix.NO_ANNOTATION] + self.aln_counter["unannotated_ambig"]
+        unannotated_reads = self.aln_counter.get("unannotated_ambig", 0)
+        if gene_group_db:
+            self.counter.group_gene_count_matrix(self.reference_manager)
+            unannotated_reads += self.counter.counts[CountMatrix.NO_ANNOTATION]
 
-        if dump_counters or self.debug:
-            self.counter.counts.dump(prefix=self.out_prefix, state="ggroup")
+            if dump_counters or self.debug:
+                self.counter.counts.dump(prefix=self.out_prefix, state="ggroup")
 
-        functional_counts, category_sums = count_annotator.annotate_gene_counts(
+        functional_counts, category_sums, unannotated_counts = count_annotator.annotate_gene_counts(
             self.reference_manager,
             self.adm,
             self.counter,
             gene_group_db=gene_group_db,
         )
+
+        if not gene_group_db:
+            unannotated_reads += int(round(unannotated_counts[CountMatrix.NO_ANNOTATION][0]))
 
         logger.info("FC-index: %s", str(list(functional_counts.index.keys())[:10]))
         logger.info("FC-counts: %s", str(functional_counts.counts[0:10, :]))

@@ -22,7 +22,7 @@ def validate_args(args):
     logger.info(f"args: {args.__dict__}")
 
     args.run_mode = RunMode.parse(args.mode)
-    args.distribution_mode = DistributionMode.parse(args.ambig_mode)
+    args.distribution_mode = DistributionMode.ONE_OVER_N
 
     if args.run_mode != RunMode.GENE:
         raise NotImplementedError("Versions > 2.19.0 currently only allow --mode genes.")
@@ -82,7 +82,7 @@ def validate_args(args):
         restrict_metrics = set(args.restrict_metrics.split(","))
         invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
         if invalid:
-            raise ValueError(f"Invalid column(s) in `--restrict_metrics`: {str(invalid)}")
+            raise ValueError(f"Invalid metrics(s) in `--restrict_metrics`: {str(invalid)}")
         args.restrict_metrics = tuple(restrict_metrics)
 
     if os.path.isdir(os.path.dirname(args.out_prefix)) and not args.force_overwrite:
