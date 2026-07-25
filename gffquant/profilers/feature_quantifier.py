@@ -90,9 +90,14 @@ class FeatureQuantifier(ABC):
             except StopIteration as exc:
                 raise ValueError(f"Counts file is empty: {fn}") from exc
 
-            gene_id, *counts = next(_in).strip().split("\t")
+            rowid, *counts = next(_in).strip().split("\t")
             ncols = len(counts)
+            if rowid != "total_reads":
+                raise ValueError(f"Gene count file {fn} misses total read counts header.")
             self.total_reads = float(counts[0])
+            rowid, *counts = next(_in).strip().split("\t")
+            if rowid != "filtered_reads":
+                raise ValueError(f"Gene count file {fn} misses filtered read counts header.")
             self.filtered_reads = float(next(_in).split("\t")[0])
 
             for i, row in enumerate(_in, start=1,):
