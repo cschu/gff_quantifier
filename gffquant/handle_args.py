@@ -23,6 +23,9 @@ def validate_args(args):
     args.run_mode = RunMode.parse(args.mode)
     args.distribution_mode = DistributionMode.parse(args.ambig_mode)
 
+    if args.run_mode != RunMode.GENE:
+        raise NotImplementedError("Versions > 2.19.0 currently only allow --mode genes.")
+
     db_files = args.annotation_db.split(",") if args.annotation_db else [None]
 
     if not all(os.path.isfile(f) for f in db_files):
@@ -61,8 +64,14 @@ def validate_args(args):
         if bool(args.reference or args.aligner):
             raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
 
-    if (args.strand_specific and args.gene_counts):
-        raise NotImplementedError("External gene count input is not implemented for strand-specific counts.")
+    if args.strand_specific:
+        raise NotImplementedError("Strand-specific counting is currently disabled.")
+
+    if args.gene_counts:
+        if args.strand_specific:
+            raise NotImplementedError("External gene count input is not implemented for strand-specific counts.")
+        if args.run_mode != RunMode.GENE:
+            raise NotImplementedError("External gene counts currently require --mode genes.")
 
     if args.restrict_metrics:
         restrict_metrics = set(args.restrict_metrics.split(","))
@@ -265,7 +274,8 @@ def handle_args(args):
         "-m",
         type=str,
         default="genes",
-        choices=("small_genome", "genome_catalogue", "genes", "gene", "domain"),
+        choices=("genes", "gene",),
+        # choices=("small_genome", "genome_catalogue", "genes", "gene", "domain"),
         help=textwrap.dedent(
             """\
             Run mode:"
