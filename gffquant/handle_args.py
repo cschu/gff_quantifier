@@ -6,6 +6,7 @@ import logging
 import os
 import pathlib
 import textwrap
+import warnings
 
 from . import __version__, __tool__, DistributionMode, RunMode
 
@@ -49,8 +50,11 @@ def validate_args(args):
 
     args.input_type = "fastq" if has_fastq else ("bam" if args.bam else ("sam" if args.sam else "gene_counts"))
 
+    has_reference = bool(args.reference)
+    has_aligner = bool(args.aligner)
+
     if has_fastq:
-        if not bool(args.reference and args.aligner):
+        if not has_reference or not has_aligner:
             raise ValueError("--fastq-<readtype> input requires --reference and --aligner to be set.")
 
         if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
@@ -61,17 +65,18 @@ def validate_args(args):
             single_reads=args.singles, orphan_reads=args.orphans,
         )
     else:
-        if bool(args.reference or args.aligner):
+        if args.reference or args.aligner:
             raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
-
-    if args.strand_specific:
-        raise NotImplementedError("Strand-specific counting is currently disabled.")
 
     if args.gene_counts:
         if args.strand_specific:
             raise NotImplementedError("External gene count input is not implemented for strand-specific counts.")
         if args.run_mode != RunMode.GENE:
             raise NotImplementedError("External gene counts currently require --mode genes.")
+
+    if args.strand_specific:
+        args.strand_specific = False
+        warnings.warn("Strand-specific counting is currently disabled.")
 
     if args.restrict_metrics:
         restrict_metrics = set(args.restrict_metrics.split(","))
@@ -269,6 +274,7 @@ def handle_args(args):
         type=str,
         help="A comma-delimited string of orphan read fastq files."
     )
+
     ap.add_argument(
         "--mode",
         "-m",
@@ -279,11 +285,12 @@ def handle_args(args):
         help=textwrap.dedent(
             """\
             Run mode:"
-             - 'genome' counts reads aligned against contigs.
+             - 'genome' counts reads aligned against contigs. -- CURRENTLY DISABLED 
              - 'gene' (alias 'genes') counts reads aligned against gene sequences.
-             - 'domain' counts reads against domain annotations within gene sequences."""
+             - 'domain' counts reads against domain annotations within gene sequences. -- CURRENTLY DISABLED"""
         ),
     )
+
     ap.add_argument(
         "--out_prefix",
         "-o",
@@ -291,17 +298,19 @@ def handle_args(args):
         default=__tool__,
         help="Prefix for output files.",
     )
+
     ap.add_argument(
         "--ambig_mode",
         type=str,
-        choices=("unique_only", "all1", "primary_only", "1overN"),
+        # choices=("unique_only", "all1", "primary_only", "1overN"),
+        choices=("1overN",),
         default="1overN",
         help=textwrap.dedent(
             """\
             Determines how ambiguous alignments should be treated. This setting mimics NGLess' behaviour.
-            - 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). This is the default setting.
-            - 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to.)
-            - 'primary_only' takes the unique alignments and the primary alignment of each ambiguous read group.
+            - 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). This is the default setting. -- CURRENTLY DISABLED
+            - 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to.) -- CURRENTLY DISABLED
+            - 'primary_only' takes the unique alignments and the primary alignment of each ambiguous read group. -- CURRENTLY DISABLED
             - '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to."""
         ),
     )
@@ -309,8 +318,8 @@ def handle_args(args):
     ap.add_argument(
         "--strand_specific",
         action="store_true",
-        help="Perform strand-specific counting for RNAseq reads. "
-        "This flag is currently ignored for paired-end data.",
+        help="""\
+            Perform strand-specific counting for RNAseq reads. -- CURRENTLY DISABLED""",
     )
 
     ap.add_argument(
