@@ -7,7 +7,7 @@ import logging
 
 import numpy as np
 
-from .count_matrix import CountMatrix
+from .count_matrix import CountMatrix, GeneCountMatrix
 from .. import DistributionMode
 
 
@@ -154,7 +154,8 @@ class AlignmentCounter:
             )
         )
 
-        self.counts = self.counts.generate_gene_counts(gene_lengths)
+        # self.counts = self.counts.generate_gene_counts(gene_lengths)
+        self.counts = GeneCountMatrix(self.counts, gene_lengths,)
 
         return self.counts.sum()  # is that right?? sums over whole matrix...
 

@@ -91,16 +91,70 @@ class CountMatrix:
     def drop_unindexed(self):
         self.counts = self.counts[0:len(self.index), :]
 
-    def generate_gene_counts(self, lengths):
-        logger.info("LENGTHS ARRAY = %s", lengths.shape)
-        logger.info("INDEX SIZE = %s", len(self.index))
+    def dump(self, prefix="prefix", state="genes", labels=None,):
+        with open(f"{prefix}.cmatrix.{state}.txt", "wt", encoding="UTF-8",) as _out:
+            if labels is None:
+                for index, counts in self:
+                    print(index, *counts, sep="\t", file=_out)
+            else:
+                for (index, counts), label in zip(self, labels):
+                    print(label, *counts, sep="\t", file=_out)
 
+    def colsum(self, col):
+        return self.counts[:, col].sum()
+
+    def colsums(self):
+        return self.counts.sum(axis=0)
+
+    # def generate_gene_counts(self, lengths):
+    #     logger.info("LENGTHS ARRAY = %s", lengths.shape)
+    #     logger.info("INDEX SIZE = %s", len(self.index))
+
+    #     # remove the un-indexed rows
+    #     counts = self.counts[0:len(self.index), :]
+
+    #     # calculate combined_raw
+    #     counts[:, 1:2] += counts[:, 0:1]
+        
+    #     # duplicate the raw counts
+    #     counts = np.column_stack(
+    #         (
+    #             counts[:, 0], counts[:, 0], counts[:, 0], counts[:, 0], # 0, 1, 2, 3
+    #             counts[:, 1], counts[:, 1], counts[:, 1], counts[:, 1], # 4, 5, 6, 7
+    #         ),
+    #     )
+
+    #     # length-normalise the lnorm columns
+    #     counts[:, CountMatrix.LNORM_COLUMNS[0]::4] /= lengths[:, None]
+
+    #     count_sums = counts.sum(axis=0)
+
+    #     uniq_scaling_factor, combined_scaling_factor = (
+    #         CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[0]:CountMatrix.LNORM_COLUMNS[0]]),
+    #         CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[1]:CountMatrix.LNORM_COLUMNS[1]]),
+    #     )
+
+    #     logger.info(
+    #         "AC:: TOTAL GENE COUNTS: uraw=%s unorm=%s craw=%s cnorm=%s => SF: %s %s",
+    #         count_sums[0], count_sums[1], count_sums[4], count_sums[5],
+    #         uniq_scaling_factor, combined_scaling_factor,
+    #     )
+
+    #     # apply scaling factors
+    #     counts[:, CountMatrix.SCALED_COLUMNS[0]] = counts[:, CountMatrix.LNORM_COLUMNS[0]] * uniq_scaling_factor
+    #     counts[:, CountMatrix.SCALED_COLUMNS[1]] = counts[:, CountMatrix.LNORM_COLUMNS[1]] * combined_scaling_factor
+
+    #     self.counts = counts
+
+    #     return self
+
+    def to_full_count_matrix(self):
         # remove the un-indexed rows
         counts = self.counts[0:len(self.index), :]
 
         # calculate combined_raw
         counts[:, 1:2] += counts[:, 0:1]
-        
+                
         # duplicate the raw counts
         counts = np.column_stack(
             (
@@ -109,11 +163,18 @@ class CountMatrix:
             ),
         )
 
+        return counts
+
+
+class GeneCountMatrix(CountMatrix):
+    def __init__(self, m: CountMatrix, lengths):
+        CountMatrix.__init__(self, index=m.index, counts=m.to_full_count_matrix(),)
+
         # length-normalise the lnorm columns
-        counts[:, CountMatrix.LNORM_COLUMNS[0]::4] /= lengths[:, None]
-
-        count_sums = counts.sum(axis=0)
-
+        self.counts[:, CountMatrix.LNORM_COLUMNS[0]::4] /= lengths[:, None]
+        
+        count_sums = self.counts.sum(axis=0)
+        
         uniq_scaling_factor, combined_scaling_factor = (
             CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[0]:CountMatrix.LNORM_COLUMNS[0]]),
             CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[1]:CountMatrix.LNORM_COLUMNS[1]]),
@@ -126,21 +187,9 @@ class CountMatrix:
         )
 
         # apply scaling factors
-        counts[:, CountMatrix.SCALED_COLUMNS[0]] = counts[:, CountMatrix.LNORM_COLUMNS[0]] * uniq_scaling_factor
-        counts[:, CountMatrix.SCALED_COLUMNS[1]] = counts[:, CountMatrix.LNORM_COLUMNS[1]] * combined_scaling_factor
-
-        self.counts = counts
-
-        return self
-
-    def dump(self, prefix="prefix", state="genes", labels=None,):
-        with open(f"{prefix}.cmatrix.{state}.txt", "wt", encoding="UTF-8",) as _out:
-            if labels is None:
-                for index, counts in self:
-                    print(index, *counts, sep="\t", file=_out)
-            else:
-                for (index, counts), label in zip(self, labels):
-                    print(label, *counts, sep="\t", file=_out)
+        self.counts[:, CountMatrix.SCALED_COLUMNS[0]] = self.counts[:, CountMatrix.LNORM_COLUMNS[0]] * uniq_scaling_factor
+        self.counts[:, CountMatrix.SCALED_COLUMNS[1]] = self.counts[:, CountMatrix.LNORM_COLUMNS[1]] * combined_scaling_factor
+        
 
     def group_gene_counts(self, ggroups):
         ggroup_counts = CountMatrix(ncols=8)
@@ -148,9 +197,3 @@ class CountMatrix:
             ggroup_counts[ggroup_id] += gene_counts
 
         return ggroup_counts
-
-    def colsum(self, col):
-        return self.counts[:, col].sum()
-
-    def colsums(self):
-        return self.counts.sum(axis=0)
