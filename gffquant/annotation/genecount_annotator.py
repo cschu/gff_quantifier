@@ -33,6 +33,11 @@ class GeneCountAnnotator(CountAnnotator):
         functional_counts = CountMatrix(8)
         unannotated_counts = CountMatrix(8, 1)
 
+        if filtered_reads:
+            rpkm_sf = 1e9 / filtered_reads
+        else:
+            raise ValueError(f"{filtered_reads=} -> No reads passed filters. Aborting.")
+
         for rid, counts in counter:
             if gene_group_db:
                 if rid == "0":
@@ -62,7 +67,7 @@ class GeneCountAnnotator(CountAnnotator):
                 CountMatrix.calculate_scaling_factor(*category_sums[i][CountMatrix.RAW_COLUMNS[0]:CountMatrix.LNORM_COLUMNS[0] + 1:]),
                 CountMatrix.calculate_scaling_factor(*category_sums[i][CountMatrix.RAW_COLUMNS[1]:CountMatrix.LNORM_COLUMNS[1] + 1:]),
             )
-            rpkm_sf = 1e9 / filtered_reads
+            
 
             rows = tuple(
                 key[0] == category.id
@@ -71,8 +76,8 @@ class GeneCountAnnotator(CountAnnotator):
 
             functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[0], CountMatrix.SCALED_COLUMNS[0], u_sf, rows=rows)
             functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[1], CountMatrix.SCALED_COLUMNS[1], c_sf, rows=rows)
-            functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[0], CountMatrix.SCALED_COLUMNS[0], rpkm_sf, rows=rows)
-            functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[1], CountMatrix.SCALED_COLUMNS[1], rpkm_sf, rows=rows)
+            functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[0], CountMatrix.RPKM_COLUMNS[0], rpkm_sf, rows=rows)
+            functional_counts.scale_column(CountMatrix.LNORM_COLUMNS[1], CountMatrix.RPKM_COLUMNS[1], rpkm_sf, rows=rows)
 
             category_sums[i, CountMatrix.SCALED_COLUMNS[0]] = category_sums[i, CountMatrix.LNORM_COLUMNS[0]] * u_sf
             category_sums[i, CountMatrix.SCALED_COLUMNS[1]] = category_sums[i, CountMatrix.LNORM_COLUMNS[1]] * c_sf

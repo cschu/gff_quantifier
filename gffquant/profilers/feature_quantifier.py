@@ -206,7 +206,7 @@ class FeatureQuantifier(ABC):
         unannotated_reads = self.aln_counter.get("unannotated_ambig", 0)
         if gene_group_db:
             self.counter.group_gene_count_matrix(self.reference_manager)
-            unannotated_reads += self.counter.counts[CountMatrix.NO_ANNOTATION]
+            unannotated_reads += int(round(self.counter.counts[CountMatrix.NO_ANNOTATION][0]))
 
             if dump_counters or self.debug:
                 self.counter.counts.dump(prefix=self.out_prefix, state="ggroup")
