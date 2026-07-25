@@ -32,29 +32,24 @@ class GeneCountAnnotator(CountAnnotator):
         category_sums = np.zeros((len(categories), 6))
         functional_counts = CountMatrix(6)
 
-        # for category in categories:
-        #     features = ((feature.name, feature) for feature in db.get_features(category.id))
-        #     for _, feature in sorted(features, key=lambda x: x[0]):
-        #         _ = functional_counts[(category.id, feature.id)]
-
         for rid, counts in counter:
-            # counts = counter[rid]
             if gene_group_db:
+                if rid == "0":
+                    continue
                 ggroup_id = int(rid, 16)
             else:
                 ref, _ = refmgr.get(rid[0] if isinstance(rid, tuple) else rid)
                 ggroup_id = ref
 
-            if ggroup_id > 0:
-                region_annotation = db.query_sequence(ggroup_id, grouped_db=gene_group_db,)
-                if region_annotation is not None:
-                    _, _, region_annotation = region_annotation
-                    for category_id, features in region_annotation:
-                        category_id = int(category_id)
-                        category_sums[category_id] += counts
-                        for feature_id in features:
-                            feature_id = int(feature_id)
-                            functional_counts[(category_id, feature_id)] += counts
+            region_annotation = db.query_sequence(ggroup_id, grouped_db=gene_group_db,)
+            if region_annotation is not None:
+                *_, region_annotation = region_annotation
+                for category_id, features in region_annotation:
+                    category_id = int(category_id)
+                    category_sums[category_id] += counts
+                    for feature_id in features:
+                        feature_id = int(feature_id)
+                        functional_counts[(category_id, feature_id)] += counts
 
         functional_counts.drop_unindexed()
 
