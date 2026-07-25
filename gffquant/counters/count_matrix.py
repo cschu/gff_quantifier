@@ -176,8 +176,8 @@ class GeneCountMatrix(CountMatrix):
         count_sums = self.counts.sum(axis=0)
         
         uniq_scaling_factor, combined_scaling_factor = (
-            CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[0]:CountMatrix.LNORM_COLUMNS[0]]),
-            CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[1]:CountMatrix.LNORM_COLUMNS[1]]),
+            CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[0]:CountMatrix.LNORM_COLUMNS[0] + 1]),
+            CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[1]:CountMatrix.LNORM_COLUMNS[1] + 1]),
         )
 
         logger.info(
