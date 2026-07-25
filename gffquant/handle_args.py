@@ -361,7 +361,7 @@ def handle_args(args):
         "--restrict_metrics",
         type=str,
         help="Restrict reported metrics. Comma-separated list of `raw`, `lnorm`, `scaled`, `rpkm`.",
-        default="raw,lnorm,scaled",
+        default="raw,lnorm,scaled,rpkm",
     )
 
     ap.add_argument(
