@@ -75,8 +75,7 @@ def validate_args(args):
             raise NotImplementedError("External gene counts currently require --mode genes.")
 
     if args.strand_specific:
-        args.strand_specific = False
-        warnings.warn("Strand-specific counting is currently disabled.")
+        raise NotImplementedError("Strand-specific counting is currently disabled.")
 
     if args.restrict_metrics:
         restrict_metrics = set(args.restrict_metrics.split(","))
@@ -308,10 +307,10 @@ def handle_args(args):
         help=textwrap.dedent(
             """\
             Determines how ambiguous alignments should be treated. This setting mimics NGLess' behaviour.
-            - 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). This is the default setting. -- CURRENTLY DISABLED
+            - 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). -- CURRENTLY DISABLED
             - 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to.) -- CURRENTLY DISABLED
             - 'primary_only' takes the unique alignments and the primary alignment of each ambiguous read group. -- CURRENTLY DISABLED
-            - '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to."""
+            - '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to. This is the default setting."""
         ),
     )
 
