@@ -167,28 +167,29 @@ class CountMatrix:
 
 
 class GeneCountMatrix(CountMatrix):
-    def __init__(self, m: CountMatrix, lengths):
+    def __init__(self, m: CountMatrix, lengths=None,):
         CountMatrix.__init__(self, index=m.index, counts=m.to_full_count_matrix(),)
 
-        # length-normalise the lnorm columns
-        self.counts[:, CountMatrix.LNORM_COLUMNS[0]::4] /= lengths[:, None]
-        
-        count_sums = self.counts.sum(axis=0)
-        
-        uniq_scaling_factor, combined_scaling_factor = (
-            CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[0]:CountMatrix.LNORM_COLUMNS[0] + 1]),
-            CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[1]:CountMatrix.LNORM_COLUMNS[1] + 1]),
-        )
+        if lengths is not None:
+            # length-normalise the lnorm columns
+            self.counts[:, CountMatrix.LNORM_COLUMNS[0]::4] /= lengths[:, None]
+            
+            count_sums = self.counts.sum(axis=0)
+            
+            uniq_scaling_factor, combined_scaling_factor = (
+                CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[0]:CountMatrix.LNORM_COLUMNS[0] + 1]),
+                CountMatrix.calculate_scaling_factor(*count_sums[CountMatrix.RAW_COLUMNS[1]:CountMatrix.LNORM_COLUMNS[1] + 1]),
+            )
 
-        logger.info(
-            "AC:: TOTAL GENE COUNTS: uraw=%s unorm=%s craw=%s cnorm=%s => SF: %s %s",
-            count_sums[0], count_sums[1], count_sums[4], count_sums[5],
-            uniq_scaling_factor, combined_scaling_factor,
-        )
+            logger.info(
+                "AC:: TOTAL GENE COUNTS: uraw=%s unorm=%s craw=%s cnorm=%s => SF: %s %s",
+                count_sums[0], count_sums[1], count_sums[4], count_sums[5],
+                uniq_scaling_factor, combined_scaling_factor,
+            )
 
-        # apply scaling factors
-        self.counts[:, CountMatrix.SCALED_COLUMNS[0]] = self.counts[:, CountMatrix.LNORM_COLUMNS[0]] * uniq_scaling_factor
-        self.counts[:, CountMatrix.SCALED_COLUMNS[1]] = self.counts[:, CountMatrix.LNORM_COLUMNS[1]] * combined_scaling_factor
+            # apply scaling factors
+            self.counts[:, CountMatrix.SCALED_COLUMNS[0]] = self.counts[:, CountMatrix.LNORM_COLUMNS[0]] * uniq_scaling_factor
+            self.counts[:, CountMatrix.SCALED_COLUMNS[1]] = self.counts[:, CountMatrix.LNORM_COLUMNS[1]] * combined_scaling_factor
         
 
     def group_gene_counts(self, ggroups):

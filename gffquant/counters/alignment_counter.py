@@ -61,7 +61,7 @@ class AlignmentCounter:
         distribution_mode=DistributionMode.ONE_OVER_N,
         strand_specific=False,
         paired_end_count=1,
-        initial_cols=2,
+        import_counts=False,
     ):
         self.distribution_mode = distribution_mode
         self.strand_specific = strand_specific
@@ -70,7 +70,10 @@ class AlignmentCounter:
         self.increments_auto_detect = (1.0, self.paired_end_count / 2.0,)
         self.unannotated_reads = 0
 
-        self.counts = CountMatrix(initial_cols, nrows=AlignmentCounter.INITIAL_SIZE)
+        self.counts = CountMatrix(8 if import_counts else 2, nrows=AlignmentCounter.INITIAL_SIZE)
+        if import_counts:
+            self.counts = GeneCountMatrix(self.counts,)
+
 
     def dump(self, prefix, refmgr):
         with gzip.open(f"{prefix}.{self.__class__.__name__}.txt.gz", "wt") as _out:
@@ -155,9 +158,9 @@ class AlignmentCounter:
         )
 
         # self.counts = self.counts.generate_gene_counts(gene_lengths)
-        self.counts = GeneCountMatrix(self.counts, gene_lengths,)
+        self.counts = GeneCountMatrix(self.counts, lengths=gene_lengths,)
 
-        return self.counts.sum()  # is that right?? sums over whole matrix...
+        return self.counts.sum()
 
     @staticmethod
     def calculate_scaling_factor(raw, norm):
