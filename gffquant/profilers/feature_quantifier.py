@@ -67,7 +67,7 @@ class FeatureQuantifier(ABC):
             distribution_mode=distribution_mode,
             strand_specific=strand_specific,
             paired_end_count=paired_end_count,
-            initial_cols=6 if external_genecounts else 2,
+            initial_cols=8 if external_genecounts else 2,
         )
         self.out_prefix = out_prefix
         self.distribution_mode = distribution_mode
