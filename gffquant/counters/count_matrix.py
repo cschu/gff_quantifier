@@ -59,7 +59,7 @@ class CountMatrix:
         if len(self.index) == nrows:
             self.counts = np.pad(
                 self.counts,
-                ((0, nrows + 1000), (0, 0),),  # s. numpy.pad: (0 new rows at the start, 1000 new rows at the end; no new cols on either side)
+                ((0, nrows + 1000), (0, 0),),  # pad_width, s. numpy.pad: (0 new rows at the start, 1000 new rows at the end; no new cols on either side)
             )
         return len(self.index)
 
