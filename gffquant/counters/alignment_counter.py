@@ -144,7 +144,7 @@ class AlignmentCounter:
 
         return contributed_counts
 
-    def generate_gene_count_matrix(self, refmgr):
+    def generate_gene_count_matrix(self, refmgr, nreads,):
         # transform 2-column uniq/ambig count matrix
         # into 4 columns
         # uniq_raw, combined_raw, uniq_lnorm, combined_lnorm
@@ -158,7 +158,7 @@ class AlignmentCounter:
         )
 
         # self.counts = self.counts.generate_gene_counts(gene_lengths)
-        self.counts = GeneCountMatrix(self.counts, lengths=gene_lengths,)
+        self.counts = GeneCountMatrix(self.counts, lengths=gene_lengths, nreads=nreads,)
 
         return self.counts.sum()
 

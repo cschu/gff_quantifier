@@ -78,11 +78,13 @@ def validate_args(args):
         raise NotImplementedError("Strand-specific counting is currently disabled.")
 
     if args.restrict_metrics:
-        restrict_metrics = set(args.restrict_metrics.split(","))
-        invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
-        if invalid:
-            raise ValueError(f"Invalid metrics(s) in `--restrict_metrics`: {str(invalid)}")
-        args.restrict_metrics = tuple(restrict_metrics)
+        args.restrict_metrics = None
+        warnings.warn("Metric restriction is currently ignored.")
+        # restrict_metrics = args.restrict_metrics.split(",")
+        # invalid = set(restrict_metrics).difference(('raw', 'lnorm', 'scaled', 'rpkm'))
+        # if invalid:
+        #     raise ValueError(f"Invalid metric(s) in `--restrict_metrics`: {str(invalid)}")
+        # args.restrict_metrics = restrict_metrics
 
     if os.path.isdir(os.path.dirname(args.out_prefix)) and not args.force_overwrite:
         raise ValueError(f"Output directory exists {os.path.dirname(args.out_prefix)}. Specify -f to overwrite.")
@@ -359,7 +361,7 @@ def handle_args(args):
     ap.add_argument(
         "--restrict_metrics",
         type=str,
-        help="Restrict reported metrics. Comma-separated list of `raw`, `lnorm`, `scaled`, `rpkm`.",
+        help="Restrict reported metrics. Comma-separated list of `raw`, `lnorm`, `scaled`, `rpkm`. -- CURRENTLY IGNORED",
         default="raw,lnorm,scaled,rpkm",
     )
 

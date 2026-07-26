@@ -156,8 +156,6 @@ def main():
         profiler.report_alignments()
 
     profiler.finalise(
-        restrict_reports=args.restrict_metrics,
-        report_category=True,
         report_unannotated=args.run_mode.report_unannotated,
         dump_counters=args.debug,
         in_memory=args.db_in_memory,

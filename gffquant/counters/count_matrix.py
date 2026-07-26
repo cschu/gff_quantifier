@@ -167,7 +167,7 @@ class CountMatrix:
 
 
 class GeneCountMatrix(CountMatrix):
-    def __init__(self, m: CountMatrix, lengths=None,):
+    def __init__(self, m: CountMatrix, lengths=None, nreads: int=None,):
         CountMatrix.__init__(self, index=m.index, counts=m.to_full_count_matrix(),)
 
         if lengths is not None:
@@ -190,7 +190,12 @@ class GeneCountMatrix(CountMatrix):
             # apply scaling factors
             self.counts[:, CountMatrix.SCALED_COLUMNS[0]] = self.counts[:, CountMatrix.LNORM_COLUMNS[0]] * uniq_scaling_factor
             self.counts[:, CountMatrix.SCALED_COLUMNS[1]] = self.counts[:, CountMatrix.LNORM_COLUMNS[1]] * combined_scaling_factor
-        
+
+            if nreads:
+                rpkm_sf = 1e9 / nreads
+                self.counts[:, CountMatrix.RPKM_COLUMNS[0]] = self.counts[:, CountMatrix.LNORM_COLUMNS[0]] * rpkm_sf
+                self.counts[:, CountMatrix.RPKM_COLUMNS[1]] = self.counts[:, CountMatrix.LNORM_COLUMNS[1]] * rpkm_sf
+     
 
     def group_gene_counts(self, ggroups):
         ggroup_counts = CountMatrix(ncols=8)

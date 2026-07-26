@@ -16,25 +16,18 @@ logger = logging.getLogger(__name__)
 
 
 class CountWriter:
-    COUNT_HEADER_ELEMENTS = ["raw", "lnorm", "scaled", "rpkm"]
+    COUNT_HEADER_ELEMENTS = ("raw", "lnorm", "scaled", "rpkm",)
 
     def __init__(
         self,
         prefix,
         strand_specific=False,
-        restrict_reports=None,
-        report_category=True,
         total_readcount=None,
         filtered_readcount=None,
     ):
         self.out_prefix = prefix
         self.strand_specific = strand_specific
-        self.publish_reports = [
-            item for item in CountWriter.COUNT_HEADER_ELEMENTS
-            if restrict_reports is None or item in restrict_reports
-        ]
-        if report_category:
-            self.publish_reports.append("category")
+        self.publish_reports = list(CountWriter.COUNT_HEADER_ELEMENTS) + ["category",]
         if total_readcount:
             self.publish_reports.append("total_readcount")
         if filtered_readcount:

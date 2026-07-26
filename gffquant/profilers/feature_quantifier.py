@@ -148,8 +148,6 @@ class FeatureQuantifier(ABC):
 
     def process_counters(
         self,
-        restrict_reports=None,
-        report_category=True,
         report_unannotated=True,
         dump_counters=True,
         in_memory=True,
@@ -161,19 +159,17 @@ class FeatureQuantifier(ABC):
         if dump_counters and not self.external_counts:
             self.counter.dump(self.out_prefix, self.reference_manager,)
 
-        report_scaling_factors = restrict_reports is None or "scaled" in restrict_reports
-
         if self.run_mode.overlap_required and not self.external_counts:
             Annotator = RegionCountAnnotator
         else:
             Annotator = GeneCountAnnotator
 
-        count_annotator = Annotator(self.strand_specific, report_scaling_factors=report_scaling_factors)
+        count_annotator = Annotator(self.strand_specific, report_scaling_factors=True,)
 
         if self.external_counts:
             logger.info("TOTAL_GENE_COUNTS = %s (IMPORTED)", self.counter.counts.colsums())
         else:
-            total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager)
+            total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager, self.filtered_reads,)
             logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
             self.total_reads = self.aln_counter["read_count"]
             self.filtered_reads = self.aln_counter["filtered_read_count"]
@@ -181,8 +177,6 @@ class FeatureQuantifier(ABC):
         count_writer = CountWriter(
             self.out_prefix,
             strand_specific=self.strand_specific,
-            restrict_reports=restrict_reports,
-            report_category=report_category,
             total_readcount=self.total_reads,
             filtered_readcount=self.filtered_reads,
         )
@@ -413,8 +407,6 @@ class FeatureQuantifier(ABC):
 
     def finalise(
         self,
-        restrict_reports=None,
-        report_category=False,
         report_unannotated=False,
         dump_counters=False,
         in_memory=True,
@@ -428,8 +420,6 @@ class FeatureQuantifier(ABC):
             # self.write_coverage()
 
             self.process_counters(
-                restrict_reports=restrict_reports,
-                report_category=report_category,
                 report_unannotated=report_unannotated,
                 dump_counters=dump_counters,
                 in_memory=in_memory,
