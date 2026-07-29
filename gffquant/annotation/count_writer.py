@@ -70,9 +70,8 @@ class CountWriter:
         features,
         unannotated_reads=None,
         report_unseen=True,
-        strand_specific=False,
     ):
-        ncols = 24 if strand_specific else 8
+        ncols = 24 if self.strand_specific else 8
         with gzip.open(f"{self.out_prefix}.{category_name}.txt.gz", "wt") as feat_out:
             header = self.get_header()
             print("feature", *header, sep="\t", file=feat_out)
@@ -116,9 +115,8 @@ class CountWriter:
         refmgr,
         total_reads,
         filtered_reads,
-        strand_specific=False,
     ):
-        ncols = 24 if strand_specific else 8
+        ncols = 24 if self.strand_specific else 8
         
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
