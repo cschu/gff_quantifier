@@ -169,10 +169,10 @@ class FeatureQuantifier(ABC):
         if self.external_counts:
             logger.info("TOTAL_GENE_COUNTS = %s (IMPORTED)", self.counter.counts.colsums())
         else:
-            total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager, self.filtered_reads,)
-            logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
             self.total_reads = self.aln_counter["read_count"]
             self.filtered_reads = self.aln_counter["filtered_read_count"]
+            total_gene_counts = self.counter.generate_gene_count_matrix(self.reference_manager, self.filtered_reads,)
+            logger.info("TOTAL_GENE_COUNTS = %s", total_gene_counts)
 
         count_writer = CountWriter(
             self.out_prefix,
