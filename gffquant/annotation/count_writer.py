@@ -57,40 +57,6 @@ class CountWriter:
                 )
         return header
 
-    def compile_output_row(self, counts, scaling_factor=1, ambig_scaling_factor=1):
-
-        def compile_block(raw, lnorm, scaling_factors):
-            return (raw, lnorm,) + tuple(lnorm * factor for factor in scaling_factors)
-
-        p, row = 0, []
-        rpkm_factor = 1e9 / self.filtered_readcount
-
-        # unique counts
-        row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
-        p += 2
-        # ambiguous counts
-        row += compile_block(*counts[p:p + 2], (ambig_scaling_factor, rpkm_factor,))
-        p += 2
-        # sense-strand unique
-        if self.strand_specific:
-            row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
-            p += 2
-            # sense-strand ambiguous
-            row += compile_block(*counts[p:p + 2], (ambig_scaling_factor, rpkm_factor,))
-            p += 2
-            # antisense-strand unique
-            row += compile_block(*counts[p:p + 2], (scaling_factor, rpkm_factor,))
-            p += 2
-            row += compile_block(*counts[p:p + 2], (ambig_scaling_factor, rpkm_factor,))
-
-        out_row = []
-        n = len(CountWriter.COUNT_HEADER_ELEMENTS)
-        for col, item in enumerate(row):
-            if CountWriter.COUNT_HEADER_ELEMENTS[col % n] in self.publish_reports:
-                out_row.append(item)
-
-        return out_row
-
     @staticmethod
     def write_row(header, data, stream=sys.stdout):
         print(header, *(f"{c:.5f}" for c in data), flush=True, sep="\t", file=stream)

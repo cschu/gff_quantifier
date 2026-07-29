@@ -167,7 +167,7 @@ class CountMatrix:
 
 
 class GeneCountMatrix(CountMatrix):
-    def __init__(self, m: CountMatrix, lengths=None, nreads: int=None,):
+    def __init__(self, m: CountMatrix, lengths=None, nreads: int | None = None,):
         CountMatrix.__init__(self, index=m.index, counts=m.to_full_count_matrix(),)
 
         if lengths is not None:
