@@ -77,9 +77,9 @@ def validate_args(args):
     if args.strand_specific:
         raise NotImplementedError("Strand-specific counting is currently disabled.")
 
-    if args.restrict_metrics:
+    if args.restrict_metrics is not None:
         args.restrict_metrics = None
-        warnings.warn("Metric restriction is currently ignored.")
+        warnings.warn("Metric restriction is currently ignored.", stacklevel=2,)
         # restrict_metrics = args.restrict_metrics.split(",")
         # invalid = set(restrict_metrics).difference(('raw', 'lnorm', 'scaled', 'rpkm'))
         # if invalid:
