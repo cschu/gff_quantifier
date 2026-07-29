@@ -70,7 +70,9 @@ class CountWriter:
         features,
         unannotated_reads=None,
         report_unseen=True,
+        strand_specific=False,
     ):
+        ncols = 24 if strand_specific else 8
         with gzip.open(f"{self.out_prefix}.{category_name}.txt.gz", "wt") as feat_out:
             header = self.get_header()
             print("feature", *header, sep="\t", file=feat_out)
@@ -98,7 +100,7 @@ class CountWriter:
                 if cat_counts is not None:
                     CountWriter.write_row("category", category_sum, stream=feat_out)
 
-            empty_row = np.zeros(6, dtype=CountMatrix.NUMPY_DTYPE)
+            empty_row = np.zeros(ncols, dtype=CountMatrix.NUMPY_DTYPE)
             for feature in features:
                 key = (category_id, feature.id)
                 if counts.has_record(key):
@@ -114,12 +116,15 @@ class CountWriter:
         refmgr,
         total_reads,
         filtered_reads,
+        strand_specific=False,
     ):
+        ncols = 24 if strand_specific else 8
+        
         with gzip.open(f"{self.out_prefix}.gene_counts.txt.gz", "wt") as gene_out:
             print("gene", *self.get_header(), sep="\t", file=gene_out, flush=True)
 
-            CountWriter.write_row("total_reads", [total_reads] * 6, stream=gene_out,)
-            CountWriter.write_row("filtered_reads", [filtered_reads] * 6, stream=gene_out,)
+            CountWriter.write_row("total_reads", [total_reads] * ncols, stream=gene_out,)
+            CountWriter.write_row("filtered_reads", [filtered_reads] * ncols, stream=gene_out,)
 
             ref_stream = (
                 (
