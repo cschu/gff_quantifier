@@ -27,7 +27,7 @@ def stream_alignments(args, profiler: FeatureQuantifier):
         raise ValueError(f"Aligner `{args.aligner}` is not supported.")
 
     aln_runner = AlnRunner(
-        args.cpus_for_alignment,
+        args.threads,
         args.reference,
         sample_id=os.path.basename(args.out_prefix),
     )
