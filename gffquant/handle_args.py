@@ -374,9 +374,9 @@ def handle_args(args):
     )
 
     ap.add_argument(
-        "--cpus_for_alignment", "-t",
+        "--threads", "-t",
         type=int, default=1,
-        help="",
+        help="Number of CPUS/threads used for alignment",
     )
 
     ap.add_argument(
