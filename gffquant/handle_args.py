@@ -6,6 +6,7 @@ import logging
 import os
 import pathlib
 import textwrap
+import warnings
 
 from . import __version__, __tool__, DistributionMode, RunMode
 
@@ -21,13 +22,16 @@ def validate_args(args):
     logger.info(f"args: {args.__dict__}")
 
     args.run_mode = RunMode.parse(args.mode)
-    args.distribution_mode = DistributionMode.parse(args.ambig_mode)
+    args.distribution_mode = DistributionMode.ONE_OVER_N
+
+    if args.run_mode != RunMode.GENE:
+        raise NotImplementedError("Versions > 2.19.0 currently only allow --mode genes.")
 
     db_files = args.annotation_db.split(",") if args.annotation_db else [None]
 
     if not all(os.path.isfile(f) for f in db_files):
         raise ValueError(f"Cannot find annotation db at `{args.annotation_db}`.")
-    
+
     has_fastq = any(
         map(
             lambda x: x is not None,
@@ -46,8 +50,11 @@ def validate_args(args):
 
     args.input_type = "fastq" if has_fastq else ("bam" if args.bam else ("sam" if args.sam else "gene_counts"))
 
+    has_reference = bool(args.reference)
+    has_aligner = bool(args.aligner)
+
     if has_fastq:
-        if not bool(args.reference and args.aligner):
+        if not has_reference or not has_aligner:
             raise ValueError("--fastq-<readtype> input requires --reference and --aligner to be set.")
 
         if (args.aligner == "bwa" and not check_bwa_index(args.reference)) or (args.aligner == "minimap" and not check_minimap2_index(args.reference)):
@@ -58,24 +65,26 @@ def validate_args(args):
             single_reads=args.singles, orphan_reads=args.orphans,
         )
     else:
-        if bool(args.reference or args.aligner):
+        if args.reference or args.aligner:
             raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
-        
-    if (args.strand_specific and args.gene_counts):
-        raise NotImplementedError("External gene count input is not implemented for strand-specific counts.")
 
-    # if (args.reference or args.aligner) and not has_fastq:
-    #     raise ValueError("--reference/--aligner parameters are only required for --fastq-<readtype> input.")
-    
-    # if bool(args.reference and args.aligner) != has_fastq:
-    #     raise ValueError("--fastq-<readtype> input requires --reference and --aligner to be set.")
-    
-    if args.restrict_metrics:
-        restrict_metrics = set(args.restrict_metrics.split(","))
-        invalid = restrict_metrics.difference(('raw', 'lnorm', 'scaled', 'rpkm'))
-        if invalid:
-            raise ValueError(f"Invalid column(s) in `--restrict_metrics`: {str(invalid)}")
-        args.restrict_metrics = tuple(restrict_metrics)
+    if args.gene_counts:
+        if args.strand_specific:
+            raise NotImplementedError("External gene count input is not implemented for strand-specific counts.")
+        if args.run_mode != RunMode.GENE:
+            raise NotImplementedError("External gene counts currently require --mode genes.")
+
+    if args.strand_specific:
+        raise NotImplementedError("Strand-specific counting is currently disabled.")
+
+    if args.restrict_metrics is not None:
+        args.restrict_metrics = None
+        warnings.warn("Metric restriction is currently ignored.", stacklevel=2,)
+        # restrict_metrics = args.restrict_metrics.split(",")
+        # invalid = set(restrict_metrics).difference(('raw', 'lnorm', 'scaled', 'rpkm'))
+        # if invalid:
+        #     raise ValueError(f"Invalid metric(s) in `--restrict_metrics`: {str(invalid)}")
+        # args.restrict_metrics = restrict_metrics
 
     if os.path.isdir(os.path.dirname(args.out_prefix)) and not args.force_overwrite:
         raise ValueError(f"Output directory exists {os.path.dirname(args.out_prefix)}. Specify -f to overwrite.")
@@ -266,20 +275,23 @@ def handle_args(args):
         type=str,
         help="A comma-delimited string of orphan read fastq files."
     )
+
     ap.add_argument(
         "--mode",
         "-m",
         type=str,
         default="genes",
-        choices=("small_genome", "genome_catalogue", "genes", "gene", "domain"),
+        choices=("genes", "gene",),
+        # choices=("small_genome", "genome_catalogue", "genes", "gene", "domain"),
         help=textwrap.dedent(
             """\
             Run mode:"
-             - 'genome' counts reads aligned against contigs.
+             - 'genome' counts reads aligned against contigs. -- CURRENTLY DISABLED 
              - 'gene' (alias 'genes') counts reads aligned against gene sequences.
-             - 'domain' counts reads against domain annotations within gene sequences."""
+             - 'domain' counts reads against domain annotations within gene sequences. -- CURRENTLY DISABLED"""
         ),
     )
+
     ap.add_argument(
         "--out_prefix",
         "-o",
@@ -287,26 +299,28 @@ def handle_args(args):
         default=__tool__,
         help="Prefix for output files.",
     )
+
     ap.add_argument(
         "--ambig_mode",
         type=str,
-        choices=("unique_only", "all1", "primary_only", "1overN"),
+        # choices=("unique_only", "all1", "primary_only", "1overN"),
+        choices=("1overN",),
         default="1overN",
         help=textwrap.dedent(
             """\
             Determines how ambiguous alignments should be treated. This setting mimics NGLess' behaviour.
-            - 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). This is the default setting.
-            - 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to.)
-            - 'primary_only' takes the unique alignments and the primary alignment of each ambiguous read group.
-            - '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to."""
+            - 'unique_only' ignores any alignment flagged as ambiguous (MAPQ=0). -- CURRENTLY DISABLED
+            - 'all1' treats each alignment as unique (each ambiguous alignment contributes 1 count to features it aligns to.) -- CURRENTLY DISABLED
+            - 'primary_only' takes the unique alignments and the primary alignment of each ambiguous read group. -- CURRENTLY DISABLED
+            - '1overN' each alignment contributes 1/(n=number of ambiguous alignments of the same read) counts to features it aligns to. This is the default setting."""
         ),
     )
 
     ap.add_argument(
         "--strand_specific",
         action="store_true",
-        help="Perform strand-specific counting for RNAseq reads. "
-        "This flag is currently ignored for paired-end data.",
+        help="""\
+            Perform strand-specific counting for RNAseq reads. -- CURRENTLY DISABLED""",
     )
 
     ap.add_argument(
@@ -347,8 +361,9 @@ def handle_args(args):
     ap.add_argument(
         "--restrict_metrics",
         type=str,
-        help="Restrict reported metrics. Comma-separated list of `raw`, `lnorm`, `scaled`, `rpkm`.",
-        default="raw,lnorm,scaled",
+        help="Restrict reported metrics. Comma-separated list of `raw`, `lnorm`, `scaled`, `rpkm`. -- CURRENTLY IGNORED",
+        default=None,
+        # default="raw,lnorm,scaled,rpkm",
     )
 
     ap.add_argument(
@@ -359,9 +374,9 @@ def handle_args(args):
     )
 
     ap.add_argument(
-        "--cpus_for_alignment", "-t",
+        "--threads", "--cpus_for_alignment", "-t",
         type=int, default=1,
-        help="",
+        help="Number of CPUS/threads used for alignment",
     )
 
     ap.add_argument(

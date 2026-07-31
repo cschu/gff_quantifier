@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from .aln_group import AlignmentGroup
 from .pysam_alignment_processor import AlignmentProcessor
+from .reference_hit import ReferenceHit
 from .samflags import SamFlags
 from .cigarops import CigarOps
 

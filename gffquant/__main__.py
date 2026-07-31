@@ -27,7 +27,7 @@ def stream_alignments(args, profiler: FeatureQuantifier):
         raise ValueError(f"Aligner `{args.aligner}` is not supported.")
 
     aln_runner = AlnRunner(
-        args.cpus_for_alignment,
+        args.threads,
         args.reference,
         sample_id=os.path.basename(args.out_prefix),
     )
@@ -94,6 +94,8 @@ def main():
     db_input = None
     if args.run_mode == RunMode.GENE:
         Quantifier = GeneQuantifier
+        if args.gene_counts:
+            kwargs["external_genecounts"] = args.gene_counts
     else:
         Quantifier, kwargs["run_mode"] = RegionQuantifier, args.run_mode
         db_args = {}
@@ -132,7 +134,7 @@ def main():
 
         if args.input_type == "fastq":
 
-            stream_alignments(args, profiler)        
+            stream_alignments(args, profiler)
 
         else:
 
@@ -152,19 +154,12 @@ def main():
             )
 
         profiler.report_alignments()
-    
-    else:
-        
-        ...
 
     profiler.finalise(
-        restrict_reports=args.restrict_metrics,
-        report_category=True,
         report_unannotated=args.run_mode.report_unannotated,
         dump_counters=args.debug,
         in_memory=args.db_in_memory,
         gene_group_db=args.gene_group_db,
-        external_gene_counts=args.gene_counts,
     )
 
 
