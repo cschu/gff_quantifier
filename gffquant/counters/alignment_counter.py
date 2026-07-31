@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class AlignmentCounter:
-    COUNT_HEADER_ELEMENTS = ("raw", "lnorm", "scaled")
     INITIAL_SIZE = 1000
     # this may be counter-intuitive
     # but originates from the samflags 0x10, 0x20,
